@@ -26,6 +26,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Client, clientSchema } from "@/schemas/client-schema";
 import { toast } from "sonner";
 import { Upload, Download } from "lucide-react";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area"; // Importar ScrollArea e ScrollBar
 
 interface CreateEditClientDialogProps {
   isOpen: boolean;
@@ -81,7 +82,7 @@ const CreateEditClientDialog: React.FC<CreateEditClientDialogProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[600px]">
+      <DialogContent className="sm:max-w-[600px] flex flex-col max-h-[90vh]"> {/* Adicionado flex-col e max-h */}
         <DialogHeader>
           <DialogTitle>{clientToEdit ? "Editar Cliente" : "Registar Novo Cliente"}</DialogTitle>
           <DialogDescription>
@@ -96,109 +97,112 @@ const CreateEditClientDialog: React.FC<CreateEditClientDialogProps> = ({
             <Download className="h-4 w-4 mr-2" /> Exportar Clientes
           </Button>
         </div>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-4 py-4">
-            <FormField
-              control={form.control}
-              name="nome"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Nome *</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Nome e Apelido" {...field} />
-                  </FormControl>
+        <ScrollArea className="flex-grow pr-4"> {/* Adicionado ScrollArea e flex-grow */}
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-4 py-4">
+              <FormField
+                control={form.control}
+                name="nome"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Nome *</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Nome e Apelido" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="nif"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>NIF *</FormLabel>
+                    <FormControl>
+                      <Input placeholder="123456789" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Email *</FormLabel>
+                    <FormControl>
+                      <Input type="email" placeholder="email@exemplo.com" {...field} />
+                    </FormControl>
                   <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="nif"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>NIF *</FormLabel>
-                  <FormControl>
-                    <Input placeholder="123456789" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="email"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Email *</FormLabel>
-                  <FormControl>
-                    <Input type="email" placeholder="email@exemplo.com" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="telefone"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Telefone *</FormLabel>
-                  <FormControl>
-                    <Input placeholder="(+351) 912 345 678" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="empresa"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Empresa (opcional)</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Nome da empresa" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="endereco"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Endereço *</FormLabel>
-                  <FormControl>
-                    <Textarea placeholder="Endereço completo" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="observacoes"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Observações</FormLabel>
-                  <FormControl>
-                    <Textarea placeholder="Notas adicionais sobre o cliente" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <div className="flex justify-end gap-2 mt-4">
-              <Button variant="outline" onClick={onClose} type="button">
-                Cancelar
-              </Button>
-              <Button type="submit">
-                Guardar Cliente
-              </Button>
-            </div>
-          </form>
-        </Form>
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="telefone"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Telefone *</FormLabel>
+                    <FormControl>
+                      <Input placeholder="(+351) 912 345 678" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="empresa"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Empresa (opcional)</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Nome da empresa" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="endereco"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Endereço *</FormLabel>
+                    <FormControl>
+                      <Textarea placeholder="Endereço completo" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="observacoes"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Observações</FormLabel>
+                    <FormControl>
+                      <Textarea placeholder="Notas adicionais sobre o cliente" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <div className="flex justify-end gap-2 mt-4">
+                <Button variant="outline" onClick={onClose} type="button">
+                  Cancelar
+                </Button>
+                <Button type="submit">
+                  Guardar Cliente
+                </Button>
+              </div>
+            </form>
+          </Form>
+          <ScrollBar orientation="vertical" /> {/* Adicionado ScrollBar */}
+        </ScrollArea>
       </DialogContent>
     </Dialog>
   );
