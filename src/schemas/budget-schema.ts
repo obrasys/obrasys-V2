@@ -1,18 +1,62 @@
 import { z } from "zod";
 
+// Existing BudgetItem schema (adjusted for form use)
 export const budgetItemSchema = z.object({
-  id: z.string().uuid(),
-  capitulo: z.string().min(1, "O capítulo é obrigatório."),
+  id: z.string().uuid().optional(), // Optional for new items
+  capitulo_id: z.string().uuid().optional(), // Link to the chapter (internal form ID)
   servico: z.string().min(1, "O serviço é obrigatório."),
-  quantidade: z.coerce.number().min(0, "A quantidade deve ser um valor positivo."),
+  quantidade: z.coerce.number().min(0.01, "A quantidade deve ser um valor positivo."),
   unidade: z.string().min(1, "A unidade é obrigatória."),
   preco_unitario: z.coerce.number().min(0, "O preço unitário deve ser um valor positivo."),
-  custo_planeado: z.coerce.number().min(0),
-  custo_executado: z.coerce.number().min(0),
-  desvio: z.coerce.number(), // Calculated field
-  estado: z.enum(["Em andamento", "Concluído", "Atrasado", "Planeado"], { // Adicionado "Planeado"
+  custo_planeado: z.coerce.number().min(0).default(0), // Calculated field, default to 0
+  custo_executado: z.coerce.number().min(0).default(0), // Default to 0 for new items
+  desvio: z.coerce.number().default(0), // Calculated field, default to 0
+  estado: z.enum(["Em andamento", "Concluído", "Atrasado", "Planeado"], {
     required_error: "O estado é obrigatório.",
-  }),
+  }).default("Planeado"),
 });
 
 export type BudgetItem = z.infer<typeof budgetItemSchema>;
+
+// New schema for a single chapter in the form
+export const budgetChapterFormSchema = z.object({
+  id: z.string().uuid().optional(), // Internal form ID for chapter
+  codigo: z.string().min(1, "O código do capítulo é obrigatório."),
+  nome: z.string().min(1, "O nome do capítulo é obrigatório."),
+  observacoes: z.string().optional().nullable(),
+  items: z.array(budgetItemSchema).min(1, "Cada capítulo deve ter pelo menos um serviço."),
+});
+
+export type BudgetChapterForm = z.infer<typeof budgetChapterFormSchema>;
+
+// New schema for the entire budget creation form
+export const newBudgetFormSchema = z.object({
+  id: z.string().uuid().optional(), // Optional for new budget
+  nome: z.string().min(1, "O nome do orçamento é obrigatório."),
+  client_id: z.string().uuid("Selecione um cliente válido.").min(1, "O cliente é obrigatório."),
+  localizacao: z.string().min(1, "A localização da obra é obrigatória."),
+  tipo_obra: z.enum(["Nova construção", "Remodelação", "Ampliação"], {
+    required_error: "O tipo de obra é obrigatório.",
+  }),
+  data_orcamento: z.string().min(1, "A data do orçamento é obrigatória."),
+  observacoes_gerais: z.string().optional().nullable(),
+  estado: z.enum(["Rascunho", "Aprovado", "Rejeitado"]).default("Rascunho"), // Initial state
+  chapters: z.array(budgetChapterFormSchema).min(1, "O orçamento deve ter pelo menos um capítulo."),
+});
+
+export type NewBudgetFormValues = z.infer<typeof newBudgetFormSchema>;
+
+// Type for the actual budget stored in DB (simplified, without nested items)
+export const budgetDBSchema = z.object({
+  id: z.string().uuid(),
+  company_id: z.string().uuid(),
+  project_id: z.string().uuid().optional().nullable(),
+  nome: z.string(),
+  total_planeado: z.number(),
+  total_executado: z.number(),
+  estado: z.enum(["Rascunho", "Aprovado", "Rejeitado"]),
+  created_at: z.string().optional(),
+  updated_at: z.string().optional(),
+});
+
+export type BudgetDB = z.infer<typeof budgetDBSchema>;

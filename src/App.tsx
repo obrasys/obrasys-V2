@@ -39,6 +39,9 @@ import LivroDeObraPage from "./pages/LivroDeObraPage";
 // New page for Profile/Company Management
 import ProfilePage from "./pages/ProfilePage";
 
+// New page for Budgeting
+import NewBudgetPage from "./pages/NewBudgetPage";
+
 
 const queryClient = new QueryClient();
 
@@ -93,6 +96,9 @@ const AppContent = () => (
 
       {/* New route for Profile/Company Management */}
       <Route path="/profile" element={<ProfilePage />} />
+
+      {/* New route for creating a budget */}
+      <Route path="/budgeting/new" element={<NewBudgetPage />} />
     </Route>
 
     {/* Routes that do NOT use the MainLayout (e.g., landing pages, 404) */}

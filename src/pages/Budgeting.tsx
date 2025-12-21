@@ -24,6 +24,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"; // Adicionado: Importação dos componentes Select
+import { useNavigate } from "react-router-dom"; // Importar useNavigate
 
 // Mock data for budgets (assuming a full budget object, not just items)
 interface Budget {
@@ -149,6 +150,7 @@ const Budgeting = () => {
   const [isClientDialogOpen, setIsClientDialogOpen] = React.useState(false);
   const [isProjectDialogOpen, setIsProjectDialogOpen] = React.useState(false);
   const [clients, setClients] = React.useState<Client[]>([]); // State to store registered clients
+  const navigate = useNavigate();
 
   // Use a default budget if none is selected, or the first one
   const currentBudget = selectedBudget || budgets[0];
@@ -257,7 +259,7 @@ const Budgeting = () => {
           <Button onClick={() => setIsClientDialogOpen(true)} variant="outline" className="flex items-center gap-2">
             <UserPlus className="h-4 w-4" /> Cadastrar Cliente
           </Button>
-          <Button className="flex items-center gap-2">
+          <Button onClick={() => navigate("/budgeting/new")} className="flex items-center gap-2">
             <PlusCircle className="h-4 w-4" /> Novo Orçamento
           </Button>
           <Button variant="outline" className="flex items-center gap-2" disabled>
