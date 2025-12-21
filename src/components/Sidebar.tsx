@@ -15,7 +15,7 @@ import {
   Database,
   ClipboardList,
   LogOut,
-  Zap,
+  Zap, // Import Zap icon for Automation
   Bell,
   Settings,
   ChevronLeft,
@@ -84,6 +84,11 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, toggleSidebar }) => {
       name: "Artigos de Trabalho",
       icon: ClipboardList,
       href: "/work-items",
+    },
+    {
+      name: "Automação & Inteligência", // New item
+      icon: Zap, // Using Zap icon
+      href: "/automation-intelligence",
     },
   ];
 

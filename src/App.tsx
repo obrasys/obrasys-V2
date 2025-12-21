@@ -11,6 +11,7 @@ import ProjectManagement from "./pages/ProjectManagement";
 import SupplyChain from "./pages/SupplyChain";
 import FinanceManagement from "./pages/FinanceManagement";
 import CRMPortal from "./pages/CRMPortal";
+import AutomationIntelligence from "./pages/AutomationIntelligence"; // Import the new module
 
 // Placeholder pages for sidebar navigation
 import ProjectsPage from "./pages/ProjectsPage";
@@ -38,6 +39,7 @@ const App = () => (
           <Route path="/supply-chain" element={<SupplyChain />} />
           <Route path="/finance-management" element={<FinanceManagement />} />
           <Route path="/crm-portal" element={<CRMPortal />} />
+          <Route path="/automation-intelligence" element={<AutomationIntelligence />} /> {/* New route */}
 
           {/* New placeholder routes for sidebar */}
           <Route path="/projects" element={<ProjectsPage />} />
