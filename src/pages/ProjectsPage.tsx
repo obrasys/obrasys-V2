@@ -218,7 +218,7 @@ const ProjectsPage = () => {
             <EmptyState
               icon={CalendarDays}
               title="Cronogramas Detalhados (Em breve)"
-              description="Visualize e gerencie o cronograma de cada obra."
+              description="Visualize e gere o cronograma de cada obra."
             />
           </CardContent>
         </Card>
@@ -230,7 +230,7 @@ const ProjectsPage = () => {
             <EmptyState
               icon={FileText}
               title="Diários de Obra (Em breve)"
-              description="Acesse os diários de obra e relatórios de progresso."
+              description="Aceda aos diários de obra e relatórios de progresso."
             />
           </CardContent>
         </Card>

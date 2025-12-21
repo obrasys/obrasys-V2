@@ -108,7 +108,7 @@ const WorkItemsPage = () => {
       {/* Introduction Section */}
       <section className="text-center max-w-3xl mx-auto mb-8">
         <p className="text-lg md:text-xl text-muted-foreground leading-relaxed">
-          Gerencie seu catálogo interno de serviços, materiais e equipes com precisão e eficiência.
+          Gerencie o seu catálogo interno de serviços, materiais e equipas com precisão e eficiência.
         </p>
       </section>
 

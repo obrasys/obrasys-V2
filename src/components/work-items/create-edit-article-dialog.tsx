@@ -164,7 +164,7 @@ const CreateEditArticleDialog: React.FC<CreateEditArticleDialogProps> = ({
                       <SelectContent>
                         <SelectItem value="servico">Serviço</SelectItem>
                         <SelectItem value="material">Material</SelectItem>
-                        <SelectItem value="equipe">Equipe</SelectItem>
+                        <SelectItem value="equipe">Equipa</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
