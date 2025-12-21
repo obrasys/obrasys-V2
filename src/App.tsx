@@ -55,31 +55,32 @@ const AppContent = () => (
   <Routes>
     <Route path="/login" element={<Login />} />
     <Route path="/signup" element={<Signup />} />
-    {/* Routes that use the MainLayout and are protected */}
-    <Route path="/" element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
-      <Route index element={<Dashboard />} />
-      <Route path="dashboard" element={<Dashboard />} />
-      <Route path="budgeting" element={<Budgeting />} />
-      <Route path="project-management" element={<ProjectManagement />} />
-      <Route path="supply-chain" element={<SupplyChain />} />
-      <Route path="finance-management" element={<FinanceManagement />} />
-      <Route path="crm-portal" element={<CRMPortal />} />
-      <Route path="automation-intelligence" element={<AutomationIntelligence />} />
+    
+    {/* Layout route for protected pages */}
+    <Route element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
+      <Route path="/" element={<Dashboard />} /> {/* Default protected route */}
+      <Route path="/dashboard" element={<Dashboard />} />
+      <Route path="/budgeting" element={<Budgeting />} />
+      <Route path="/project-management" element={<ProjectManagement />} />
+      <Route path="/supply-chain" element={<SupplyChain />} />
+      <Route path="/finance-management" element={<FinanceManagement />} />
+      <Route path="/crm-portal" element={<CRMPortal />} />
+      <Route path="/automation-intelligence" element={<AutomationIntelligence />} />
 
       {/* Placeholder routes for sidebar */}
-      <Route path="projects" element={<ProjectsPage />} />
-      <Route path="schedule" element={<SchedulePage />} />
-      <Route path="collaborators" element={<CollaboratorsPage />} />
-      <Route path="compliance" element={<CompliancePage />} />
-      <Route path="reports" element={<ReportsPage />} />
-      <Route path="price-database" element={<PriceDatabasePage />} />
-      <Route path="work-items" element={<WorkItemsPage />} />
+      <Route path="/projects" element={<ProjectsPage />} />
+      <Route path="/schedule" element={<SchedulePage />} />
+      <Route path="/collaborators" element={<CollaboratorsPage />} />
+      <Route path="/compliance" element={<CompliancePage />} />
+      <Route path="/reports" element={<ReportsPage />} />
+      <Route path="/price-database" element={<PriceDatabasePage />} />
+      <Route path="/work-items" element={<WorkItemsPage />} />
 
       {/* New routes for Automation & Intelligence features */}
-      <Route path="automation-intelligence/alerts-configuration" element={<AlertsConfigurationPage />} />
-      <Route path="automation-intelligence/replanning-suggestions" element={<ReplanningSuggestionsPage />} />
-      <Route path="automation-intelligence/ai-assistant" element={<AIAssistantPage />} />
-      <Route path="automation-intelligence/performance-analysis" element={<PerformanceAnalysisPage />} />
+      <Route path="/automation-intelligence/alerts-configuration" element={<AlertsConfigurationPage />} />
+      <Route path="/automation-intelligence/replanning-suggestions" element={<ReplanningSuggestionsPage />} />
+      <Route path="/automation-intelligence/ai-assistant" element={<AIAssistantPage />} />
+      <Route path="/automation-intelligence/performance-analysis" element={<PerformanceAnalysisPage />} />
     </Route>
 
     {/* Routes that do NOT use the MainLayout (e.g., landing pages, 404) */}
