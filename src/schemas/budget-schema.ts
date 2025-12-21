@@ -10,7 +10,7 @@ export const budgetItemSchema = z.object({
   custo_planeado: z.coerce.number().min(0),
   custo_executado: z.coerce.number().min(0),
   desvio: z.coerce.number(), // Calculated field
-  estado: z.enum(["Em andamento", "Concluído", "Atrasado"], {
+  estado: z.enum(["Em andamento", "Concluído", "Atrasado", "Planeado"], { // Adicionado "Planeado"
     required_error: "O estado é obrigatório.",
   }),
 });

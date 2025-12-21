@@ -113,7 +113,7 @@ const ProjectsPage = () => {
     }
   };
 
-  const handleScheduleUpdate = (overallProgress: number, status: string) => {
+  const handleScheduleUpdate = (overallProgress: number, status: Project["estado"]) => { // Tipo corrigido aqui
     if (selectedProject) {
       setSelectedProject(prev => prev ? { ...prev, progresso: overallProgress, estado: status } : null);
       // Optionally, update the project in the database here
