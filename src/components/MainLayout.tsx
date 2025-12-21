@@ -18,40 +18,42 @@ import {
 import { useSession } from "@/components/SessionContextProvider";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import EditProfileModal from "@/components/profile/EditProfileModal"; // Importar o novo modal
 
 const MainLayout = () => {
   const isMobile = useIsMobile();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = React.useState(isMobile);
   const { user, isLoading: isSessionLoading } = useSession();
   const [profile, setProfile] = React.useState<{ first_name: string | null; last_name: string | null; avatar_url: string | null; role: string | null; } | null>(null);
+  const [isEditProfileModalOpen, setIsEditProfileModalOpen] = React.useState(false); // Estado para o modal
   const navigate = useNavigate();
 
   React.useEffect(() => {
     setIsSidebarCollapsed(isMobile);
   }, [isMobile]);
 
-  React.useEffect(() => {
-    const fetchProfile = async () => {
-      if (user) {
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('first_name, last_name, avatar_url, role')
-          .eq('id', user.id)
-          .single();
+  const fetchProfile = React.useCallback(async () => {
+    if (user) {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('first_name, last_name, avatar_url, role')
+        .eq('id', user.id)
+        .single();
 
-        if (error) {
-          console.error("Erro ao carregar perfil:", error);
-          toast.error("Erro ao carregar dados do perfil.");
-        } else {
-          setProfile(data);
-        }
+      if (error) {
+        console.error("Erro ao carregar perfil:", error);
+        toast.error("Erro ao carregar dados do perfil.");
+      } else {
+        setProfile(data);
       }
-    };
+    }
+  }, [user]);
 
+  React.useEffect(() => {
     if (!isSessionLoading && user) {
       fetchProfile();
     }
-  }, [user, isSessionLoading]);
+  }, [user, isSessionLoading, fetchProfile]);
 
   const toggleSidebar = () => {
     setIsSidebarCollapsed(!isSidebarCollapsed);
@@ -123,7 +125,7 @@ const MainLayout = () => {
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => navigate('/profile')}>
+                <DropdownMenuItem onClick={() => setIsEditProfileModalOpen(true)}> {/* Abre o modal */}
                   <User className="mr-2 h-4 w-4" />
                   <span>Perfil</span>
                 </DropdownMenuItem>
@@ -142,6 +144,12 @@ const MainLayout = () => {
         </header>
         <Outlet /> {/* Aqui é onde as rotas filhas serão renderizadas */}
       </main>
+
+      <EditProfileModal
+        isOpen={isEditProfileModalOpen}
+        onClose={() => setIsEditProfileModalOpen(false)}
+        onProfileUpdated={fetchProfile} // Passa a função para atualizar o perfil no MainLayout
+      />
     </div>
   );
 };

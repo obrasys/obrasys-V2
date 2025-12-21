@@ -26,7 +26,7 @@ const personalProfileSchema = profileSchema.pick({
   first_name: true,
   last_name: true,
   phone: true,
-  avatar_url: true,
+  avatar_url: true, // Manter para exibir, mas não para upload aqui
 });
 
 type PersonalProfileFormValues = z.infer<typeof personalProfileSchema>;
@@ -35,6 +35,7 @@ const ProfilePersonalTab: React.FC = () => {
   const { user, isLoading: isSessionLoading } = useSession();
   const [isLoading, setIsLoading] = React.useState(true);
   const [isSaving, setIsSaving] = React.useState(false);
+  const [profileData, setProfileData] = React.useState<Profile | null>(null); // Estado para armazenar o perfil completo
 
   const form = useForm<PersonalProfileFormValues>({
     resolver: zodResolver(personalProfileSchema),
@@ -60,6 +61,7 @@ const ProfilePersonalTab: React.FC = () => {
           console.error("Erro ao carregar perfil:", error);
           toast.error("Erro ao carregar dados do perfil.");
         } else if (data) {
+          setProfileData(data); // Armazena o perfil completo
           form.reset({
             first_name: data.first_name || "",
             last_name: data.last_name || "",
@@ -89,7 +91,7 @@ const ProfilePersonalTab: React.FC = () => {
           first_name: data.first_name,
           last_name: data.last_name,
           phone: data.phone,
-          avatar_url: data.avatar_url,
+          // avatar_url não é atualizado aqui, é feito no modal
           updated_at: new Date().toISOString(),
         })
         .eq('id', user.id);
@@ -106,8 +108,8 @@ const ProfilePersonalTab: React.FC = () => {
     }
   };
 
-  const userInitials = form.watch("first_name") && form.watch("last_name")
-    ? `${form.watch("first_name").charAt(0)}${form.watch("last_name").charAt(0)}`.toUpperCase()
+  const userInitials = profileData?.first_name && profileData?.last_name
+    ? `${profileData.first_name.charAt(0)}${profileData.last_name.charAt(0)}`.toUpperCase()
     : user?.email?.charAt(0).toUpperCase() || 'US';
 
   if (isLoading) {
@@ -136,24 +138,24 @@ const ProfilePersonalTab: React.FC = () => {
         <div className="flex items-center space-x-4">
           <div className="relative">
             <Avatar className="h-24 w-24">
-              <AvatarImage src={form.watch("avatar_url") || undefined} alt="Avatar do Utilizador" />
+              <AvatarImage src={profileData?.avatar_url || undefined} alt="Avatar do Utilizador" />
               <AvatarFallback className="text-3xl">{userInitials}</AvatarFallback>
             </Avatar>
-            {/* Placeholder for avatar upload */}
+            {/* Botão de upload desabilitado aqui, pois o upload é feito no modal */}
             <Button
               type="button"
               variant="outline"
               size="icon"
               className="absolute bottom-0 right-0 h-8 w-8 rounded-full bg-background"
-              disabled // Desabilitado por enquanto
+              disabled
             >
               <Camera className="h-4 w-4" />
             </Button>
           </div>
           <div>
-            <h3 className="text-lg font-semibold">{form.watch("first_name")} {form.watch("last_name")}</h3>
+            <h3 className="text-lg font-semibold">{profileData?.first_name} {profileData?.last_name}</h3>
             <p className="text-sm text-muted-foreground">{user?.email}</p>
-            <p className="text-sm text-muted-foreground capitalize">{profile?.role || "Cliente"}</p>
+            <p className="text-sm text-muted-foreground capitalize">{profileData?.role || "Cliente"}</p>
           </div>
         </div>
 
@@ -205,7 +207,7 @@ const ProfilePersonalTab: React.FC = () => {
         <FormItem>
           <FormLabel>Cargo / Função</FormLabel>
           <FormControl>
-            <Input value={profile?.role || "Cliente"} readOnly disabled className="capitalize" />
+            <Input value={profileData?.role || "Cliente"} readOnly disabled className="capitalize" />
           </FormControl>
         </FormItem>
         <Button type="submit" disabled={isSaving}>
