@@ -4,18 +4,21 @@ import React from 'react';
 import { Auth } from '@supabase/auth-ui-react';
 import { ThemeSupa } from '@supabase/auth-ui-shared';
 import { supabase } from '@/integrations/supabase/client';
-import { MadeWithDyad } from '@/components/made-with-dyad';
+import { Link } from 'react-router-dom'; // Import Link for navigation
 
 const Login: React.FC = () => {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100 p-4">
       <div className="w-full max-w-md p-8 space-y-6 bg-white dark:bg-gray-800 rounded-lg shadow-lg">
-        <h1 className="text-3xl font-bold text-center text-primary dark:text-primary-foreground">
-          Bem-vindo ao Obra Sys
-        </h1>
-        <p className="text-center text-muted-foreground">
-          Faça login para aceder à sua plataforma de gestão de obras.
-        </p>
+        <div className="flex flex-col items-center mb-6">
+          <img src="/marca_nav_bar.png" alt="Obra Sys Logo" className="h-12 w-auto mb-4" />
+          <h1 className="text-3xl font-bold text-center text-primary dark:text-primary-foreground">
+            Entrar na Plataforma
+          </h1>
+          <p className="text-center text-muted-foreground text-sm">
+            Aceda à sua conta Obra Sys
+          </p>
+        </div>
         <Auth
           supabaseClient={supabase}
           providers={[]} // Only email/password by default
@@ -46,13 +49,13 @@ const Login: React.FC = () => {
               sign_in: {
                 email_label: 'Email',
                 password_label: 'Palavra-passe',
-                email_input_placeholder: 'O seu email',
-                password_input_placeholder: 'A sua palavra-passe',
+                email_input_placeholder: 'email@exemplo.com',
+                password_input_placeholder: '••••••••',
                 button_label: 'Entrar',
                 social_provider_text: 'Ou continue com',
                 link_text: 'Já tem uma conta? Entrar',
               },
-              sign_up: {
+              sign_up: { // This will be used if Auth component is configured for sign_up view
                 email_label: 'Email',
                 password_label: 'Palavra-passe',
                 email_input_placeholder: 'O seu email',
@@ -76,8 +79,15 @@ const Login: React.FC = () => {
             },
           }}
         />
+        <div className="flex flex-col items-center space-y-2 mt-4">
+          <Link to="/signup" className="text-sm text-primary hover:underline">
+            Criar conta
+          </Link>
+          <Link to="/login" className="text-sm text-muted-foreground hover:underline">
+            Esqueci a palavra-passe
+          </Link>
+        </div>
       </div>
-      <MadeWithDyad />
     </div>
   );
 };

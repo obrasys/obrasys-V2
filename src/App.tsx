@@ -13,7 +13,8 @@ import FinanceManagement from "./pages/FinanceManagement";
 import CRMPortal from "./pages/CRMPortal";
 import AutomationIntelligence from "./pages/AutomationIntelligence";
 import MainLayout from "./components/MainLayout";
-import Login from "./pages/Login"; // Import the new Login page
+import Login from "./pages/Login"; // Import the Login page
+import Signup from "./pages/Signup"; // Import the new Signup page
 import { SessionContextProvider, useSession } from "./components/SessionContextProvider"; // Import SessionContextProvider and useSession
 
 // Placeholder pages for sidebar navigation
@@ -45,6 +46,7 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
 const AppContent = () => (
   <Routes>
     <Route path="/login" element={<Login />} />
+    <Route path="/signup" element={<Signup />} /> {/* New Signup route */}
     {/* Routes that use the MainLayout and are protected */}
     <Route path="/" element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
       <Route index element={<Dashboard />} /> {/* Dashboard as default for MainLayout */}
