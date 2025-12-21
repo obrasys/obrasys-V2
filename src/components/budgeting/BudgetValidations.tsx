@@ -22,6 +22,9 @@ const BudgetValidations: React.FC<BudgetValidationsProps> = ({
   hasEmptyServices,
   hasEmptyChapters,
 }) => {
+  const chapters = form.watch("chapters");
+  const hasAtLeastOneChapter = chapters && chapters.length > 0;
+
   return (
     <Card className="bg-card text-card-foreground border border-border">
       <CardHeader>
@@ -43,8 +46,8 @@ const BudgetValidations: React.FC<BudgetValidationsProps> = ({
           <li className={cn(form.formState.errors.localizacao ? "text-red-500" : "text-green-500")}>
             Localização da obra preenchida: {form.formState.errors.localizacao ? "❌" : "✅"}
           </li>
-          <li className={cn(form.formState.errors.chapters ? "text-red-500" : "text-green-500")}>
-            Pelo menos um capítulo: {form.formState.errors.chapters ? "❌" : "✅"}
+          <li className={cn(!hasAtLeastOneChapter ? "text-red-500" : "text-green-500")}>
+            Pelo menos um capítulo: {!hasAtLeastOneChapter ? "❌" : "✅"}
           </li>
           <li className={cn(hasEmptyChapters ? "text-red-500" : "text-green-500")}>
             Nenhum capítulo vazio: {hasEmptyChapters ? "❌" : "✅"}
