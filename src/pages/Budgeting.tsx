@@ -14,7 +14,7 @@ const Budgeting = () => {
       <div className="flex flex-col md:flex-row items-center justify-between gap-4 pb-6">
         {/* Removed "Voltar à Página Inicial" button */}
         <h1 className="text-3xl md:text-4xl font-extrabold text-center text-primary dark:text-primary-foreground flex-grow">
-          Módulo 1: Orçamentação e Controlo de Custos
+          Orçamentação e Controlo de Custos
         </h1>
         {/* Removed placeholder div */}
       </div>
@@ -22,7 +22,7 @@ const Budgeting = () => {
       {/* Introduction Section */}
       <section className="text-center max-w-3xl mx-auto mb-8">
         <p className="text-lg md:text-xl text-muted-foreground leading-relaxed">
-          Este módulo é o coração do "Obra Sys", projetado para transformar a orçamentação de construção de um processo manual e propenso a erros em uma operação precisa e preditiva impulsionada por IA.
+          {/* Removed the specific introductory text */}
         </p>
       </section>
 
