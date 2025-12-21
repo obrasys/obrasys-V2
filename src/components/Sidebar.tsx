@@ -103,8 +103,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, toggleSidebar }) => {
       >
         {!isCollapsed && (
           <Link to="/dashboard" className="flex items-center gap-2">
-            <Zap className="h-6 w-6 text-primary" />
-            <span className="text-xl font-bold text-primary">Obra Sys</span>
+            <img src="/marca_nav_bar.png" alt="Obra Sys Logo" className="h-8 w-auto" />
           </Link>
         )}
         <Button
