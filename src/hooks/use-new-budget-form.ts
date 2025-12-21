@@ -145,6 +145,7 @@ export function useNewBudgetForm({
         company_id: companyId,
         nome: data.nome,
         client_id: data.client_id,
+        localizacao: data.localizacao, // Adicionado: Incluir localizacao
         project_id: null,
         total_planeado: initialTotalPlanned,
         total_executado: 0,
