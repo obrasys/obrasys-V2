@@ -116,63 +116,86 @@ export function useNewBudgetForm({
   }, [form, calculateCosts]);
 
   const onSubmit = async (data: NewBudgetFormValues) => {
+    console.log("--- onSubmit: Starting budget save process ---");
+    console.log("Current form data:", data);
+    console.log("User Company ID:", userCompanyId);
+
     if (!user || !userCompanyId) {
       toast.error("Utilizador não autenticado ou ID da empresa não encontrado. Por favor, faça login novamente.");
+      console.error("onSubmit: Aborting save - user or userCompanyId is missing.");
       return;
     }
     setIsSaving(true);
+    console.log("onSubmit: isSaving set to true.");
 
     try {
       const companyId = userCompanyId;
-      if (!companyId) {
-        throw new Error("ID da empresa não encontrado no perfil do utilizador.");
-      }
+      // This check is redundant if the above `if` block handles `!userCompanyId`
+      // if (!companyId) {
+      //   throw new Error("ID da empresa não encontrado no perfil do utilizador.");
+      // }
+      console.log("onSubmit: Using companyId:", companyId);
 
       const initialTotalPlanned = calculateCosts(); 
+      console.log("onSubmit: Calculated initial total planned cost:", initialTotalPlanned);
+
+      // 1. Insert the main budget record
+      console.log("onSubmit: Attempting to insert main budget record.");
+      const budgetPayload = {
+        company_id: companyId,
+        nome: data.nome,
+        client_id: data.client_id,
+        project_id: null,
+        total_planeado: initialTotalPlanned,
+        total_executado: 0,
+        estado: data.estado,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+      console.log("onSubmit: Budget payload:", budgetPayload);
 
       const { data: budgetData, error: budgetError } = await supabase
         .from('budgets')
-        .insert({
-          company_id: companyId,
-          nome: data.nome,
-          client_id: data.client_id,
-          project_id: null,
-          total_planeado: initialTotalPlanned,
-          total_executado: 0,
-          estado: data.estado,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        })
+        .insert(budgetPayload)
         .select()
         .single();
 
       if (budgetError) {
-        throw budgetError;
+        console.error("onSubmit: Supabase budget insertion error:", budgetError);
+        throw new Error(`Erro ao criar orçamento principal: ${budgetError.message}`);
       }
+      console.log("onSubmit: Main budget record inserted successfully:", budgetData);
 
+      // 2. Insert budget chapters and their items
       for (const chapter of data.chapters) {
+        console.log(`onSubmit: Attempting to insert budget chapter: ${chapter.nome}`);
+        const chapterPayload = {
+          budget_id: budgetData.id,
+          title: chapter.nome,
+          code: chapter.codigo,
+          sort_order: 0, // Placeholder, could be chapterIndex
+          notes: chapter.observacoes,
+          subtotal: 0, // Will be updated by trigger
+          created_at: new Date().toISOString(),
+        };
+        console.log("onSubmit: Chapter payload:", chapterPayload);
+
         const { data: chapterData, error: chapterError } = await supabase
           .from('budget_chapters')
-          .insert({
-            budget_id: budgetData.id,
-            title: chapter.nome,
-            code: chapter.codigo,
-            sort_order: 0,
-            notes: chapter.observacoes,
-            subtotal: 0,
-            created_at: new Date().toISOString(),
-          })
+          .insert(chapterPayload)
           .select()
           .single();
 
         if (chapterError) {
-          throw chapterError;
+          console.error("onSubmit: Supabase budget chapter insertion error:", chapterError);
+          throw new Error(`Erro ao criar capítulo '${chapter.nome}': ${chapterError.message}`);
         }
+        console.log("onSubmit: Budget chapter inserted successfully:", chapterData);
 
         const budgetItemsToInsert = chapter.items.map((item) => ({
           company_id: companyId,
           budget_id: budgetData.id,
-          chapter_id: chapterData.id,
+          chapter_id: chapterData.id, // Link to the newly created chapter
           capitulo: item.capitulo,
           servico: item.servico,
           quantidade: item.quantidade,
@@ -181,26 +204,30 @@ export function useNewBudgetForm({
           custo_planeado: item.custo_planeado,
           custo_executado: 0,
           estado: item.estado,
-          observacoes: "",
+          observacoes: "", // Add observacoes if needed in schema
           article_id: item.article_id,
         }));
+        console.log(`onSubmit: Budget items to insert for chapter ${chapter.nome}:`, budgetItemsToInsert);
 
         const { error: itemsError } = await supabase
           .from('budget_items')
           .insert(budgetItemsToInsert);
 
         if (itemsError) {
-          throw itemsError;
+          console.error("onSubmit: Supabase budget items insertion error:", itemsError);
+          throw new Error(`Erro ao inserir itens para o capítulo '${chapter.nome}': ${itemsError.message}`);
         }
+        console.log(`onSubmit: Budget items for chapter ${chapter.nome} inserted successfully.`);
       }
 
       toast.success("Orçamento criado com sucesso!");
       navigate("/budgeting");
     } catch (error: any) {
       toast.error(`Erro ao criar orçamento: ${error.message}`);
-      console.error("Erro ao criar orçamento:", error);
+      console.error("onSubmit: Caught error during budget creation:", error);
     } finally {
       setIsSaving(false);
+      console.log("--- onSubmit: Budget save process finished ---");
     }
   };
 
