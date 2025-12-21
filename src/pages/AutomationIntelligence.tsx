@@ -15,14 +15,14 @@ const AutomationIntelligence = () => {
       {/* Header Section */}
       <div className="flex flex-col md:flex-row items-center justify-between gap-4 pb-6">
         <h1 className="text-3xl md:text-4xl font-extrabold text-center text-primary dark:text-primary-foreground flex-grow">
-          Módulo 6: Automação & Inteligência
+          Automação & Inteligência
         </h1>
       </div>
 
       {/* Introduction Section */}
       <section className="text-center max-w-3xl mx-auto mb-8">
         <p className="text-lg md:text-xl text-muted-foreground leading-relaxed">
-          Este módulo centraliza ferramentas de IA e automação para otimizar a tomada de decisões
+          Aqui centraliza ferramentas de IA e automação para otimizar a tomada de decisões
           e a eficiência operacional.
         </p>
       </section>
