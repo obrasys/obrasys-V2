@@ -33,6 +33,9 @@ import ReplanningSuggestionsPage from "./pages/ReplanningSuggestionsPage";
 import AIAssistantPage from "./pages/AIAssistantPage";
 import PerformanceAnalysisPage from "./pages/PerformanceAnalysisPage";
 
+// New page for Compliance module
+import LivroDeObraPage from "./pages/LivroDeObraPage";
+
 
 const queryClient = new QueryClient();
 
@@ -81,6 +84,9 @@ const AppContent = () => (
       <Route path="/automation-intelligence/replanning-suggestions" element={<ReplanningSuggestionsPage />} />
       <Route path="/automation-intelligence/ai-assistant" element={<AIAssistantPage />} />
       <Route path="/automation-intelligence/performance-analysis" element={<PerformanceAnalysisPage />} />
+
+      {/* New route for Livro de Obra Digital */}
+      <Route path="/compliance/livro-de-obra" element={<LivroDeObraPage />} />
     </Route>
 
     {/* Routes that do NOT use the MainLayout (e.g., landing pages, 404) */}

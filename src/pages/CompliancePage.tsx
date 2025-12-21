@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { BookText, CheckSquare, ClipboardList, Lightbulb, AlertTriangle } from "lucide-react"; // Importar ícones relevantes
+import { Link } from "react-router-dom"; // Importar Link
 
 const CompliancePage = () => {
   return (
@@ -42,8 +43,8 @@ const CompliancePage = () => {
               <li>Gerar folha formal do Livro de Obra</li>
               <li>Preparar documentação para: Aprovação, Fiscalização, Arquivo</li>
             </ul>
-            <Button className="mt-6 w-full" disabled>
-              Gerir Livro de Obra
+            <Button className="mt-6 w-full" asChild> {/* Adicionado asChild para Link */}
+              <Link to="/compliance/livro-de-obra">Gerir Livro de Obra</Link>
             </Button>
           </CardContent>
         </Card>
