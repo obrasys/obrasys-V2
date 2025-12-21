@@ -1,3 +1,5 @@
+"use client";
+
 import React from "react";
 import { UseFormReturn } from "react-hook-form";
 import { Trash2, Copy, Search, XCircle, AlertTriangle, CheckCircle, Play } from "lucide-react";
@@ -11,18 +13,18 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-} from "@/components/ui/tooltip"; // Importar Tooltip components
-import { cn } from "@/lib/utils"; // Importar cn para classes condicionais
+} from "@/components/ui/tooltip";
+import { cn } from "@/lib/utils";
 
 import { NewBudgetFormValues, BudgetItem } from "@/schemas/budget-schema";
 import { Article } from "@/schemas/article-schema";
 import { formatCurrency } from "@/utils/formatters";
 import ArticleSelectDialog from "./ArticleSelectDialog";
+import { BadgeWithRef } from "@/components/ui/badge-with-ref"; // Importar BadgeWithRef
 
 interface BudgetServiceRowProps {
   form: UseFormReturn<NewBudgetFormValues>;
@@ -32,7 +34,7 @@ interface BudgetServiceRowProps {
   articles: Article[];
   handleRemoveService: (chapterIndex: number, itemIndex: number) => void;
   handleDuplicateService: (chapterIndex: number, itemIndex: number) => void;
-  focusRef: React.RefObject<HTMLInputElement>; // NOVO: Ref para focar o input
+  focusRef: React.RefObject<HTMLInputElement>;
 }
 
 const BudgetServiceRow: React.FC<BudgetServiceRowProps> = ({
@@ -43,7 +45,7 @@ const BudgetServiceRow: React.FC<BudgetServiceRowProps> = ({
   articles,
   handleRemoveService,
   handleDuplicateService,
-  focusRef, // NOVO: Receber ref
+  focusRef,
 }) => {
   const item = form.watch(`chapters.${chapterIndex}.items.${itemIndex}`);
   const [isArticleSelectDialogOpen, setIsArticleSelectDialogOpen] = React.useState(false);
@@ -53,7 +55,7 @@ const BudgetServiceRow: React.FC<BudgetServiceRowProps> = ({
     form.setValue(`chapters.${chapterIndex}.items.${itemIndex}.unidade`, selectedArticle.unidade);
     form.setValue(`chapters.${chapterIndex}.items.${itemIndex}.preco_unitario`, selectedArticle.preco_unitario);
     form.setValue(`chapters.${chapterIndex}.items.${itemIndex}.article_id`, selectedArticle.id);
-    form.trigger(`chapters.${chapterIndex}.items.${itemIndex}.quantidade`); // Trigger recalculation
+    form.trigger(`chapters.${chapterIndex}.items.${itemIndex}.quantidade`);
   };
 
   const handleClearArticle = () => {
@@ -61,7 +63,7 @@ const BudgetServiceRow: React.FC<BudgetServiceRowProps> = ({
     form.setValue(`chapters.${chapterIndex}.items.${itemIndex}.servico`, "");
     form.setValue(`chapters.${chapterIndex}.items.${itemIndex}.unidade`, "");
     form.setValue(`chapters.${chapterIndex}.items.${itemIndex}.preco_unitario`, 0);
-    form.trigger(`chapters.${chapterIndex}.items.${itemIndex}.quantidade`); // Trigger recalculation
+    form.trigger(`chapters.${chapterIndex}.items.${itemIndex}.quantidade`);
   };
 
   const isArticleSelected = !!item.article_id;
@@ -94,7 +96,7 @@ const BudgetServiceRow: React.FC<BudgetServiceRowProps> = ({
         break;
       case "Atrasado":
         variant = "destructive";
-        colorClass = "bg-orange-500 hover:bg-orange-600 text-white"; // Alterado para laranja
+        colorClass = "bg-orange-500 hover:bg-orange-600 text-white";
         tooltipText = "Serviço com atraso";
         icon = <AlertTriangle className="h-3 w-3 mr-1" />;
         break;
@@ -103,9 +105,9 @@ const BudgetServiceRow: React.FC<BudgetServiceRowProps> = ({
     return (
       <Tooltip>
         <TooltipTrigger asChild>
-          <Badge className={cn("w-fit", colorClass)} variant={variant}>
+          <BadgeWithRef className={cn("w-fit", colorClass)} variant={variant}> {/* Usar BadgeWithRef aqui */}
             {icon} {status}
-          </Badge>
+          </BadgeWithRef>
         </TooltipTrigger>
         <TooltipContent>{tooltipText}</TooltipContent>
       </Tooltip>
@@ -130,7 +132,7 @@ const BudgetServiceRow: React.FC<BudgetServiceRowProps> = ({
                 <div className="flex items-center gap-1">
                   <Input
                     {...field}
-                    ref={itemIndex === 0 ? focusRef : null} // Focar apenas o primeiro serviço de um novo capítulo
+                    ref={itemIndex === 0 ? focusRef : null}
                     disabled={isApproved || isArticleSelected}
                     placeholder="Ex: Demolição manual de parede"
                     className="h-10 px-3 py-2"
