@@ -25,7 +25,6 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Client, clientSchema } from "@/schemas/client-schema";
 import { toast } from "sonner";
-import { Upload, Download } from "lucide-react";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area"; // Importar ScrollArea e ScrollBar
 
 interface CreateEditClientDialogProps {
@@ -82,22 +81,14 @@ const CreateEditClientDialog: React.FC<CreateEditClientDialogProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[600px] flex flex-col max-h-[90vh]"> {/* Adicionado flex-col e max-h */}
+      <DialogContent className="sm:max-w-[600px] flex flex-col max-h-[90vh]">
         <DialogHeader>
           <DialogTitle>{clientToEdit ? "Editar Cliente" : "Registar Novo Cliente"}</DialogTitle>
           <DialogDescription>
             Preencha os detalhes do cliente.
           </DialogDescription>
         </DialogHeader>
-        <div className="flex justify-end space-x-2 mb-4">
-          <Button variant="outline" size="sm" disabled>
-            <Upload className="h-4 w-4 mr-2" /> Importar Clientes
-          </Button>
-          <Button variant="outline" size="sm" disabled>
-            <Download className="h-4 w-4 mr-2" /> Exportar Clientes
-          </Button>
-        </div>
-        <ScrollArea className="flex-grow pr-4"> {/* Adicionado ScrollArea e flex-grow */}
+        <ScrollArea className="flex-grow pr-4">
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-4 py-4">
               <FormField
@@ -113,19 +104,34 @@ const CreateEditClientDialog: React.FC<CreateEditClientDialogProps> = ({
                   </FormItem>
                 )}
               />
-              <FormField
-                control={form.control}
-                name="nif"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>NIF *</FormLabel>
-                    <FormControl>
-                      <Input placeholder="123456789" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4"> {/* Agrupamento de campos */}
+                <FormField
+                  control={form.control}
+                  name="nif"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>NIF *</FormLabel>
+                      <FormControl>
+                        <Input placeholder="123456789" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="telefone"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Telefone *</FormLabel>
+                      <FormControl>
+                        <Input placeholder="(+351) 912 345 678" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
               <FormField
                 control={form.control}
                 name="email"
@@ -136,19 +142,6 @@ const CreateEditClientDialog: React.FC<CreateEditClientDialogProps> = ({
                       <Input type="email" placeholder="email@exemplo.com" {...field} />
                     </FormControl>
                   <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="telefone"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Telefone *</FormLabel>
-                    <FormControl>
-                      <Input placeholder="(+351) 912 345 678" {...field} />
-                    </FormControl>
-                    <FormMessage />
                   </FormItem>
                 )}
               />
@@ -201,7 +194,7 @@ const CreateEditClientDialog: React.FC<CreateEditClientDialogProps> = ({
               </div>
             </form>
           </Form>
-          <ScrollBar orientation="vertical" /> {/* Adicionado ScrollBar */}
+          <ScrollBar orientation="vertical" />
         </ScrollArea>
       </DialogContent>
     </Dialog>
