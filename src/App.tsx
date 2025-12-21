@@ -1,7 +1,7 @@
 import React from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
+import { TooltipProvider } from "@/components/ui/tooltip"; // Re-included
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Dashboard from "./pages/Dashboard";
@@ -51,12 +51,42 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
   return <>{children}</>;
 };
 
-// TEMPORARILY SIMPLIFIED APPCONTENT FOR DIAGNOSIS
 const AppContent = () => (
-  <div>
-    <h1>App Content Placeholder</h1>
-    <p>If you see this, the issue is likely within the Routes definition.</p>
-  </div>
+  <Routes>
+    <Route path="/login" element={<Login />} />
+    <Route path="/signup" element={<Signup />} />
+    {/* Routes that use the MainLayout and are protected */}
+    <Route path="/" element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
+      <Route index element={<Dashboard />} />
+      <Route path="dashboard" element={<Dashboard />} />
+      <Route path="budgeting" element={<Budgeting />} />
+      <Route path="project-management" element={<ProjectManagement />} />
+      <Route path="supply-chain" element={<SupplyChain />} />
+      <Route path="finance-management" element={<FinanceManagement />} />
+      <Route path="crm-portal" element={<CRMPortal />} />
+      <Route path="automation-intelligence" element={<AutomationIntelligence />} />
+
+      {/* Placeholder routes for sidebar */}
+      <Route path="projects" element={<ProjectsPage />} />
+      <Route path="schedule" element={<SchedulePage />} />
+      <Route path="collaborators" element={<CollaboratorsPage />} />
+      <Route path="compliance" element={<CompliancePage />} />
+      <Route path="reports" element={<ReportsPage />} />
+      <Route path="price-database" element={<PriceDatabasePage />} />
+      <Route path="work-items" element={<WorkItemsPage />} />
+
+      {/* New routes for Automation & Intelligence features */}
+      <Route path="automation-intelligence/alerts-configuration" element={<AlertsConfigurationPage />} />
+      <Route path="automation-intelligence/replanning-suggestions" element={<ReplanningSuggestionsPage />} />
+      <Route path="automation-intelligence/ai-assistant" element={<AIAssistantPage />} />
+      <Route path="automation-intelligence/performance-analysis" element={<PerformanceAnalysisPage />} />
+    </Route>
+
+    {/* Routes that do NOT use the MainLayout (e.g., landing pages, 404) */}
+    <Route path="/modules" element={<Index />} />
+    {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+    <Route path="*" element={<NotFound />} />
+  </Routes>
 );
 
 const App = () => (
@@ -64,7 +94,7 @@ const App = () => (
     <Toaster />
     <Sonner />
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
+      <TooltipProvider> {/* Re-included */}
         <BrowserRouter>
           <SessionContextProvider>
             <AppContent />
