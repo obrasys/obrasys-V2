@@ -24,7 +24,7 @@ import { NewBudgetFormValues, BudgetItem } from "@/schemas/budget-schema";
 import { Article } from "@/schemas/article-schema";
 import { formatCurrency } from "@/utils/formatters";
 import ArticleSelectDialog from "./ArticleSelectDialog";
-import { BadgeWithRef } from "@/components/ui/badge-with-ref"; // Importar BadgeWithRef
+import { Badge } from "@/components/ui/badge"; // Importar Badge diretamente
 
 interface BudgetServiceRowProps {
   form: UseFormReturn<NewBudgetFormValues>;
@@ -105,9 +105,9 @@ const BudgetServiceRow: React.FC<BudgetServiceRowProps> = ({
     return (
       <Tooltip>
         <TooltipTrigger asChild>
-          <BadgeWithRef className={cn("w-fit", colorClass)} variant={variant}> {/* Usar BadgeWithRef aqui */}
+          <Badge className={cn("w-fit", colorClass)} variant={variant}> {/* Usar Badge diretamente aqui */}
             {icon} {status}
-          </BadgeWithRef>
+          </Badge>
         </TooltipTrigger>
         <TooltipContent>{tooltipText}</TooltipContent>
       </Tooltip>
