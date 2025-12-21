@@ -73,7 +73,7 @@ export function useNewBudgetForm({
               servico: "Escavação manual em vala",
               quantidade: 1,
               unidade: "m³",
-              preco_unitario: 0,
+              preco_unitario: 0.01, // Alterado para 0.01 para satisfazer a validação
               custo_planeado: 0,
               custo_executado: 0,
               desvio: 0,
