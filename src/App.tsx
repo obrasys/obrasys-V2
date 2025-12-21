@@ -36,6 +36,9 @@ import PerformanceAnalysisPage from "./pages/PerformanceAnalysisPage";
 // New page for Compliance module
 import LivroDeObraPage from "./pages/LivroDeObraPage";
 
+// New page for Profile/Company Management
+import ProfilePage from "./pages/ProfilePage";
+
 
 const queryClient = new QueryClient();
 
@@ -87,6 +90,9 @@ const AppContent = () => (
 
       {/* New route for Livro de Obra Digital */}
       <Route path="/compliance/livro-de-obra" element={<LivroDeObraPage />} />
+
+      {/* New route for Profile/Company Management */}
+      <Route path="/profile" element={<ProfilePage />} />
     </Route>
 
     {/* Routes that do NOT use the MainLayout (e.g., landing pages, 404) */}
