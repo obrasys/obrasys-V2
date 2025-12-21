@@ -40,72 +40,21 @@ const MainLayout = () => {
 
     const { data: profileData, error: profileError } = await supabase
       .from('profiles')
-      .select('first_name, last_name, avatar_url, role, company_id') // Incluir company_id para consistência
+      .select('first_name, last_name, avatar_url, role, company_id')
       .eq('id', user.id)
       .single();
 
     if (profileError) {
       if (profileError.code === 'PGRST116') { // No rows found, profile doesn't exist
-        console.warn("No profile found for user, attempting to create a default one.");
-        
-        const companyName = user.user_metadata.company;
-        let companyIdToAssign = null;
-
-        if (companyName) {
-          // Try to find the company by name
-          const { data: existingCompany, error: companyFetchError } = await supabase
-            .from('companies')
-            .select('id')
-            .eq('name', companyName)
-            .single();
-
-          if (companyFetchError && companyFetchError.code !== 'PGRST116') {
-            console.error("Error fetching company for default profile:", companyFetchError);
-            toast.error(`Erro ao procurar empresa para o perfil: ${companyFetchError.message}`);
-          }
-
-          if (existingCompany) {
-            companyIdToAssign = existingCompany.id;
-          } else {
-            // Company not found, create it
-            const { data: newCompany, error: companyInsertError } = await supabase
-              .from('companies')
-              .insert({ name: companyName })
-              .select('id')
-              .single();
-
-            if (companyInsertError) {
-              console.error("Error creating new company for default profile:", companyInsertError);
-              toast.error(`Erro ao criar empresa para o perfil: ${companyInsertError.message}`);
-            } else if (newCompany) {
-              companyIdToAssign = newCompany.id;
-            }
-          }
-        }
-
-        const newProfileData = {
-          id: user.id,
-          first_name: user.user_metadata.full_name?.split(' ')[0] || null,
-          last_name: user.user_metadata.full_name?.split(' ').slice(1).join(' ') || null,
-          phone: user.user_metadata.phone || null,
-          role: 'cliente', // Default role
-          company_id: companyIdToAssign, // Use the resolved company ID
-        };
-        const { error: insertError } = await supabase
-          .from('profiles')
-          .insert(newProfileData);
-
-        if (insertError) {
-          console.error("Error creating default profile:", insertError);
-          toast.error(`Erro ao criar perfil padrão: ${insertError.message}`);
-        } else {
-          toast.info("Perfil padrão criado. Por favor, atualize os seus dados.");
-          // Profile created, now re-fetch to get the newly inserted data
-          await fetchProfile(); // Recursive call
-        }
+        // This case should ideally be handled by the Supabase trigger on signup.
+        // If it's still null here, it means the trigger might not have run yet or failed.
+        // We should not attempt to create it from the client to avoid conflicts.
+        console.warn("No profile found for user. Assuming trigger will handle or profile is being created.");
+        setProfile(null); // Set profile to null, UI should handle loading/empty state
       } else {
         console.error("Erro ao carregar perfil:", profileError);
         toast.error(`Erro ao carregar dados do perfil: ${profileError.message}`);
+        setProfile(null);
       }
     } else {
       setProfile(profileData);
