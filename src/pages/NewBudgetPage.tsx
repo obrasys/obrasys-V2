@@ -78,11 +78,13 @@ const NewBudgetPage: React.FC = () => {
 
   // Função para buscar o company_id do perfil do utilizador
   const fetchUserCompanyId = React.useCallback(async () => {
+    console.log("fetchUserCompanyId: Attempting to fetch user company ID.");
     if (!user) {
       setUserCompanyId(null);
-      console.log("NewBudgetPage: User not authenticated, userCompanyId set to null.");
+      console.log("fetchUserCompanyId: User not authenticated, userCompanyId set to null.");
       return;
     }
+    console.log("fetchUserCompanyId: User is authenticated, fetching profile for user ID:", user.id);
     const { data: profileData, error: profileError } = await supabase
       .from('profiles')
       .select('company_id')
@@ -90,11 +92,11 @@ const NewBudgetPage: React.FC = () => {
       .single();
 
     if (profileError) {
-      console.error("NewBudgetPage: Erro ao carregar company_id do perfil:", profileError);
+      console.error("fetchUserCompanyId: Erro ao carregar company_id do perfil:", profileError);
       setUserCompanyId(null);
     } else if (profileData) {
       setUserCompanyId(profileData.company_id);
-      console.log("NewBudgetPage: User company_id fetched:", profileData.company_id);
+      console.log("fetchUserCompanyId: User company_id fetched:", profileData.company_id);
     }
   }, [user]);
 
@@ -177,25 +179,36 @@ const NewBudgetPage: React.FC = () => {
   }, [form, calculateCosts]);
 
   const onSubmit = async (data: NewBudgetFormValues) => {
-    if (!user || !userCompanyId) { // Verificar userCompanyId
-      toast.error("Utilizador não autenticado ou ID da empresa não encontrado.");
+    console.log("onSubmit: Starting budget save process.");
+    console.log("onSubmit: Current user:", user);
+    console.log("onSubmit: Current userCompanyId:", userCompanyId);
+
+    if (!user || !userCompanyId) {
+      toast.error("Utilizador não autenticado ou ID da empresa não encontrado. Por favor, faça login novamente.");
+      console.error("onSubmit: Aborting save - user or userCompanyId is missing.");
       return;
     }
     setIsSaving(true);
+    console.log("onSubmit: isSaving set to true.");
 
     try {
-      const companyId = userCompanyId; // Usar o companyId obtido
-      if (!companyId) throw new Error("ID da empresa não encontrado no perfil do utilizador.");
+      const companyId = userCompanyId;
+      if (!companyId) {
+        throw new Error("ID da empresa não encontrado no perfil do utilizador.");
+      }
+      console.log("onSubmit: Using companyId:", companyId);
 
       const totalPlanned = calculateCosts();
+      console.log("onSubmit: Calculated totalPlanned:", totalPlanned);
 
       // 1. Insert the main budget record
+      console.log("onSubmit: Attempting to insert main budget record.");
       const { data: budgetData, error: budgetError } = await supabase
         .from('budgets')
         .insert({
-          company_id: companyId, // Usar o companyId obtido
+          company_id: companyId,
           nome: data.nome,
-          project_id: null, // Project is linked later
+          project_id: null,
           total_planeado: totalPlanned,
           total_executado: 0,
           estado: data.estado,
@@ -205,14 +218,18 @@ const NewBudgetPage: React.FC = () => {
         .select()
         .single();
 
-      if (budgetError) throw budgetError;
+      if (budgetError) {
+        console.error("onSubmit: Supabase budget insertion error:", budgetError);
+        throw budgetError;
+      }
+      console.log("onSubmit: Main budget record inserted successfully:", budgetData);
 
       // 2. Insert budget items for each chapter
       const budgetItemsToInsert = data.chapters.flatMap((chapter) =>
         chapter.items.map((item) => ({
-          company_id: companyId, // Usar o companyId obtido
+          company_id: companyId,
           budget_id: budgetData.id,
-          capitulo: item.capitulo, // Usar item.capitulo que agora existe no esquema
+          capitulo: item.capitulo,
           servico: item.servico,
           quantidade: item.quantidade,
           unidade: item.unidade,
@@ -224,20 +241,26 @@ const NewBudgetPage: React.FC = () => {
           article_id: item.article_id, // NOVO: Incluir article_id
         })),
       );
+      console.log("onSubmit: Budget items to insert:", budgetItemsToInsert);
 
       const { error: itemsError } = await supabase
         .from('budget_items')
         .insert(budgetItemsToInsert);
 
-      if (itemsError) throw itemsError;
+      if (itemsError) {
+        console.error("onSubmit: Supabase budget items insertion error:", itemsError);
+        throw itemsError;
+      }
+      console.log("onSubmit: Budget items inserted successfully.");
 
       toast.success("Orçamento criado com sucesso!");
-      navigate("/budgeting"); // Redirect to budgeting page
+      navigate("/budgeting");
     } catch (error: any) {
       toast.error(`Erro ao criar orçamento: ${error.message}`);
-      console.error("Erro ao criar orçamento:", error);
+      console.error("onSubmit: Caught error during budget creation:", error);
     } finally {
       setIsSaving(false);
+      console.log("onSubmit: isSaving set to false in finally block.");
     }
   };
 
@@ -390,7 +413,10 @@ const NewBudgetPage: React.FC = () => {
       </div>
 
       <Form {...form}>
-        <form id="new-budget-form" onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        <form id="new-budget-form" onSubmit={form.handleSubmit(onSubmit, (errors) => {
+          console.error("Form validation errors:", errors);
+          toast.error("Por favor, corrija os erros no formulário antes de guardar.");
+        })} className="space-y-6">
           {/* SEÇÃO A — Dados Gerais do Orçamento */}
           <BudgetGeneralInfo
             form={form}
