@@ -269,11 +269,15 @@ const Budgeting = () => {
           <CardTitle className="text-xl font-semibold">Gerir Orçamentos</CardTitle>
           <div className="flex items-center space-x-2">
             <Select
-              value={selectedBudget?.id || ""}
+              value={currentBudget?.id || ""}
               onValueChange={(budgetId) => setSelectedBudget(budgets.find(b => b.id === budgetId) || null)}
             >
               <SelectTrigger className="w-[200px]">
-                <SelectValue placeholder="Selecione um Orçamento" />
+                {currentBudget ? (
+                  <SelectValue>{currentBudget.nome}</SelectValue>
+                ) : (
+                  <SelectValue placeholder="Selecione um Orçamento" />
+                )}
               </SelectTrigger>
               <SelectContent>
                 {budgets.map((budget) => (
