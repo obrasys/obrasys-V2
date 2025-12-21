@@ -4,7 +4,7 @@ import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, Filter, Download, Calculator, DollarSign, FileText, TrendingUp, LineChart, HardHat, CalendarDays, UserPlus } from "lucide-react";
+import { PlusCircle, Filter, Download, Calculator, DollarSign, FileText, TrendingUp, LineChart, HardHat, CalendarDays, UserPlus, Check } from "lucide-react";
 import KPICard from "@/components/KPICard";
 import EmptyState from "@/components/EmptyState";
 import { DataTable } from "@/components/work-items/data-table"; // Reusing generic DataTable
@@ -13,75 +13,139 @@ import { BudgetItem } from "@/schemas/budget-schema";
 import { v4 as uuidv4 } from "uuid";
 import { toast } from "sonner";
 import CreateEditClientDialog from "@/components/budgeting/create-edit-client-dialog"; // Import the new dialog
+import CreateEditProjectDialog from "@/components/projects/create-edit-project-dialog"; // Import the new project dialog
 import { Client } from "@/schemas/client-schema"; // Import Client type
+import { Project } from "@/schemas/project-schema"; // Import Project type
+import { supabase } from "@/integrations/supabase/client"; // Import supabase client
 
-const mockBudgetItems: BudgetItem[] = [
+// Mock data for budgets (assuming a full budget object, not just items)
+interface Budget {
+  id: string;
+  nome: string;
+  project_id: string | null;
+  estado: "Rascunho" | "Aprovado" | "Rejeitado"; // Adicionado estado do orçamento
+  total_planeado: number;
+  total_executado: number;
+  budget_items: BudgetItem[];
+}
+
+const mockBudgets: Budget[] = [
   {
     id: uuidv4(),
-    capitulo: "01. Fundações",
-    servico: "Escavação manual em vala",
-    quantidade: 50,
-    unidade: "m³",
-    preco_unitario: 15.00,
-    custo_planeado: 750.00,
-    custo_executado: 700.00,
-    desvio: -50.00,
-    estado: "Concluído",
+    nome: "Orçamento Edifício Central",
+    project_id: null,
+    estado: "Rascunho",
+    total_planeado: 12650.00,
+    total_executado: 8000.00,
+    budget_items: [
+      {
+        id: uuidv4(),
+        capitulo: "01. Fundações",
+        servico: "Escavação manual em vala",
+        quantidade: 50,
+        unidade: "m³",
+        preco_unitario: 15.00,
+        custo_planeado: 750.00,
+        custo_executado: 700.00,
+        desvio: -50.00,
+        estado: "Concluído",
+      },
+      {
+        id: uuidv4(),
+        capitulo: "01. Fundações",
+        servico: "Betão C20/25 para sapatas",
+        quantidade: 20,
+        unidade: "m³",
+        preco_unitario: 120.00,
+        custo_planeado: 2400.00,
+        custo_executado: 2500.00,
+        desvio: 100.00,
+        estado: "Em andamento",
+      },
+      {
+        id: uuidv4(),
+        capitulo: "02. Estrutura",
+        servico: "Armadura em aço A500 NR",
+        quantidade: 1500,
+        unidade: "kg",
+        preco_unitario: 1.80,
+        custo_planeado: 2700.00,
+        custo_executado: 2800.00,
+        desvio: 100.00,
+        estado: "Em andamento",
+      },
+      {
+        id: uuidv4(),
+        capitulo: "03. Alvenarias",
+        servico: "Alvenaria de tijolo cerâmico 11cm",
+        quantidade: 200,
+        unidade: "m²",
+        preco_unitario: 25.00,
+        custo_planeado: 5000.00,
+        custo_executado: 4800.00,
+        desvio: -200.00,
+        estado: "Concluído",
+      },
+      {
+        id: uuidv4(),
+        capitulo: "04. Cobertura",
+        servico: "Telha cerâmica lusa",
+        quantidade: 100,
+        unidade: "m²",
+        preco_unitario: 18.00,
+        custo_planeado: 1800.00,
+        custo_executado: 0.00,
+        desvio: -1800.00,
+        estado: "Atrasado",
+      },
+    ],
   },
   {
     id: uuidv4(),
-    capitulo: "01. Fundações",
-    servico: "Betão C20/25 para sapatas",
-    quantidade: 20,
-    unidade: "m³",
-    preco_unitario: 120.00,
-    custo_planeado: 2400.00,
-    custo_executado: 2500.00,
-    desvio: 100.00,
-    estado: "Em andamento",
-  },
-  {
-    id: uuidv4(),
-    capitulo: "02. Estrutura",
-    servico: "Armadura em aço A500 NR",
-    quantidade: 1500,
-    unidade: "kg",
-    preco_unitario: 1.80,
-    custo_planeado: 2700.00,
-    custo_executado: 2800.00,
-    desvio: 100.00,
-    estado: "Em andamento",
-  },
-  {
-    id: uuidv4(),
-    capitulo: "03. Alvenarias",
-    servico: "Alvenaria de tijolo cerâmico 11cm",
-    quantidade: 200,
-    unidade: "m²",
-    preco_unitario: 25.00,
-    custo_planeado: 5000.00,
-    custo_executado: 4800.00,
-    desvio: -200.00,
-    estado: "Concluído",
-  },
-  {
-    id: uuidv4(),
-    capitulo: "04. Cobertura",
-    servico: "Telha cerâmica lusa",
-    quantidade: 100,
-    unidade: "m²",
-    preco_unitario: 18.00,
-    custo_planeado: 1800.00,
-    custo_executado: 0.00,
-    desvio: -1800.00,
-    estado: "Atrasado",
+    nome: "Orçamento Remodelação Escritório",
+    project_id: null,
+    estado: "Aprovado", // Exemplo de orçamento aprovado
+    total_planeado: 50000.00,
+    total_executado: 0.00,
+    budget_items: [
+      {
+        id: uuidv4(),
+        capitulo: "01. Demolições",
+        servico: "Remoção de paredes divisórias",
+        quantidade: 30,
+        unidade: "m²",
+        preco_unitario: 20.00,
+        custo_planeado: 600.00,
+        custo_executado: 0.00,
+        desvio: 0.00,
+        estado: "Planeado",
+      },
+      {
+        id: uuidv4(),
+        capitulo: "02. Acabamentos",
+        servico: "Pintura de paredes e tetos",
+        quantidade: 200,
+        unidade: "m²",
+        preco_unitario: 10.00,
+        custo_planeado: 2000.00,
+        custo_executado: 0.00,
+        desvio: 0.00,
+        estado: "Planeado",
+      },
+    ],
   },
 ];
 
 const Budgeting = () => {
-  const [budgetItems, setBudgetItems] = React.useState<BudgetItem[]>(mockBudgetItems);
+  const [budgets, setBudgets] = React.useState<Budget[]>(mockBudgets);
+  const [selectedBudget, setSelectedBudget] = React.useState<Budget | null>(null);
   const [isClientDialogOpen, setIsClientDialogOpen] = React.useState(false);
+  const [isProjectDialogOpen, setIsProjectDialogOpen] = React.useState(false);
   const [clients, setClients] = React.useState<Client[]>([]); // State to store registered clients
+
+  // Use a default budget if none is selected, or the first one
+  const currentBudget = selectedBudget || budgets[0];
+  const budgetItems = currentBudget ? currentBudget.budget_items : [];
 
   const handleViewBudgetItem = (budgetItem: BudgetItem) => {
     toast.info(`Visualizar detalhes do serviço: ${budgetItem.servico}`);
@@ -100,8 +164,52 @@ const Budgeting = () => {
       }
       return [...prevClients, newClient];
     });
-    // Here you would typically make the client available for selection in a budget
     console.log("Cliente guardado:", newClient);
+  };
+
+  const handleSaveProject = async (newProject: Project) => {
+    try {
+      const { data, error } = await supabase
+        .from('projects')
+        .insert({
+          id: newProject.id,
+          nome: newProject.nome,
+          client_id: null, // Assuming client_id is handled elsewhere or can be null initially
+          localizacao: newProject.localizacao,
+          estado: newProject.estado,
+          progresso: newProject.progresso,
+          prazo: newProject.prazo,
+          custo_planeado: newProject.custo_planeado,
+          custo_real: newProject.custo_real,
+          budget_id: newProject.budget_id, // Link the budget
+          company_id: (await supabase.auth.getUser()).data.user?.user_metadata.company_id, // Assuming company_id is in user metadata
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      // Update the local budget state to link the project
+      setBudgets(prevBudgets =>
+        prevBudgets.map(b =>
+          b.id === newProject.budget_id ? { ...b, project_id: data.id } : b
+        )
+      );
+      toast.success(`Obra "${newProject.nome}" criada e ligada ao orçamento!`);
+      setIsProjectDialogOpen(false);
+    } catch (error: any) {
+      toast.error(`Erro ao criar obra: ${error.message}`);
+      console.error("Erro ao criar obra:", error);
+    }
+  };
+
+  const handleApproveBudget = (budgetId: string) => {
+    setBudgets(prevBudgets =>
+      prevBudgets.map(b =>
+        b.id === budgetId ? { ...b, estado: "Aprovado" } : b
+      )
+    );
+    toast.success("Orçamento aprovado com sucesso!");
   };
 
   const columns = createBudgetColumns({
@@ -148,6 +256,58 @@ const Budgeting = () => {
         </div>
       </div>
 
+      {/* Seleção de Orçamento e Ações */}
+      <Card className="bg-card text-card-foreground border border-border">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-xl font-semibold">Gerir Orçamentos</CardTitle>
+          <div className="flex items-center space-x-2">
+            <Select
+              value={selectedBudget?.id || ""}
+              onValueChange={(budgetId) => setSelectedBudget(budgets.find(b => b.id === budgetId) || null)}
+            >
+              <SelectTrigger className="w-[200px]">
+                <SelectValue placeholder="Selecione um Orçamento" />
+              </SelectTrigger>
+              <SelectContent>
+                {budgets.map((budget) => (
+                  <SelectItem key={budget.id} value={budget.id}>
+                    {budget.nome} ({budget.estado})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {currentBudget && currentBudget.estado === "Rascunho" && (
+              <Button onClick={() => handleApproveBudget(currentBudget.id)} className="flex items-center gap-2">
+                <Check className="h-4 w-4" /> Aprovar Orçamento
+              </Button>
+            )}
+            {currentBudget && currentBudget.estado === "Aprovado" && !currentBudget.project_id && (
+              <Button onClick={() => setIsProjectDialogOpen(true)} className="flex items-center gap-2 bg-green-600 hover:bg-green-700">
+                <HardHat className="h-4 w-4" /> Criar Obra
+              </Button>
+            )}
+            {currentBudget && currentBudget.project_id && (
+              <Button variant="outline" disabled className="flex items-center gap-2">
+                <HardHat className="h-4 w-4" /> Obra Associada
+              </Button>
+            )}
+          </div>
+        </CardHeader>
+        <CardContent>
+          {currentBudget ? (
+            <p className="text-sm text-muted-foreground">
+              Orçamento selecionado: <span className="font-medium">{currentBudget.nome}</span> - Estado: <span className="font-medium">{currentBudget.estado}</span>
+            </p>
+          ) : (
+            <EmptyState
+              icon={Calculator}
+              title="Nenhum orçamento selecionado"
+              description="Selecione um orçamento para ver os detalhes ou crie um novo."
+            />
+          )}
+        </CardContent>
+      </Card>
+
       {/* KPIs Financeiros */}
       <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
         <KPICard
@@ -193,12 +353,20 @@ const Budgeting = () => {
           <CardTitle className="text-2xl font-semibold">Detalhe do Orçamento</CardTitle>
         </CardHeader>
         <CardContent>
-          <DataTable
-            columns={columns}
-            data={budgetItems}
-            filterColumnId="servico"
-            filterPlaceholder="Filtrar por serviço..."
-          />
+          {budgetItems.length > 0 ? (
+            <DataTable
+              columns={columns}
+              data={budgetItems}
+              filterColumnId="servico"
+              filterPlaceholder="Filtrar por serviço..."
+            />
+          ) : (
+            <EmptyState
+              icon={FileText}
+              title="Nenhum item de orçamento"
+              description="Adicione itens para detalhar o seu orçamento."
+            />
+          )}
         </CardContent>
       </Card>
 
@@ -262,8 +430,18 @@ const Budgeting = () => {
         isOpen={isClientDialogOpen}
         onClose={() => setIsClientDialogOpen(false)}
         onSave={handleSaveClient}
-        clientToEdit={null} // For now, always create new client
+        clientToEdit={null}
       />
+
+      {currentBudget && currentBudget.estado === "Aprovado" && (
+        <CreateEditProjectDialog
+          isOpen={isProjectDialogOpen}
+          onClose={() => setIsProjectDialogOpen(false)}
+          onSave={handleSaveProject}
+          projectToEdit={null}
+          initialBudgetId={currentBudget.id}
+        />
+      )}
     </div>
   );
 };

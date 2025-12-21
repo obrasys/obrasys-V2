@@ -11,17 +11,18 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, Eye, Edit } from "lucide-react";
-import { Progress } from "@/components/ui/progress"; // Assuming shadcn/ui Progress component
-import { Badge } from "@/components/ui/badge"; // Assuming shadcn/ui Badge component
+import { MoreHorizontal, Eye, Edit, Trash2 } from "lucide-react"; // Import Trash2 for delete
+import { Progress } from "@/components/ui/progress";
+import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
 interface ColumnsProps {
   onView: (project: Project) => void;
   onEdit: (project: Project) => void;
+  onDelete: (id: string) => void; // Add onDelete handler
 }
 
-export const createProjectColumns = ({ onView, onEdit }: ColumnsProps): ColumnDef<Project>[] => [
+export const createProjectColumns = ({ onView, onEdit, onDelete }: ColumnsProps): ColumnDef<Project>[] => [
   {
     accessorKey: "nome",
     header: "Nome da Obra",
@@ -126,7 +127,9 @@ export const createProjectColumns = ({ onView, onEdit }: ColumnsProps): ColumnDe
               <Edit className="mr-2 h-4 w-4" /> Editar
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem className="text-red-600">Eliminar</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onDelete(project.id)} className="text-red-600">
+              <Trash2 className="mr-2 h-4 w-4" /> Eliminar
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       );
