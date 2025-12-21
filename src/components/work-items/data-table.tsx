@@ -110,7 +110,7 @@ export function DataTable<TData, TValue>({
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
-      <div className="rounded-md border">
+      <div className="rounded-md border overflow-x-auto"> {/* Adicionado overflow-x-auto aqui */}
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
