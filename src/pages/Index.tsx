@@ -3,6 +3,7 @@
 import { MadeWithDyad } from "@/components/made-with-dyad";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import NavButton from "@/components/NavButton"; // Importar NavButton
 
 const Index = () => {
   return (
@@ -13,36 +14,24 @@ const Index = () => {
           Explore os diferentes módulos da sua plataforma.
         </p>
         <div className="space-y-4">
-          <Link to="/budgeting">
-            <Button size="lg" className="w-full"> {/* w-full para botões */}
-              Ir para Módulo 1: Orçamentação
-            </Button>
-          </Link>
-          <Link to="/project-management">
-            <Button size="lg" className="w-full">
-              Ir para Módulo 2: Gestão de Projetos
-            </Button>
-          </Link>
-          <Link to="/supply-chain">
-            <Button size="lg" className="w-full">
-              Ir para Módulo 3: Cadeia de Abastecimento
-            </Button>
-          </Link>
-          <Link to="/finance-management">
-            <Button size="lg" className="w-full">
-              Ir para Módulo 4: Gestão Financeira
-            </Button>
-          </Link>
-          <Link to="/crm-portal">
-            <Button size="lg" className="w-full">
-              Ir para Módulo 5: CRM e Portal do Cliente
-            </Button>
-          </Link>
-          <Link to="/automation-intelligence">
-            <Button size="lg" className="w-full">
-              Ir para Módulo 6: Automação & Inteligência
-            </Button>
-          </Link>
+          <NavButton to="/budgeting" size="lg" className="w-full"> {/* w-full para botões */}
+            Ir para Módulo 1: Orçamentação
+          </NavButton>
+          <NavButton to="/project-management" size="lg" className="w-full">
+            Ir para Módulo 2: Gestão de Projetos
+          </NavButton>
+          <NavButton to="/supply-chain" size="lg" className="w-full">
+            Ir para Módulo 3: Cadeia de Abastecimento
+          </NavButton>
+          <NavButton to="/finance-management" size="lg" className="w-full">
+            Ir para Módulo 4: Gestão Financeira
+          </NavButton>
+          <NavButton to="/crm-portal" size="lg" className="w-full">
+            Ir para Módulo 5: CRM e Portal do Cliente
+          </NavButton>
+          <NavButton to="/automation-intelligence" size="lg" className="w-full">
+            Ir para Módulo 6: Automação & Inteligência
+          </NavButton>
         </div>
       </div>
       <MadeWithDyad />

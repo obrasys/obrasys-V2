@@ -20,9 +20,12 @@ import {
   RefreshCw,
   Settings,
 } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom"; // Importar useNavigate
+import NavButton from "@/components/NavButton"; // Importar NavButton
 
 const Dashboard = () => {
+  const navigate = useNavigate(); // Inicializar useNavigate
+
   return (
     <div className="space-y-6"> {/* Main content wrapper for Dashboard */}
       {/* Header - now specific to Dashboard content */}
@@ -84,9 +87,9 @@ const Dashboard = () => {
               <CardTitle className="text-xl font-semibold">
                 Obras Ativas
               </CardTitle>
-              <Button variant="outline" size="sm" asChild>
-                <Link to="/projects">Ver Todas</Link>
-              </Button>
+              <NavButton to="/projects" variant="outline" size="sm">
+                Ver Todas
+              </NavButton>
             </CardHeader>
             <CardContent>
               <EmptyState
@@ -105,9 +108,9 @@ const Dashboard = () => {
               <CardTitle className="text-xl font-semibold">
                 Relatórios Recentes
               </CardTitle>
-              <Button variant="outline" size="sm" asChild>
-                <Link to="/reports">Ver Todos</Link>
-              </Button>
+              <NavButton to="/reports" variant="outline" size="sm">
+                Ver Todos
+              </NavButton>
             </CardHeader>
             <CardContent>
               <EmptyState
@@ -130,27 +133,27 @@ const Dashboard = () => {
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-2 gap-4">
-                <Button className="h-20 flex flex-col items-center justify-center text-center"> {/* Removido bg-blue-600 */}
+                <NavButton to="/projects" className="h-20 flex flex-col items-center justify-center text-center">
                   <HardHat className="h-5 w-5 mb-1" />
                   <span className="text-sm">Nova Obra</span>
-                </Button>
-                <Button variant="outline" className="h-20 flex flex-col items-center justify-center text-center">
+                </NavButton>
+                <NavButton to="/collaborators" variant="outline" className="h-20 flex flex-col items-center justify-center text-center">
                   <Users className="h-5 w-5 mb-1" />
                   <span className="text-sm">Gerir Utilizadores</span>
-                </Button>
-                <Button variant="outline" className="h-20 flex flex-col items-center justify-center text-center">
+                </NavButton>
+                <NavButton to="/budgeting" variant="outline" className="h-20 flex flex-col items-center justify-center text-center">
                   <Calculator className="h-5 w-5 mb-1" />
                   <span className="text-sm">Gerar Orçamento</span>
-                </Button>
-                <Button variant="outline" className="h-20 flex flex-col items-center justify-center text-center">
+                </NavButton>
+                <NavButton to="/reports" variant="outline" className="h-20 flex flex-col items-center justify-center text-center">
                   <FileText className="h-5 w-5 mb-1" />
                   <span className="text-sm">Relatórios</span>
-                </Button>
-                <Button variant="outline" className="h-20 flex flex-col items-center justify-center text-center">
+                </NavButton>
+                <Button variant="outline" className="h-20 flex flex-col items-center justify-center text-center" disabled>
                   <Upload className="h-5 w-5 mb-1" />
                   <span className="text-sm">Importar Dados</span>
                 </Button>
-                <Button variant="outline" className="h-20 flex flex-col items-center justify-center text-center">
+                <Button variant="outline" className="h-20 flex flex-col items-center justify-center text-center" disabled>
                   <Settings className="h-5 w-5 mb-1" />
                   <span className="text-sm">Gestão da Empresa</span>
                 </Button>

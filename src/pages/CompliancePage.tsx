@@ -11,6 +11,7 @@ import {
   ClipboardList,
   AlertTriangle,
 } from "lucide-react";
+import NavButton from "@/components/NavButton"; // Importar NavButton
 
 const CompliancePage = () => {
   const navigate = useNavigate();
@@ -55,12 +56,12 @@ const CompliancePage = () => {
                 Preparar documentação para: Aprovação, Fiscalização, Arquivo
               </li>
             </ul>
-            <Button
+            <NavButton
               className="mt-6 w-full"
-              onClick={() => navigate("/compliance/livro-de-obra")}
+              to="/compliance/livro-de-obra"
             >
               Gerir Livro de Obra
-            </Button>
+            </NavButton>
           </CardContent>
         </Card>
 

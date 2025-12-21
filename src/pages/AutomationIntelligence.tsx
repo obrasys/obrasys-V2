@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { BellRing, Lightbulb, Bot, Activity, Monitor } from "lucide-react";
+import NavButton from "@/components/NavButton"; // Importar NavButton
 
 const AutomationIntelligence = () => {
   const navigate = useNavigate();
@@ -42,12 +43,12 @@ const AutomationIntelligence = () => {
               Receba notificações proativas sobre atrasos no projeto, estouros de orçamento
               e outros eventos críticos.
             </p>
-            <Button
+            <NavButton
               className="mt-6 w-full"
-              onClick={() => navigate("/automation-intelligence/alerts-configuration")}
+              to="/automation-intelligence/alerts-configuration"
             >
               Configurar Alertas
-            </Button>
+            </NavButton>
           </CardContent>
         </Card>
 
@@ -62,12 +63,12 @@ const AutomationIntelligence = () => {
               Obtenha recomendações baseadas em IA para ajustar cronogramas e recursos
               em resposta a imprevistos.
             </p>
-            <Button
+            <NavButton
               className="mt-6 w-full"
-              onClick={() => navigate("/automation-intelligence/replanning-suggestions")}
+              to="/automation-intelligence/replanning-suggestions"
             >
               Ver Sugestões
-            </Button>
+            </NavButton>
           </CardContent>
         </Card>
 
@@ -82,12 +83,12 @@ const AutomationIntelligence = () => {
               Um assistente inteligente que prevê datas de conclusão de tarefas
               e projetos com base em dados históricos.
             </p>
-            <Button
+            <NavButton
               className="mt-6 w-full"
-              onClick={() => navigate("/automation-intelligence/ai-assistant")}
+              to="/automation-intelligence/ai-assistant"
             >
               Interagir com IA
-            </Button>
+            </NavButton>
           </CardContent>
         </Card>
 
@@ -102,12 +103,12 @@ const AutomationIntelligence = () => {
               Avalie o desempenho de cada empreitada com métricas detalhadas
               e insights acionáveis.
             </p>
-            <Button
+            <NavButton
               className="mt-6 w-full"
-              onClick={() => navigate("/automation-intelligence/performance-analysis")}
+              to="/automation-intelligence/performance-analysis"
             >
               Ver Performance
-            </Button>
+            </NavButton>
           </CardContent>
         </Card>
 

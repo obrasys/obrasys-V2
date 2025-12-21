@@ -18,6 +18,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Link, useNavigate } from "react-router-dom";
 import { formatCurrency } from "@/utils/formatters"; // Importar formatCurrency
+import NavButton from "@/components/NavButton"; // Importar NavButton
 
 const ProjectsPage = () => {
   const [projects, setProjects] = React.useState<Project[]>([]);

@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom"; // Importar useNavigate
 import { cn } from "@/lib/utils";
 import {
   LayoutDashboard,
@@ -25,6 +25,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
+import NavButton from "@/components/NavButton"; // Importar NavButton
 
 interface SidebarProps {
   isCollapsed: boolean;
@@ -33,6 +34,7 @@ interface SidebarProps {
 
 const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, toggleSidebar }) => {
   const location = useLocation();
+  const navigate = useNavigate(); // Inicializar useNavigate
 
   const navItems = [
     {
@@ -91,6 +93,11 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, toggleSidebar }) => {
       href: "/automation-intelligence",
     },
   ];
+
+  const handleLogout = () => {
+    // Lógica de logout aqui, se houver
+    navigate('/login'); // Redirecionar para a página de login
+  };
 
   return (
     <aside
@@ -153,21 +160,22 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, toggleSidebar }) => {
       {/* Navigation */}
       <nav className="flex-1 p-2 space-y-1 overflow-y-auto">
         {navItems.map((item) => (
-          <Link
+          <NavButton
             key={item.name}
             to={item.href}
+            variant="ghost"
             className={cn(
-              "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium",
+              "w-full flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium justify-start",
               "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
               location.pathname === item.href
                 ? "bg-sidebar-primary text-sidebar-primary-foreground"
                 : "text-sidebar-foreground",
-              isCollapsed && "justify-center",
+              isCollapsed && "justify-center px-0",
             )}
           >
             <item.icon className="h-5 w-5" />
             {!isCollapsed && <span>{item.name}</span>}
-          </Link>
+          </NavButton>
         ))}
       </nav>
 
@@ -189,6 +197,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, toggleSidebar }) => {
         )}
         <Button
           variant="ghost"
+          onClick={handleLogout} // Usar onClick direto
           className={cn(
             "w-full flex items-center gap-3 justify-start text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
             isCollapsed && "justify-center px-0",
