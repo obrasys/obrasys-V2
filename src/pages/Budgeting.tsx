@@ -128,7 +128,6 @@ const Budgeting = () => {
             preco_unitario,
             custo_planeado,
             custo_executado,
-            desvio,
             estado,
             article_id
           )
@@ -146,7 +145,10 @@ const Budgeting = () => {
         ...budget,
         budget_chapters: (budget.budget_chapters || []).map(chapter => ({
           ...chapter,
-          budget_items: chapter.budget_items || []
+          budget_items: (chapter.budget_items || []).map(item => ({
+            ...item,
+            desvio: item.custo_executado - item.custo_planeado, // Calculate desvio in frontend
+          }))
         }))
       }));
       setBudgets(fetchedBudgets);
