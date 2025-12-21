@@ -33,19 +33,46 @@ const MainLayout = () => {
   }, [isMobile]);
 
   const fetchProfile = React.useCallback(async () => {
-    if (user) {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('first_name, last_name, avatar_url, role')
-        .eq('id', user.id)
-        .single();
+    if (!user) {
+      setProfile(null);
+      return;
+    }
 
-      if (error) {
-        console.error("Erro ao carregar perfil:", error);
-        toast.error("Erro ao carregar dados do perfil.");
+    const { data: profileData, error: profileError } = await supabase
+      .from('profiles')
+      .select('first_name, last_name, avatar_url, role, company_id') // Incluir company_id para consistência
+      .eq('id', user.id)
+      .single();
+
+    if (profileError) {
+      if (profileError.code === 'PGRST116') { // No rows found, profile doesn't exist
+        console.warn("No profile found for user, attempting to create a default one.");
+        const newProfileData = {
+          id: user.id,
+          first_name: user.user_metadata.full_name?.split(' ')[0] || null,
+          last_name: user.user_metadata.full_name?.split(' ').slice(1).join(' ') || null,
+          phone: user.user_metadata.phone || null,
+          role: 'cliente', // Default role
+          company_id: user.user_metadata.company || null, // Usar 'company' do user_metadata
+        };
+        const { error: insertError } = await supabase
+          .from('profiles')
+          .insert(newProfileData);
+
+        if (insertError) {
+          console.error("Error creating default profile:", insertError);
+          toast.error(`Erro ao criar perfil padrão: ${insertError.message}`);
+        } else {
+          toast.info("Perfil padrão criado. Por favor, atualize os seus dados.");
+          // Profile created, now re-fetch to get the newly inserted data
+          await fetchProfile(); // Recursive call
+        }
       } else {
-        setProfile(data);
+        console.error("Erro ao carregar perfil:", profileError);
+        toast.error(`Erro ao carregar dados do perfil: ${profileError.message}`);
       }
+    } else {
+      setProfile(profileData);
     }
   }, [user]);
 

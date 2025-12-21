@@ -47,36 +47,65 @@ const ProfilePersonalTab: React.FC = () => {
     },
   });
 
-  React.useEffect(() => {
-    const fetchProfile = async () => {
-      if (user) {
-        setIsLoading(true);
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('first_name, last_name, phone, avatar_url, role')
-          .eq('id', user.id)
-          .single();
+  const fetchProfile = React.useCallback(async () => {
+    if (!user) {
+      setIsLoading(false);
+      setProfileData(null);
+      return;
+    }
+    setIsLoading(true);
+    const { data: profileData, error: profileError } = await supabase
+      .from('profiles')
+      .select('first_name, last_name, phone, avatar_url, role, company_id') // Incluir company_id para consistência
+      .eq('id', user.id)
+      .single();
 
-        if (error) {
-          console.error("Erro ao carregar perfil:", error);
-          toast.error("Erro ao carregar dados do perfil.");
-        } else if (data) {
-          setProfileData(data); // Armazena o perfil completo
-          form.reset({
-            first_name: data.first_name || "",
-            last_name: data.last_name || "",
-            phone: data.phone || "",
-            avatar_url: data.avatar_url || "",
-          });
+    if (profileError) {
+      if (profileError.code === 'PGRST116') { // No rows found, profile doesn't exist
+        console.warn("No profile found for user, attempting to create a default one.");
+        const newProfileData = {
+          id: user.id,
+          first_name: user.user_metadata.full_name?.split(' ')[0] || null,
+          last_name: user.user_metadata.full_name?.split(' ').slice(1).join(' ') || null,
+          phone: user.user_metadata.phone || null,
+          role: 'cliente', // Default role
+          company_id: user.user_metadata.company || null, // Usar 'company' do user_metadata
+        };
+        const { error: insertError } = await supabase
+          .from('profiles')
+          .insert(newProfileData);
+
+        if (insertError) {
+          console.error("Error creating default profile:", insertError);
+          toast.error(`Erro ao criar perfil padrão: ${insertError.message}`);
+          setIsLoading(false);
+          return;
+        } else {
+          toast.info("Perfil padrão criado. Por favor, atualize os seus dados.");
+          await fetchProfile(); // Recursive call
         }
+      } else {
+        console.error("Erro ao carregar perfil:", profileError);
+        toast.error(`Erro ao carregar dados do perfil: ${profileError.message}`);
         setIsLoading(false);
       }
-    };
+    } else if (profileData) {
+      setProfileData(profileData); // Armazena o perfil completo
+      form.reset({
+        first_name: profileData.first_name || "",
+        last_name: profileData.last_name || "",
+        phone: profileData.phone || "",
+        avatar_url: profileData.avatar_url || "",
+      });
+      setIsLoading(false);
+    }
+  }, [user, form]);
 
+  React.useEffect(() => {
     if (!isSessionLoading) {
       fetchProfile();
     }
-  }, [user, isSessionLoading, form]);
+  }, [user, isSessionLoading, fetchProfile]);
 
   const onSubmit = async (data: PersonalProfileFormValues) => {
     if (!user) {

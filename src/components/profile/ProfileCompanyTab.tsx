@@ -53,56 +53,83 @@ const ProfileCompanyTab: React.FC = () => {
     },
   });
 
-  React.useEffect(() => {
-    const fetchCompanyData = async () => {
-      if (user) {
-        setIsLoading(true);
-        // First, get the user's profile to find their company_id and role
-        const { data: profileData, error: profileError } = await supabase
-          .from('profiles')
-          .select('company_id, role')
-          .eq('id', user.id)
-          .single();
+  const fetchCompanyData = React.useCallback(async () => {
+    if (!user) {
+      setIsLoading(false);
+      return;
+    }
+    setIsLoading(true);
+    // First, get the user's profile to find their company_id and role
+    const { data: profileData, error: profileError } = await supabase
+      .from('profiles')
+      .select('company_id, role, first_name, last_name, phone, avatar_url') // Selecionar todos para o caso de criar perfil
+      .eq('id', user.id)
+      .single();
 
-        if (profileError) {
-          console.error("Erro ao carregar perfil para company_id:", profileError);
-          toast.error("Erro ao carregar dados da empresa.");
+    if (profileError) {
+      if (profileError.code === 'PGRST116') { // No rows found, profile doesn't exist
+        console.warn("No profile found for user, attempting to create a default one.");
+        const newProfileData = {
+          id: user.id,
+          first_name: user.user_metadata.full_name?.split(' ')[0] || null,
+          last_name: user.user_metadata.full_name?.split(' ').slice(1).join(' ') || null,
+          phone: user.user_metadata.phone || null,
+          role: 'cliente', // Default role
+          company_id: user.user_metadata.company || null, // Usar 'company' do user_metadata
+        };
+        const { error: insertError } = await supabase
+          .from('profiles')
+          .insert(newProfileData);
+
+        if (insertError) {
+          console.error("Error creating default profile:", insertError);
+          toast.error(`Erro ao criar perfil padrão: ${insertError.message}`);
           setIsLoading(false);
           return;
+        } else {
+          toast.info("Perfil padrão criado. Por favor, atualize os seus dados.");
+          await fetchCompanyData(); // Recursive call to fetch the newly created profile and then company data
         }
-
-        setCompanyId(profileData?.company_id || null);
-        setIsAdmin(profileData?.role === 'admin');
-
-        if (profileData?.company_id) {
-          const { data: companyData, error: companyError } = await supabase
-            .from('companies')
-            .select('*')
-            .eq('id', profileData.company_id)
-            .single();
-
-          if (companyError) {
-            console.error("Erro ao carregar dados da empresa:", companyError);
-            toast.error("Erro ao carregar dados da empresa.");
-          } else if (companyData) {
-            form.reset({
-              name: companyData.name || "",
-              nif: companyData.nif || "",
-              email: companyData.email || "",
-              phone: companyData.phone || "",
-              address: companyData.address || "",
-              logo_url: companyData.logo_url || "",
-            });
-          }
-        }
+      } else {
+        console.error("Erro ao carregar perfil para company_id:", profileError);
+        toast.error(`Erro ao carregar dados da empresa: ${profileError.message}`);
         setIsLoading(false);
+        return;
       }
-    };
+    }
 
+    setCompanyId(profileData?.company_id || null);
+    setIsAdmin(profileData?.role === 'admin');
+
+    if (profileData?.company_id) {
+      const { data: companyData, error: companyError } = await supabase
+        .from('companies')
+        .select('*')
+        .eq('id', profileData.company_id)
+        .single();
+
+      if (companyError) {
+        console.error("Erro ao carregar dados da empresa:", companyError);
+        toast.error(`Erro ao carregar dados da empresa: ${companyError.message}`);
+      } else if (companyData) {
+        form.reset({
+          name: companyData.name || "",
+          nif: companyData.nif || "",
+          email: companyData.email || "",
+          phone: companyData.phone || "",
+          address: companyData.address || "",
+          logo_url: companyData.logo_url || "",
+        });
+      }
+    }
+    setIsLoading(false);
+  }, [user, form]);
+
+  React.useEffect(() => {
     if (!isSessionLoading) {
       fetchCompanyData();
     }
-  }, [user, isSessionLoading, form]);
+  }, [user, isSessionLoading, fetchCompanyData]);
 
   const onSubmit = async (data: CompanyProfileFormValues) => {
     if (!user || !companyId) {
