@@ -18,7 +18,7 @@ const SchedulePage = () => {
       </div>
       <section className="text-center max-w-3xl mx-auto mb-8">
         <p className="text-base md:text-lg text-muted-foreground leading-relaxed">
-          Visualize e gira os cronogramas das suas obras. Os cronogramas são gerados automaticamente após a aprovação do orçamento e criação da obra.
+          Visualize e faça a gestão dos cronogramas das suas obras. Os cronogramas são gerados automaticamente após a aprovação do orçamento e criação da obra.
         </p>
       </section>
       <EmptyState
