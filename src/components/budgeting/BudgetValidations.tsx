@@ -12,15 +12,19 @@ import { NewBudgetFormValues } from "@/schemas/budget-schema";
 interface BudgetValidationsProps {
   form: UseFormReturn<NewBudgetFormValues>;
   allValidationsComplete: boolean;
-  hasEmptyServices: boolean;
-  hasEmptyChapters: boolean;
+  hasEmptyServices: boolean; // Agora representa 'hasMissingServiceDetails'
+  hasEmptyChapters: boolean; // Agora representa 'hasEmptyChapters || hasMissingChapterDetails'
+  hasMissingChapterDetails: boolean; // NOVO: Para código/nome do capítulo
+  hasMissingServiceDetails: boolean; // NOVO: Para unidade/capítulo do item
 }
 
 const BudgetValidations: React.FC<BudgetValidationsProps> = ({
   form,
   allValidationsComplete,
-  hasEmptyServices,
-  hasEmptyChapters,
+  hasEmptyServices, // Renomeado para clareza na descrição
+  hasEmptyChapters, // Renomeado para clareza na descrição
+  hasMissingChapterDetails, // NOVO
+  hasMissingServiceDetails, // NOVO
 }) => {
   const chapters = form.watch("chapters");
   const hasAtLeastOneChapter = chapters && chapters.length > 0;
@@ -49,11 +53,14 @@ const BudgetValidations: React.FC<BudgetValidationsProps> = ({
           <li className={cn(!hasAtLeastOneChapter ? "text-red-500" : "text-green-500")}>
             Pelo menos um capítulo: {!hasAtLeastOneChapter ? "❌" : "✅"}
           </li>
-          <li className={cn(hasEmptyChapters ? "text-red-500" : "text-green-500")}>
-            Nenhum capítulo vazio: {hasEmptyChapters ? "❌" : "✅"}
+          <li className={cn(hasMissingChapterDetails ? "text-red-500" : "text-green-500")}>
+            Todos os capítulos com código e nome preenchidos: {hasMissingChapterDetails ? "❌" : "✅"}
           </li>
-          <li className={cn(hasEmptyServices ? "text-red-500" : "text-green-500")}>
-            Todos os serviços com quantidade/preço válidos: {hasEmptyServices ? "❌" : "✅"}
+          <li className={cn(hasEmptyChapters ? "text-red-500" : "text-green-500")}>
+            Nenhum capítulo vazio (com pelo menos um serviço): {hasEmptyChapters ? "❌" : "✅"}
+          </li>
+          <li className={cn(hasMissingServiceDetails ? "text-red-500" : "text-green-500")}>
+            Todos os serviços com descrição, quantidade, unidade e preço válidos: {hasMissingServiceDetails ? "❌" : "✅"}
           </li>
         </ul>
         <p className={cn("text-sm font-semibold mt-4", allValidationsComplete ? "text-green-600" : "text-orange-500")}>

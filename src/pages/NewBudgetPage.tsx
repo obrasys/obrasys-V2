@@ -37,7 +37,7 @@ const NewBudgetPage: React.FC = () => {
   const [isProjectDialogOpen, setIsProjectDialogOpen] = React.useState(false);
   const [approvedBudgetId, setApprovedBudgetId] = React.useState<string | null>(null);
   const [isSaving, setIsSaving] = React.useState(false);
-  const [userCompanyId, setUserCompanyId] = React.useState<string | null>(null); // Novo estado para company_id do utilizador
+  const [userCompanyId, setUserCompanyId] = React.useState<string | null>(null);
 
   const form = useForm<NewBudgetFormValues>({
     resolver: zodResolver(newBudgetFormSchema),
@@ -96,7 +96,6 @@ const NewBudgetPage: React.FC = () => {
       setUserCompanyId(null);
     } else if (profileData) {
       setUserCompanyId(profileData.company_id);
-      console.log("fetchUserCompanyId: User company_id fetched:", profileData.company_id);
     }
   }, [user]);
 
@@ -367,9 +366,11 @@ const NewBudgetPage: React.FC = () => {
   };
 
   const handleApproveBudget = async () => {
-    if (!form.formState.isValid) {
+    // Trigger form validation explicitly before approving
+    const isValid = await form.trigger();
+    if (!isValid) {
       toast.error("Por favor, corrija os erros no formulário antes de aprovar.");
-      form.trigger();
+      console.error("Form validation errors on approve:", form.formState.errors);
       return;
     }
 
@@ -379,8 +380,6 @@ const NewBudgetPage: React.FC = () => {
       if (!companyId) throw new Error("ID da empresa não encontrado no perfil do utilizador.");
 
       const currentBudgetValues = form.getValues();
-      // The total_planeado will be updated by the database triggers after items are inserted/updated
-      // So, we just need to update the state.
       
       // Update the budget status to 'Aprovado' in the database
       const { data: updatedBudget, error: updateError } = await supabase
@@ -409,12 +408,24 @@ const NewBudgetPage: React.FC = () => {
   const currentBudgetTotal = calculateCosts();
   const isApproved = form.watch("estado") === "Aprovado";
 
-  // Basic validations for AI section
-  const hasEmptyServices = form.watch("chapters").some(chapter =>
-    chapter.items.some(item => !item.servico || item.quantidade === 0 || item.preco_unitario === 0)
+  // Validações para a seção de IA
+  const chapters = form.watch("chapters");
+
+  const hasMissingChapterDetails = chapters.some(chapter => !chapter.codigo || !chapter.nome);
+  const hasEmptyChapters = chapters.some(chapter => chapter.items.length === 0);
+  const hasMissingServiceDetails = chapters.some(chapter =>
+    chapter.items.some(item =>
+      !item.servico || item.quantidade === 0 || item.preco_unitario === 0 || !item.unidade || !item.capitulo
+    )
   );
-  const hasEmptyChapters = form.watch("chapters").some(chapter => chapter.items.length === 0);
-  const allValidationsComplete = form.formState.isValid && !hasEmptyServices && !hasEmptyChapters;
+
+  // A validação geral do formulário (form.formState.isValid) já deve cobrir a maioria dos campos
+  // Mas adicionamos as verificações explícitas para a UI de validações inteligentes
+  const allValidationsComplete =
+    form.formState.isValid &&
+    !hasMissingChapterDetails &&
+    !hasEmptyChapters &&
+    !hasMissingServiceDetails;
 
   return (
     <div className="space-y-6">
@@ -466,8 +477,10 @@ const NewBudgetPage: React.FC = () => {
           <BudgetValidations
             form={form}
             allValidationsComplete={allValidationsComplete}
-            hasEmptyServices={hasEmptyServices}
-            hasEmptyChapters={hasEmptyChapters}
+            hasEmptyServices={hasMissingServiceDetails} // Usar a nova validação
+            hasEmptyChapters={hasEmptyChapters || hasMissingChapterDetails} // Combinar as validações de capítulo
+            hasMissingChapterDetails={hasMissingChapterDetails} // Passar a nova validação
+            hasMissingServiceDetails={hasMissingServiceDetails} // Passar a nova validação
           />
 
           {/* SEÇÃO E — Aprovação */}
