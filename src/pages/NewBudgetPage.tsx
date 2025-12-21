@@ -74,6 +74,10 @@ const NewBudgetPage: React.FC = () => {
   const pageDescription = budgetId ? "Atualize os detalhes do orçamento existente" : "Crie e detalhe um novo orçamento para as suas obras";
   const saveButtonText = budgetId ? "Guardar Alterações" : "Guardar Rascunho";
 
+  // Adicionar validação para garantir que há pelo menos um capítulo antes de aprovar
+  const hasAtLeastOneChapter = form.watch("chapters")?.length > 0;
+  const canApprove = allValidationsComplete && hasAtLeastOneChapter;
+
   return (
     <div className="space-y-6">
       {/* Header da Página */}
@@ -146,7 +150,7 @@ const NewBudgetPage: React.FC = () => {
             isApproved={isApproved}
             handleApproveBudget={handleApproveBudget}
             isSaving={isSaving}
-            allValidationsComplete={allValidationsComplete}
+            allValidationsComplete={canApprove} // Usar a nova variável canApprove
             approvedBudgetId={approvedBudgetId}
             setIsProjectDialogOpen={setIsProjectDialogOpen}
           />

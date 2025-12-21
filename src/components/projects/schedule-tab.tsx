@@ -16,7 +16,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { FormControl } from "@/components/ui/form"; // Adicionado: Importação de FormControl
+import { FormControl } from "@/components/ui/form";
 
 interface ScheduleTabProps {
   projectId: string;
@@ -64,8 +64,8 @@ const ScheduleTab: React.FC<ScheduleTabProps> = ({ projectId, budgetId, onSchedu
       setPhases([]);
     }
     setLoading(false);
-    onScheduleRefetch(); // Notificar o pai para refetch do projeto após carregar o cronograma
-  }, [projectId, budgetId, onScheduleRefetch]);
+    // REMOVIDO: onScheduleRefetch() daqui para evitar o loop
+  }, [projectId, budgetId]); // Removido onScheduleRefetch das dependências
 
   React.useEffect(() => {
     fetchScheduleData();
@@ -92,7 +92,7 @@ const ScheduleTab: React.FC<ScheduleTabProps> = ({ projectId, budgetId, onSchedu
       }
 
       const { error } = await supabase
-        .from("schedule_phases") // Corrigido para schedule_phases
+        .from("schedule_tasks") // Corrigido para schedule_tasks
         .update(updatedPhase)
         .eq("id", editedPhase.id);
 
@@ -103,7 +103,8 @@ const ScheduleTab: React.FC<ScheduleTabProps> = ({ projectId, budgetId, onSchedu
       toast.success("Fase do cronograma atualizada com sucesso!");
       setIsEditingPhase(null);
       setEditedPhase(null);
-      fetchScheduleData(); // Refresh data, which will trigger project update via backend
+      fetchScheduleData(); // Refresh data
+      onScheduleRefetch(); // ADICIONADO: Notificar o pai para refetch do projeto APÓS a fase ser salva
     } catch (error: any) {
       toast.error(`Falha ao guardar fase: ${error.message}`);
     }
@@ -207,7 +208,7 @@ const ScheduleTab: React.FC<ScheduleTabProps> = ({ projectId, budgetId, onSchedu
                         />
                       </PopoverContent>
                     </Popover>
-                    <FormControl> {/* Adicionado FormControl */}
+                    <FormControl>
                       <Select
                         value={editedPhase?.status || "Planeado"}
                         onValueChange={(value) => setEditedPhase({ ...editedPhase, status: value as SchedulePhase["status"] })}
@@ -222,7 +223,7 @@ const ScheduleTab: React.FC<ScheduleTabProps> = ({ projectId, budgetId, onSchedu
                           <SelectItem value="Atrasado">Atrasado</SelectItem>
                         </SelectContent>
                       </Select>
-                    </FormControl> {/* Fechado FormControl */}
+                    </FormControl>
                     <Input
                       type="number"
                       value={editedPhase?.progress || 0}
