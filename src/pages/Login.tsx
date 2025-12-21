@@ -1,90 +1,142 @@
 "use client";
 
 import React from 'react';
-import { Auth } from '@supabase/auth-ui-react';
-import { ThemeSupa } from '@supabase/auth-ui-shared';
+import { Link, useNavigate } from 'react-router-dom';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
+import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
-import { Link } from 'react-router-dom'; // Import Link for navigation
+import { ArrowRight, Eye, EyeOff, Mail, Lock, ArrowLeft } from 'lucide-react';
+
+const loginSchema = z.object({
+  email: z.string().email("Formato de email inválido.").min(1, "O email é obrigatório."),
+  password: z.string().min(1, "A palavra-passe é obrigatória."),
+});
+
+type LoginFormValues = z.infer<typeof loginSchema>;
 
 const Login: React.FC = () => {
+  const navigate = useNavigate();
+  const [showPassword, setShowPassword] = React.useState(false);
+
+  const form = useForm<LoginFormValues>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: {
+      email: "",
+      password: "",
+    },
+  });
+
+  const onSubmit = async (data: LoginFormValues) => {
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email: data.email,
+        password: data.password,
+      });
+
+      if (error) {
+        toast.error(`Erro ao iniciar sessão: ${error.message}`);
+      } else {
+        toast.success('Sessão iniciada com sucesso!');
+        navigate('/dashboard');
+      }
+    } catch (error: any) {
+      toast.error(`Ocorreu um erro inesperado: ${error.message}`);
+    }
+  };
+
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100 p-4">
       <div className="w-full max-w-md p-8 space-y-6 bg-white dark:bg-gray-800 rounded-lg shadow-lg">
         <div className="flex flex-col items-center mb-6">
           <img src="/marca_nav_bar.png" alt="Obra Sys Logo" className="h-12 w-auto mb-4" />
           <h1 className="text-3xl font-bold text-center text-primary dark:text-primary-foreground">
-            Entrar na Plataforma
+            Entrar na sua conta
           </h1>
           <p className="text-center text-muted-foreground text-sm">
-            Aceda à sua conta Obra Sys
+            Aceda à sua conta para gerir as suas obras
           </p>
         </div>
-        <Auth
-          supabaseClient={supabase}
-          providers={[]} // Only email/password by default
-          appearance={{
-            theme: ThemeSupa,
-            variables: {
-              default: {
-                colors: {
-                  brand: 'hsl(var(--primary))',
-                  brandAccent: 'hsl(var(--primary-foreground))',
-                  inputBackground: 'hsl(var(--input))',
-                  inputBorder: 'hsl(var(--border))',
-                  inputBorderHover: 'hsl(var(--ring))',
-                  inputBorderFocus: 'hsl(var(--ring))',
-                  inputText: 'hsl(var(--foreground))',
-                  defaultButtonBackground: 'hsl(var(--primary))',
-                  defaultButtonBackgroundHover: 'hsl(var(--primary-foreground))',
-                  defaultButtonBorder: 'hsl(var(--primary))',
-                  defaultButtonText: 'hsl(var(--primary-foreground))',
-                },
-              },
-            },
-          }}
-          theme="light" // Using light theme, can be dynamic later
-          redirectTo={window.location.origin + '/dashboard'}
-          localization={{
-            variables: {
-              sign_in: {
-                email_label: 'Email',
-                password_label: 'Palavra-passe',
-                email_input_placeholder: 'email@exemplo.com',
-                password_input_placeholder: '••••••••',
-                button_label: 'Entrar',
-                social_provider_text: 'Ou continue com',
-                link_text: 'Já tem uma conta? Entrar',
-              },
-              sign_up: { // This will be used if Auth component is configured for sign_up view
-                email_label: 'Email',
-                password_label: 'Palavra-passe',
-                email_input_placeholder: 'O seu email',
-                password_input_placeholder: 'A sua palavra-passe',
-                button_label: 'Registar',
-                social_provider_text: 'Ou continue com',
-                link_text: 'Não tem uma conta? Registar',
-              },
-              forgotten_password: {
-                email_label: 'Email',
-                password_label: 'Palavra-passe',
-                email_input_placeholder: 'O seu email',
-                button_label: 'Enviar instruções de recuperação',
-                link_text: 'Esqueceu a sua palavra-passe?',
-              },
-              update_password: {
-                password_label: 'Nova palavra-passe',
-                password_input_placeholder: 'A sua nova palavra-passe',
-                button_label: 'Atualizar palavra-passe',
-              },
-            },
-          }}
-        />
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <FormField
+              control={form.control}
+              name="email"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>E-mail</FormLabel>
+                  <FormControl>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input placeholder="email@exemplo.com" {...field} className="pl-10" />
+                    </div>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="password"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Palavra-passe</FormLabel>
+                  <FormControl>
+                    <div className="relative">
+                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        type={showPassword ? "text" : "password"}
+                        placeholder="••••••••"
+                        {...field}
+                        className="pl-10 pr-10"
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                        onClick={() => setShowPassword((prev) => !prev)}
+                      >
+                        {showPassword ? (
+                          <EyeOff className="h-4 w-4 text-muted-foreground" />
+                        ) : (
+                          <Eye className="h-4 w-4 text-muted-foreground" />
+                        )}
+                      </Button>
+                    </div>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <Button type="submit" className="w-full flex items-center gap-2">
+              Entrar <ArrowRight className="h-4 w-4" />
+            </Button>
+          </form>
+        </Form>
         <div className="flex flex-col items-center space-y-2 mt-4">
-          <Link to="/signup" className="text-sm text-primary hover:underline">
-            Criar conta
+          <Link to="/login" className="text-sm text-primary hover:underline">
+            Esqueceu a palavra-passe?
           </Link>
-          <Link to="/login" className="text-sm text-muted-foreground hover:underline">
-            Esqueci a palavra-passe
+          <p className="text-sm text-muted-foreground">
+            Ainda não tem conta?{" "}
+            <Link to="/signup" className="text-primary hover:underline">
+              Criar conta
+            </Link>
+          </p>
+          <Link to="/modules" className="text-sm text-muted-foreground hover:underline flex items-center gap-1 mt-4">
+            <ArrowLeft className="h-4 w-4" /> Voltar ao início
           </Link>
         </div>
       </div>
