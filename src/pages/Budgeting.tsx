@@ -17,6 +17,13 @@ import CreateEditProjectDialog from "@/components/projects/create-edit-project-d
 import { Client } from "@/schemas/client-schema"; // Import Client type
 import { Project } from "@/schemas/project-schema"; // Import Project type
 import { supabase } from "@/integrations/supabase/client"; // Import supabase client
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"; // Adicionado: Importação dos componentes Select
 
 // Mock data for budgets (assuming a full budget object, not just items)
 interface Budget {
