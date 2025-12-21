@@ -2,7 +2,7 @@
 
 import React from "react";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, Filter, Download, HardHat, CheckCircle, AlertTriangle, TrendingUp, DollarSign, BarChart3 } from "lucide-react";
+import { PlusCircle, Filter, Download, HardHat, CheckCircle, AlertTriangle, TrendingUp, DollarSign, BarChart3, CalendarDays, FileText } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import KPICard from "@/components/KPICard";
