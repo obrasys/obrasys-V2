@@ -3,12 +3,12 @@ import { z } from "zod";
 // Existing BudgetItem schema (adjusted for form use)
 export const budgetItemSchema = z.object({
   id: z.string().uuid().optional(), // Optional for new items
-  capitulo_id: z.string().uuid().optional(), // Link to the chapter (internal form ID)
+  capitulo_id: z.string().uuid().optional().nullable(), // Link to the chapter (internal form ID), now nullable
   capitulo: z.string().min(1, "O capítulo é obrigatório."), // Adicionado: Campo para o nome do capítulo
   servico: z.string().min(1, "O serviço é obrigatório."),
   quantidade: z.coerce.number().min(0.01, "A quantidade deve ser um valor positivo."),
   unidade: z.string().min(1, "A unidade é obrigatória."),
-  preco_unitario: z.coerce.number().min(0, "O preço unitário deve ser um valor positivo."),
+  preco_unitario: z.coerce.number().min(0.01, "O preço unitário deve ser um valor positivo."), // Alterado para min(0.01)
   custo_planeado: z.coerce.number().min(0).default(0), // Calculated field, default to 0
   custo_executado: z.coerce.number().min(0).default(0), // Default to 0 for new items
   desvio: z.coerce.number().default(0), // Calculated field, default to 0
@@ -35,7 +35,7 @@ export type BudgetChapterForm = z.infer<typeof budgetChapterFormSchema>;
 export const newBudgetFormSchema = z.object({
   id: z.string().uuid().optional(), // Optional for new budget
   nome: z.string().min(1, "O nome do orçamento é obrigatório."),
-  client_id: z.string().uuid("Selecione um cliente válido.").min(1, "O cliente é obrigatório."),
+  client_id: z.string().uuid("Selecione um cliente válido.").nullable(), // Alterado para nullable
   localizacao: z.string().min(1, "A localização da obra é obrigatória."),
   tipo_obra: z.enum(["Nova construção", "Remodelação", "Ampliação"], {
     required_error: "O tipo de obra é obrigatório.",

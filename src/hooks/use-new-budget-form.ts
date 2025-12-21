@@ -53,7 +53,7 @@ export function useNewBudgetForm({
     resolver: zodResolver(newBudgetFormSchema),
     defaultValues: {
       nome: "",
-      client_id: "",
+      client_id: null, // Alterado para null
       localizacao: "",
       tipo_obra: "Nova construção",
       data_orcamento: format(new Date(), "yyyy-MM-dd"),
@@ -68,12 +68,12 @@ export function useNewBudgetForm({
           items: [
             {
               id: uuidv4(),
-              capitulo_id: "",
+              capitulo_id: null, // Alterado para null
               capitulo: "Fundações",
               servico: "Escavação manual em vala",
               quantidade: 1,
               unidade: "m³",
-              preco_unitario: 0.01, // Alterado para 0.01 para satisfazer a validação
+              preco_unitario: 0.01,
               custo_planeado: 0,
               custo_executado: 0,
               desvio: 0,
@@ -254,7 +254,7 @@ export function useNewBudgetForm({
       if (error) throw error;
 
       await fetchClients();
-      form.setValue("client_id", data.id || "");
+      form.setValue("client_id", data.id || null); // Alterado para null
       toast.success(`Cliente ${data.nome} registado com sucesso!`);
       setIsClientDialogOpen(false);
     } catch (error: any) {

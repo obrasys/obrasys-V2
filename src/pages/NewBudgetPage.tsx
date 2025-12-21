@@ -20,6 +20,7 @@ import BudgetApprovalSection from "@/components/budgeting/BudgetApprovalSection"
 // Importar os novos hooks
 import { useBudgetData } from "@/hooks/use-budget-data";
 import { useNewBudgetForm } from "@/hooks/use-new-budget-form";
+import { toast } from "sonner"; // Importar toast
 
 const NewBudgetPage: React.FC = () => {
   const navigate = useNavigate();
@@ -90,11 +91,8 @@ const NewBudgetPage: React.FC = () => {
       <Form {...form}>
         <form id="new-budget-form" onSubmit={form.handleSubmit(onSubmit, (errors) => {
           console.error("Form validation errors:", errors);
-          // A validação já é tratada dentro do hook, mas podemos adicionar um toast genérico aqui
-          // se o form.handleSubmit falhar por alguma razão não coberta pelas validações visíveis.
-          // No entanto, o `allValidationsComplete` e as mensagens de erro do Zod já devem ser suficientes.
-          if (!allValidationsComplete) {
-            // toast.error("Por favor, corrija os erros no formulário antes de guardar.");
+          if (Object.keys(errors).length > 0) {
+            toast.error("Por favor, corrija os erros no formulário antes de guardar.");
           }
         })} className="space-y-6">
           {/* SEÇÃO A — Dados Gerais do Orçamento */}
