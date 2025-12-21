@@ -54,7 +54,9 @@ interface BudgetChapter {
 
 const Budgeting = () => {
   const [budgets, setBudgets] = React.useState<Budget[]>([]);
-  const [selectedBudget, setSelectedBudget] = React.useState<Budget | null>(null);
+  const [selectedBudgetId, setSelectedBudgetId] = React.useState<string | null>(null); // Armazena apenas o ID
+  const selectedBudget = React.useMemo(() => budgets.find(b => b.id === selectedBudgetId), [budgets, selectedBudgetId]); // Deriva o objeto
+  
   const [isClientDialogOpen, setIsClientDialogOpen] = React.useState(false);
   const [isProjectDialogOpen, setIsProjectDialogOpen] = React.useState(false);
   const [clients, setClients] = React.useState<Client[]>([]);
@@ -102,7 +104,7 @@ const Budgeting = () => {
   const fetchBudgets = React.useCallback(async () => {
     if (!userCompanyId) {
       setBudgets([]);
-      setSelectedBudget(null);
+      setSelectedBudgetId(null); // Limpa o ID selecionado
       setIsLoading(false);
       return;
     }
@@ -152,16 +154,10 @@ const Budgeting = () => {
         }))
       }));
       setBudgets(fetchedBudgets);
-      if (fetchedBudgets.length > 0 && !selectedBudget) {
-        setSelectedBudget(fetchedBudgets[0]);
-      } else if (selectedBudget) {
-        // If a budget was already selected, try to re-select it to update its data
-        const updatedSelected = fetchedBudgets.find(b => b.id === selectedBudget.id);
-        setSelectedBudget(updatedSelected || null);
-      }
+      // A lógica de seleção inicial/atualização será tratada no useEffect abaixo
     }
     setIsLoading(false);
-  }, [userCompanyId, selectedBudget]);
+  }, [userCompanyId]); // Removido selectedBudget das dependências
 
   React.useEffect(() => {
     fetchUserCompanyId();
@@ -173,6 +169,20 @@ const Budgeting = () => {
       fetchBudgets();
     }
   }, [userCompanyId, fetchClients, fetchBudgets]);
+
+  // NOVO useEffect para gerir a seleção do orçamento
+  React.useEffect(() => {
+    if (budgets.length > 0 && !selectedBudgetId) {
+      // Se há orçamentos mas nenhum está selecionado, seleciona o primeiro
+      setSelectedBudgetId(budgets[0].id);
+    } else if (selectedBudgetId && !budgets.some(b => b.id === selectedBudgetId)) {
+      // Se o orçamento selecionado não existe mais na lista, limpa a seleção
+      setSelectedBudgetId(null);
+    }
+    // Se selectedBudgetId já está definido e existe na lista, não faz nada,
+    // pois selectedBudget (o objeto) será automaticamente atualizado via useMemo.
+  }, [budgets, selectedBudgetId]);
+
 
   const handleViewBudgetItem = (budgetItem: BudgetItem) => {
     toast.info(`Visualizar detalhes do serviço: ${budgetItem.servico}`);
@@ -287,7 +297,7 @@ const Budgeting = () => {
       if (error) throw error;
 
       toast.success("Orçamento eliminado com sucesso!");
-      setSelectedBudget(null); // Clear selected budget
+      setSelectedBudgetId(null); // Clear selected budget ID
       fetchBudgets(); // Refresh the list
     } catch (error: any) {
       toast.error(`Erro ao eliminar orçamento: ${error.message}`);
@@ -385,8 +395,8 @@ const Budgeting = () => {
           <CardTitle className="text-xl font-semibold">Gerir Orçamentos</CardTitle>
           <div className="flex flex-wrap gap-2">
             <Select
-              value={selectedBudget?.id || ""}
-              onValueChange={(budgetId) => setSelectedBudget(budgets.find(b => b.id === budgetId) || null)}
+              value={selectedBudgetId || ""} // Usa selectedBudgetId
+              onValueChange={(budgetId) => setSelectedBudgetId(budgetId)} // Atualiza selectedBudgetId
             >
               <SelectTrigger className="w-full sm:w-[200px]">
                 <SelectValue placeholder="Selecione um Orçamento">
