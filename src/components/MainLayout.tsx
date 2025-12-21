@@ -3,7 +3,7 @@
 import React from "react";
 import Sidebar from "@/components/Sidebar";
 import { Outlet } from "react-router-dom";
-import { Bell, Settings } from "lucide-react";
+import { Bell, Settings, Menu } from "lucide-react"; // Importar o ícone Menu
 import { Button } from "@/components/ui/button";
 import { useIsMobile } from "@/hooks/use-mobile"; // Importar o hook
 
@@ -33,6 +33,16 @@ const MainLayout = () => {
         }`}
       >
         <header className="flex items-center justify-between pb-4 md:pb-6 border-b border-border mb-4 md:mb-6">
+          {/* Menu Hamburger para Mobile */}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={toggleSidebar}
+            className="md:hidden text-muted-foreground hover:text-foreground" // Visível apenas em mobile
+          >
+            <Menu className="h-5 w-5" />
+          </Button>
+
           <div className="flex-grow">
             {/* O título da página será renderizado pelo conteúdo do Outlet */}
           </div>
