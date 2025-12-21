@@ -61,7 +61,7 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onClose, on
       first_name: "",
       last_name: "",
       phone: "",
-      avatar_url: "",
+      avatar_url: null, // Alterado de "" para null
     },
   });
 
@@ -87,7 +87,7 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onClose, on
           first_name: "",
           last_name: "",
           phone: "",
-          avatar_url: "",
+          avatar_url: null, // Alterado de "" para null
         });
         setAvatarPreview(null);
       } else {
@@ -101,7 +101,7 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onClose, on
         first_name: profileData.first_name || "",
         last_name: profileData.last_name || "",
         phone: profileData.phone || "",
-        avatar_url: profileData.avatar_url || "",
+        avatar_url: profileData.avatar_url || null, // Alterado de "" para null
       });
       setAvatarPreview(profileData.avatar_url); // Set initial preview from DB
       setIsLoading(false);
@@ -280,7 +280,13 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onClose, on
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 py-4">
+          <form onSubmit={form.handleSubmit(
+            onSubmit,
+            (errors) => {
+              console.error("[EditProfileModal] Form validation errors:", errors);
+              toast.error("Por favor, corrija os erros no formulário.");
+            }
+          )} className="space-y-6 py-4">
             <div className="flex flex-col items-center space-y-4">
               <Avatar className="h-24 w-24">
                 <AvatarImage src={avatarPreview || undefined} alt="Avatar do Utilizador" />
