@@ -13,9 +13,9 @@ import FinanceManagement from "./pages/FinanceManagement";
 import CRMPortal from "./pages/CRMPortal";
 import AutomationIntelligence from "./pages/AutomationIntelligence";
 import MainLayout from "./components/MainLayout";
-import Login from "./pages/Login"; // Import the Login page
-import Signup from "./pages/Signup"; // Import the new Signup page
-import { SessionContextProvider, useSession } from "./components/SessionContextProvider"; // Import SessionContextProvider and useSession
+import Login from "./pages/Login";
+import Signup from "./pages/Signup";
+import { SessionContextProvider, useSession } from "./components/SessionContextProvider";
 
 // Placeholder pages for sidebar navigation
 import ProjectsPage from "./pages/ProjectsPage";
@@ -25,6 +25,13 @@ import CompliancePage from "./pages/CompliancePage";
 import ReportsPage from "./pages/ReportsPage";
 import PriceDatabasePage from "./pages/PriceDatabasePage";
 import WorkItemsPage from "./pages/WorkItemsPage";
+
+// New pages for Automation & Intelligence module
+import AlertsConfigurationPage from "./pages/AlertsConfigurationPage";
+import ReplanningSuggestionsPage from "./pages/ReplanningSuggestionsPage";
+import AIAssistantPage from "./pages/AIAssistantPage";
+import PerformanceAnalysisPage from "./pages/PerformanceAnalysisPage";
+
 
 const queryClient = new QueryClient();
 
@@ -46,10 +53,10 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
 const AppContent = () => (
   <Routes>
     <Route path="/login" element={<Login />} />
-    <Route path="/signup" element={<Signup />} /> {/* New Signup route */}
+    <Route path="/signup" element={<Signup />} />
     {/* Routes that use the MainLayout and are protected */}
     <Route path="/" element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
-      <Route index element={<Dashboard />} /> {/* Dashboard as default for MainLayout */}
+      <Route index element={<Dashboard />} />
       <Route path="dashboard" element={<Dashboard />} />
       <Route path="budgeting" element={<Budgeting />} />
       <Route path="project-management" element={<ProjectManagement />} />
@@ -66,10 +73,16 @@ const AppContent = () => (
       <Route path="reports" element={<ReportsPage />} />
       <Route path="price-database" element={<PriceDatabasePage />} />
       <Route path="work-items" element={<WorkItemsPage />} />
+
+      {/* New routes for Automation & Intelligence features */}
+      <Route path="automation-intelligence/alerts-configuration" element={<AlertsConfigurationPage />} />
+      <Route path="automation-intelligence/replanning-suggestions" element={<ReplanningSuggestionsPage />} />
+      <Route path="automation-intelligence/ai-assistant" element={<AIAssistantPage />} />
+      <Route path="automation-intelligence/performance-analysis" element={<PerformanceAnalysisPage />} />
     </Route>
 
     {/* Routes that do NOT use the MainLayout (e.g., landing pages, 404) */}
-    <Route path="/modules" element={<Index />} /> {/* Old Index page moved to /modules */}
+    <Route path="/modules" element={<Index />} />
     {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
     <Route path="*" element={<NotFound />} />
   </Routes>

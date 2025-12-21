@@ -4,19 +4,17 @@ import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
-import { BellRing, Lightbulb, Bot, Activity, Monitor } from "lucide-react"; // Import icons
-// Removed Link and ArrowLeft as navigation is handled by Sidebar
+import { BellRing, Lightbulb, Bot, Activity, Monitor } from "lucide-react";
+import { Link } from "react-router-dom"; // Import Link
 
 const AutomationIntelligence = () => {
   return (
     <div className="space-y-6"> {/* Main content wrapper */}
       {/* Header Section */}
       <div className="flex flex-col md:flex-row items-center justify-between gap-4 pb-6">
-        {/* Removed "Voltar à Dashboard" button */}
         <h1 className="text-3xl md:text-4xl font-extrabold text-center text-primary dark:text-primary-foreground flex-grow">
           Módulo 6: Automação & Inteligência
         </h1>
-        {/* Removed placeholder div */}
       </div>
 
       {/* Introduction Section */}
@@ -39,8 +37,8 @@ const AutomationIntelligence = () => {
             <p className="text-sm text-muted-foreground mt-2">
               Receba notificações proativas sobre atrasos no projeto, estouros de orçamento e outros eventos críticos.
             </p>
-            <Button className="mt-6 w-full" disabled>
-              Configurar Alertas (Em breve)
+            <Button asChild className="mt-6 w-full"> {/* Enabled and linked */}
+              <Link to="/automation-intelligence/alerts-configuration">Configurar Alertas</Link>
             </Button>
           </CardContent>
         </Card>
@@ -54,8 +52,8 @@ const AutomationIntelligence = () => {
             <p className="text-sm text-muted-foreground mt-2">
               Obtenha recomendações baseadas em IA para ajustar cronogramas e recursos em resposta a imprevistos.
             </p>
-            <Button className="mt-6 w-full" disabled>
-              Ver Sugestões (Em breve)
+            <Button asChild className="mt-6 w-full"> {/* Enabled and linked */}
+              <Link to="/automation-intelligence/replanning-suggestions">Ver Sugestões</Link>
             </Button>
           </CardContent>
         </Card>
@@ -69,8 +67,8 @@ const AutomationIntelligence = () => {
             <p className="text-sm text-muted-foreground mt-2">
               Um assistente inteligente que prevê datas de conclusão de tarefas e projetos com base em dados históricos.
             </p>
-            <Button className="mt-6 w-full" disabled>
-              Interagir com IA (Em breve)
+            <Button asChild className="mt-6 w-full"> {/* Enabled and linked */}
+              <Link to="/automation-intelligence/ai-assistant">Interagir com IA</Link>
             </Button>
           </CardContent>
         </Card>
@@ -84,8 +82,8 @@ const AutomationIntelligence = () => {
             <p className="text-sm text-muted-foreground mt-2">
               Avalie o desempenho de cada empreitada com métricas detalhadas e insights acionáveis.
             </p>
-            <Button className="mt-6 w-full" disabled>
-              Ver Performance (Em breve)
+            <Button asChild className="mt-6 w-full"> {/* Enabled and linked */}
+              <Link to="/automation-intelligence/performance-analysis">Ver Performance</Link>
             </Button>
           </CardContent>
         </Card>
