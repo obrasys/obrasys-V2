@@ -82,13 +82,49 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onClose, on
     if (profileError) {
       if (profileError.code === 'PGRST116') { // No rows found, profile doesn't exist
         console.warn("No profile found for user, attempting to create a default one.");
+        
+        const companyName = user.user_metadata.company;
+        let companyIdToAssign = null;
+
+        if (companyName) {
+          // Try to find the company by name
+          const { data: existingCompany, error: companyFetchError } = await supabase
+            .from('companies')
+            .select('id')
+            .eq('name', companyName)
+            .single();
+
+          if (companyFetchError && companyFetchError.code !== 'PGRST116') {
+            console.error("Error fetching company for default profile:", companyFetchError);
+            toast.error(`Erro ao procurar empresa para o perfil: ${companyFetchError.message}`);
+          }
+
+          if (existingCompany) {
+            companyIdToAssign = existingCompany.id;
+          } else {
+            // Company not found, create it
+            const { data: newCompany, error: companyInsertError } = await supabase
+              .from('companies')
+              .insert({ name: companyName })
+              .select('id')
+              .single();
+
+            if (companyInsertError) {
+              console.error("Error creating new company for default profile:", companyInsertError);
+              toast.error(`Erro ao criar empresa para o perfil: ${companyInsertError.message}`);
+            } else if (newCompany) {
+              companyIdToAssign = newCompany.id;
+            }
+          }
+        }
+
         const newProfileData = {
           id: user.id,
           first_name: user.user_metadata.full_name?.split(' ')[0] || null,
           last_name: user.user_metadata.full_name?.split(' ').slice(1).join(' ') || null,
           phone: user.user_metadata.phone || null,
           role: 'cliente', // Default role
-          company_id: user.user_metadata.company || null, // Usar 'company' do user_metadata
+          company_id: companyIdToAssign, // Use the resolved company ID
         };
         const { error: insertError } = await supabase
           .from('profiles')
