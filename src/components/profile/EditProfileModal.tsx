@@ -65,7 +65,7 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onClose, on
     },
   });
 
-  const currentAvatarUrl = form.watch("avatar_url");
+  const currentAvatarUrlInForm = form.watch("avatar_url"); // Watch the current avatar_url in the form
 
   const fetchProfile = React.useCallback(async () => {
     if (!user) {
@@ -73,6 +73,7 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onClose, on
       return;
     }
     setIsLoading(true);
+    console.log("Fetching profile for user:", user.id);
     const { data: profileData, error: profileError } = await supabase
       .from('profiles')
       .select('first_name, last_name, phone, avatar_url, role, company_id')
@@ -81,11 +82,8 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onClose, on
 
     if (profileError) {
       if (profileError.code === 'PGRST116') { // No rows found, profile doesn't exist
-        // This case should ideally be handled by the Supabase trigger on signup.
-        // If it's still null here, it means the trigger might not have run yet or failed.
-        // We should not attempt to create it from the client to avoid conflicts.
-        console.warn("No profile found for user. Assuming trigger will handle or profile is being created.");
-        form.reset({ // Reset to empty values if no profile found
+        console.warn("No profile found for user. Resetting form to empty values.");
+        form.reset({
           first_name: "",
           last_name: "",
           phone: "",
@@ -98,6 +96,7 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onClose, on
       }
       setIsLoading(false);
     } else if (profileData) {
+      console.log("Profile data fetched:", profileData);
       form.reset({
         first_name: profileData.first_name || "",
         last_name: profileData.last_name || "",
@@ -127,6 +126,7 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onClose, on
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
+      console.log("File selected:", file.name, file.type, file.size);
       if (!ACCEPTED_IMAGE_TYPES.includes(file.type)) {
         toast.error("Formato de imagem inválido. Apenas JPG, PNG ou WEBP são permitidos.");
         setAvatarFile(null);
@@ -142,15 +142,17 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onClose, on
       setAvatarFile(file);
       setAvatarPreview(URL.createObjectURL(file));
     } else {
+      console.log("No file selected, reverting to previous avatar_url or null.");
       setAvatarFile(null);
-      setAvatarPreview(form.getValues("avatar_url")); // Revert to current saved avatar
+      setAvatarPreview(currentAvatarUrlInForm); // Revert to current saved avatar if no new file
     }
   };
 
   const handleRemoveAvatar = () => {
+    console.log("Removing avatar.");
     setAvatarFile(null);
     setAvatarPreview(null);
-    form.setValue("avatar_url", null); // Clear avatar_url in form
+    form.setValue("avatar_url", null); // Clear avatar_url in form state
   };
 
   const onSubmit = async (data: PersonalProfileFormValues) => {
@@ -159,46 +161,75 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onClose, on
       return;
     }
     setIsSaving(true);
-    let newAvatarUrl = data.avatar_url;
+    let finalAvatarUrl = data.avatar_url; // Start with current form value (could be existing URL or null if removed)
+    console.log("Submitting form. Initial avatar_url:", finalAvatarUrl);
 
     try {
+      // 1. Handle avatar file upload if a new file was selected
       if (avatarFile) {
         setIsUploading(true);
         const fileExtension = avatarFile.name.split('.').pop();
-        const filePath = `avatars/${user.id}/${uuidv4()}.${fileExtension}`; // Unique filename
+        const filePath = `avatars/${user.id}/${uuidv4()}.${fileExtension}`;
+        console.log("Attempting to upload file to:", filePath);
+
         const { data: uploadData, error: uploadError } = await supabase.storage
           .from('avatars')
           .upload(filePath, avatarFile, {
-            upsert: true,
+            upsert: true, // Allows overwriting if a file with the same name exists (though uuidv4 makes it unique)
             cacheControl: '3600',
           });
 
         if (uploadError) {
+          console.error("Supabase Storage Upload Error:", uploadError);
           throw new Error(`Erro ao carregar avatar: ${uploadError.message}`);
         }
-        
-        // Get public URL for the uploaded file
+        console.log("Upload successful, data:", uploadData);
+
         const { data: publicUrlData } = supabase.storage
           .from('avatars')
           .getPublicUrl(filePath);
         
-        newAvatarUrl = publicUrlData.publicUrl;
-        toast.success("Avatar carregado com sucesso!");
-      } else if (data.avatar_url === null && currentAvatarUrl) {
-        // If avatar was removed and there was a previous one, delete from storage
-        const pathSegments = currentAvatarUrl.split('/');
-        const fileName = pathSegments[pathSegments.length - 1];
-        const folderPath = `avatars/${user.id}/`;
-        const { error: deleteError } = await supabase.storage
-          .from('avatars')
-          .remove([folderPath + fileName]); // Remove the specific file
-
-        if (deleteError) {
-          console.warn("Erro ao remover avatar antigo do storage:", deleteError.message);
-          // Don't block save if old avatar deletion fails, just log a warning
+        if (!publicUrlData.publicUrl) {
+          throw new Error("Não foi possível obter o URL público do avatar.");
         }
-        newAvatarUrl = null;
+        finalAvatarUrl = publicUrlData.publicUrl;
+        toast.success("Avatar carregado com sucesso!");
+        console.log("New avatar public URL:", finalAvatarUrl);
+
+      } else if (data.avatar_url === null && currentAvatarUrlInForm) {
+        // 2. Handle avatar removal if user explicitly cleared it and there was an old one
+        console.log("Attempting to remove old avatar from storage. Current URL in form:", currentAvatarUrlInForm);
+        
+        // Extract the path relative to the bucket from the full public URL
+        const urlParts = currentAvatarUrlInForm.split('/public/avatars/');
+        if (urlParts.length > 1) {
+          const storagePath = urlParts[1]; // e.g., user_id/file_name.png
+          console.log("Storage path for deletion:", storagePath);
+          const { error: deleteError } = await supabase.storage
+            .from('avatars')
+            .remove([storagePath]);
+
+          if (deleteError) {
+            console.warn("Erro ao remover avatar antigo do storage:", deleteError.message);
+            // Don't block save if old avatar deletion fails, just log a warning
+          } else {
+            console.log("Old avatar removed from storage successfully.");
+          }
+        } else {
+          console.warn("Could not parse storage path from currentAvatarUrlInForm for deletion:", currentAvatarUrlInForm);
+        }
+        finalAvatarUrl = null; // Ensure avatar_url is null in DB
       }
+      // If no new file and no removal, finalAvatarUrl remains data.avatar_url (which is the existing one from form)
+
+      // 3. Update profile data in the database
+      console.log("Attempting to update profile with data:", {
+        first_name: data.first_name,
+        last_name: data.last_name,
+        phone: data.phone,
+        avatar_url: finalAvatarUrl,
+        updated_at: new Date().toISOString(),
+      });
 
       const { error: updateError } = await supabase
         .from('profiles')
@@ -206,23 +237,25 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onClose, on
           first_name: data.first_name,
           last_name: data.last_name,
           phone: data.phone,
-          avatar_url: newAvatarUrl, // Use the new URL or null
+          avatar_url: finalAvatarUrl, // Use the new URL or null
           updated_at: new Date().toISOString(),
         })
         .eq('id', user.id);
 
       if (updateError) {
+        console.error("Supabase Profile Update Error:", updateError);
         throw updateError;
       }
       toast.success("Perfil atualizado com sucesso!");
       onProfileUpdated(); // Notify parent to refresh profile data
       onClose();
     } catch (error: any) {
-      console.error("Erro ao atualizar perfil:", error);
+      console.error("Erro geral ao atualizar perfil:", error);
       toast.error(`Erro ao atualizar perfil: ${error.message}`);
     } finally {
       setIsSaving(false);
       setIsUploading(false);
+      setAvatarFile(null); // Clear file input state after attempt
     }
   };
 
@@ -258,7 +291,7 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onClose, on
                     disabled={isUploading || isSaving}
                   />
                 </label>
-                {(avatarPreview || currentAvatarUrl) && (
+                {(avatarPreview || currentAvatarUrlInForm) && (
                   <Button
                     type="button"
                     variant="outline"
