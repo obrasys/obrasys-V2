@@ -103,7 +103,7 @@ export function useNewBudgetForm({
       const { data: budgetData, error: budgetError } = await supabase
         .from('budgets')
         .select(`
-          *,
+          id, company_id, project_id, nome, total_planeado, total_executado, estado, created_at, updated_at, client_id, localizacao, data_orcamento, observacoes_gerais, tipo_obra,
           budget_chapters (
             id,
             title,
