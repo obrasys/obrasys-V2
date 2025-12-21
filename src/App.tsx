@@ -90,17 +90,15 @@ const AppContent = () => (
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
+    {/* Moved Toaster and Sonner outside TooltipProvider */}
+    <Toaster />
+    <Sonner />
     <TooltipProvider>
-      {/* Wrap these in a Fragment so TooltipProvider receives a single child */}
-      <>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <SessionContextProvider>
-            <AppContent />
-          </SessionContextProvider>
-        </BrowserRouter>
-      </>
+      <BrowserRouter>
+        <SessionContextProvider>
+          <AppContent />
+        </SessionContextProvider>
+      </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
 );
