@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import KPICard from "@/components/KPICard";
 import EmptyState from "@/components/EmptyState";
-import { DataTable } from "@/components/work-items/data-table";
+import { DataTable } from "@/components/work-items/data-table"; // Reusing generic DataTable
 import { createProjectColumns } from "@/components/projects/columns";
 import CreateEditProjectDialog from "@/components/projects/create-edit-project-dialog";
 import ScheduleTab from "@/components/projects/schedule-tab";
@@ -143,16 +143,21 @@ const ProjectsPage = () => {
     return (
       <div className="space-y-6">
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between pb-4 md:pb-6 border-b border-border mb-4 md:mb-6">
-          <Button variant="ghost" onClick={() => setSelectedProject(null)} className="flex items-center gap-2 text-muted-foreground hover:text-foreground mb-2 md:mb-0">
-            <ArrowLeft className="h-4 w-4" /> Voltar à Lista de Obras
-          </Button>
-          <div className="text-center md:text-right flex-grow">
+          {/* Left side: Project Name and Description */}
+          <div className="flex flex-col text-center md:text-left mb-2 md:mb-0">
             <h1 className="text-2xl md:text-3xl font-bold text-primary">{selectedProject.nome}</h1>
             <p className="text-muted-foreground text-sm">Detalhes da Obra</p>
           </div>
-          <Button onClick={() => handleEditProject(selectedProject)} className="flex items-center gap-2 mt-2 md:mt-0">
-            <PlusCircle className="h-4 w-4" /> Editar Obra
-          </Button>
+
+          {/* Right side: Buttons */}
+          <div className="flex flex-wrap gap-2 mt-2 md:mt-0 ml-auto">
+            <Button variant="ghost" onClick={() => setSelectedProject(null)} className="flex items-center gap-2 text-muted-foreground hover:text-foreground">
+              <ArrowLeft className="h-4 w-4" /> Voltar à Lista de Obras
+            </Button>
+            <Button onClick={() => handleEditProject(selectedProject)} className="flex items-center gap-2">
+              <PlusCircle className="h-4 w-4" /> Editar Obra
+            </Button>
+          </div>
         </div>
 
         <Tabs defaultValue="overview" className="w-full">
@@ -298,7 +303,7 @@ const ProjectsPage = () => {
         />
       </section>
 
-      {/* Lista / Tabela de Obras */}
+      {/* Lista de Obras */}
       <Card className="bg-card text-card-foreground border border-border">
         <CardHeader>
           <CardTitle className="text-2xl font-semibold">Lista de Obras</CardTitle>
