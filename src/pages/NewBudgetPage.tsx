@@ -35,6 +35,7 @@ const NewBudgetPage: React.FC = () => {
   const [isProjectDialogOpen, setIsProjectDialogOpen] = React.useState(false);
   const [approvedBudgetId, setApprovedBudgetId] = React.useState<string | null>(null);
   const [isSaving, setIsSaving] = React.useState(false);
+  const [userCompanyId, setUserCompanyId] = React.useState<string | null>(null); // Novo estado para company_id do utilizador
 
   const form = useForm<NewBudgetFormValues>({
     resolver: zodResolver(newBudgetFormSchema),
@@ -72,21 +73,50 @@ const NewBudgetPage: React.FC = () => {
     },
   });
 
-  // Função para buscar clientes
+  // Função para buscar o company_id do perfil do utilizador
+  const fetchUserCompanyId = React.useCallback(async () => {
+    if (!user) {
+      setUserCompanyId(null);
+      return;
+    }
+    const { data: profileData, error: profileError } = await supabase
+      .from('profiles')
+      .select('company_id')
+      .eq('id', user.id)
+      .single();
+
+    if (profileError) {
+      console.error("Erro ao carregar company_id do perfil:", profileError);
+      setUserCompanyId(null);
+    } else if (profileData) {
+      setUserCompanyId(profileData.company_id);
+    }
+  }, [user]);
+
+  // Buscar o company_id do utilizador ao montar o componente e quando o utilizador muda
+  React.useEffect(() => {
+    fetchUserCompanyId();
+  }, [fetchUserCompanyId]);
+
+  // Função para buscar clientes (agora depende de userCompanyId)
   const fetchClients = React.useCallback(async () => {
-    const { data, error } = await supabase.from('clients').select('id, nome');
+    if (!userCompanyId) { // Só busca clientes se o companyId estiver disponível
+      setClients([]);
+      return;
+    }
+    const { data, error } = await supabase.from('clients').select('id, nome').eq('company_id', userCompanyId); // Filtra por company_id
     if (error) {
       toast.error(`Erro ao carregar clientes: ${error.message}`);
       console.error("Erro ao carregar clientes:", error);
     } else {
       setClients(data || []);
     }
-  }, []); // Sem dependências, pois não usa variáveis externas que mudam
+  }, [userCompanyId]); // Agora depende de userCompanyId
 
-  // Fetch clients on component mount
+  // Buscar clientes ao montar o componente e quando userCompanyId muda
   React.useEffect(() => {
     fetchClients();
-  }, [fetchClients]); // Adicionado fetchClients como dependência
+  }, [fetchClients]);
 
   // Calculate custo_planeado for each item and total budget
   const calculateCosts = React.useCallback(() => {
@@ -122,14 +152,14 @@ const NewBudgetPage: React.FC = () => {
   }, [form, calculateCosts]);
 
   const onSubmit = async (data: NewBudgetFormValues) => {
-    if (!user) {
-      toast.error("Utilizador não autenticado.");
+    if (!user || !userCompanyId) { // Verificar userCompanyId
+      toast.error("Utilizador não autenticado ou ID da empresa não encontrado.");
       return;
     }
     setIsSaving(true);
 
     try {
-      const companyId = user.user_metadata.company_id;
+      const companyId = userCompanyId; // Usar o companyId obtido
       if (!companyId) throw new Error("ID da empresa não encontrado no perfil do utilizador.");
 
       const totalPlanned = calculateCosts();
@@ -138,7 +168,7 @@ const NewBudgetPage: React.FC = () => {
       const { data: budgetData, error: budgetError } = await supabase
         .from('budgets')
         .insert({
-          company_id: companyId,
+          company_id: companyId, // Usar o companyId obtido
           nome: data.nome,
           project_id: null, // Project is linked later
           total_planeado: totalPlanned,
@@ -155,7 +185,7 @@ const NewBudgetPage: React.FC = () => {
       // 2. Insert budget items for each chapter
       const budgetItemsToInsert = data.chapters.flatMap((chapter) =>
         chapter.items.map((item) => ({
-          company_id: companyId,
+          company_id: companyId, // Usar o companyId obtido
           budget_id: budgetData.id,
           capitulo: item.capitulo, // Usar item.capitulo que agora existe no esquema
           servico: item.servico,
@@ -186,17 +216,16 @@ const NewBudgetPage: React.FC = () => {
   };
 
   const handleSaveClient = async (newClient: Client) => {
-    if (!user) {
-      toast.error("Utilizador não autenticado.");
+    if (!user || !userCompanyId) { // Verificar userCompanyId
+      toast.error("Utilizador não autenticado ou ID da empresa não encontrado.");
       return;
     }
     try {
-      const companyId = user.user_metadata.company_id;
-      if (!companyId) throw new Error("ID da empresa não encontrado no perfil do utilizador.");
+      const companyId = userCompanyId; // Usar o companyId obtido
 
       const clientDataToSave = {
         ...newClient,
-        company_id: companyId,
+        company_id: companyId, // Usar o companyId obtido
         id: newClient.id || uuidv4(), // Ensure ID exists for upsert
       };
 
@@ -208,11 +237,10 @@ const NewBudgetPage: React.FC = () => {
 
       if (error) throw error;
 
-      // Atualiza a lista de clientes e seleciona o novo cliente
-      await fetchClients(); // <--- CHAMA A FUNÇÃO PARA RECARREGAR CLIENTES
-      form.setValue("client_id", data.id || ""); // Select the newly created/updated client
+      await fetchClients(); // Recarregar clientes
+      form.setValue("client_id", data.id || "");
       toast.success(`Cliente ${data.nome} registado com sucesso!`);
-      setIsClientDialogOpen(false); // Close the dialog
+      setIsClientDialogOpen(false);
     } catch (error: any) {
       toast.error(`Erro ao registar cliente: ${error.message}`);
       console.error("Erro ao registar cliente:", error);
@@ -220,12 +248,12 @@ const NewBudgetPage: React.FC = () => {
   };
 
   const handleSaveProject = async (newProject: Project) => {
-    if (!approvedBudgetId) {
-      toast.error("Nenhum orçamento aprovado para associar à obra.");
+    if (!approvedBudgetId || !user || !userCompanyId) { // Verificar userCompanyId
+      toast.error("Nenhum orçamento aprovado para associar à obra ou ID da empresa não encontrado.");
       return;
     }
     try {
-      const companyId = user?.user_metadata.company_id;
+      const companyId = userCompanyId; // Usar o companyId obtido
       if (!companyId) throw new Error("ID da empresa não encontrado no perfil do utilizador.");
 
       const { data, error } = await supabase
@@ -241,7 +269,7 @@ const NewBudgetPage: React.FC = () => {
           custo_planeado: newProject.custo_planeado,
           custo_real: newProject.custo_real,
           budget_id: approvedBudgetId,
-          company_id: companyId,
+          company_id: companyId, // Usar o companyId obtido
         })
         .select()
         .single();
@@ -268,13 +296,13 @@ const NewBudgetPage: React.FC = () => {
   const handleApproveBudget = async () => {
     if (!form.formState.isValid) {
       toast.error("Por favor, corrija os erros no formulário antes de aprovar.");
-      form.trigger(); // Trigger all validations to show errors
+      form.trigger();
       return;
     }
 
     setIsSaving(true);
     try {
-      const companyId = user?.user_metadata.company_id;
+      const companyId = userCompanyId; // Usar o companyId obtido
       if (!companyId) throw new Error("ID da empresa não encontrado no perfil do utilizador.");
 
       const currentBudgetValues = form.getValues();
