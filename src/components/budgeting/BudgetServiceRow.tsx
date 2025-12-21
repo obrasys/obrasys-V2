@@ -1,5 +1,3 @@
-"use client";
-
 import React from "react";
 import { UseFormReturn } from "react-hook-form";
 import { Trash2, Copy } from "lucide-react";
