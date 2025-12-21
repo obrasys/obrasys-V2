@@ -1,3 +1,4 @@
+import React from "react"; // Ensure React is imported for Fragment
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -89,18 +90,19 @@ const AppContent = () => (
 );
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    {/* Moved Toaster and Sonner outside TooltipProvider */}
+  <React.Fragment> {/* Use React.Fragment explicitly at the very top */}
     <Toaster />
     <Sonner />
-    <TooltipProvider>
-      <BrowserRouter>
-        <SessionContextProvider>
-          <AppContent />
-        </SessionContextProvider>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <BrowserRouter>
+          <SessionContextProvider>
+            <AppContent />
+          </SessionContextProvider>
+        </BrowserRouter>
+      </TooltipProvider>
+    </QueryClientProvider>
+  </React.Fragment>
 );
 
 export default App;
