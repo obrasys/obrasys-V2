@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
-import { useNavigate, useLocation } from 'react-router-dom'; // Import useLocation
+import { useNavigate, useLocation } from 'react-router-dom';
 import { toast } from 'sonner';
 
 interface SessionContextType {
@@ -19,27 +19,26 @@ export const SessionContextProvider: React.FC<{ children: React.ReactNode }> = (
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
-  const location = useLocation(); // Use useLocation to get current path
+  const location = useLocation();
 
   useEffect(() => {
     const { data: authListener } = supabase.auth.onAuthStateChange(
       async (event, currentSession) => {
         setSession(currentSession);
         setUser(currentSession?.user || null);
-        setIsLoading(false);
+        setIsLoading(false); // Definir loading como falso após o estado de autenticação ser determinado
 
         const currentPath = location.pathname;
         const isAuthPage = currentPath === '/login' || currentPath === '/signup';
 
-        if (currentSession) { // User is authenticated
-          if (isAuthPage) {
-            navigate('/dashboard'); // Redirect authenticated users from auth pages
+        if (currentSession) { // Utilizador autenticado
+          if (isAuthPage && currentPath !== '/dashboard') { // Redirecionar apenas se estiver numa página de autenticação E não estiver já no dashboard
+            navigate('/dashboard');
             toast.success('Sessão iniciada com sucesso!');
           }
-        } else { // User is NOT authenticated
-          if (!isAuthPage) {
-            navigate('/login'); // Redirect unauthenticated users from protected pages
-            // Only show toast if they were previously signed in and then signed out
+        } else { // Utilizador NÃO autenticado
+          if (!isAuthPage && currentPath !== '/login') { // Redirecionar apenas se estiver numa página protegida E não estiver já no login
+            navigate('/login');
             if (event === 'SIGNED_OUT') {
               toast.info('Sessão terminada.');
             }
@@ -48,26 +47,26 @@ export const SessionContextProvider: React.FC<{ children: React.ReactNode }> = (
       }
     );
 
-    // Fetch initial session
+    // Buscar sessão inicial
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user || null);
-      setIsLoading(false);
+      setIsLoading(false); // Definir loading como falso após a sessão inicial ser determinada
 
       const currentPath = location.pathname;
       const isAuthPage = currentPath === '/login' || currentPath === '/signup';
 
-      if (!session && !isAuthPage) {
-        navigate('/login'); // Redirect unauthenticated users from protected pages on initial load
-      } else if (session && isAuthPage) {
-        navigate('/dashboard'); // Redirect authenticated users from auth pages on initial load
+      if (!session && !isAuthPage && currentPath !== '/login') { // Redirecionar utilizadores não autenticados de páginas protegidas no carregamento inicial
+        navigate('/login');
+      } else if (session && isAuthPage && currentPath !== '/dashboard') { // Redirecionar utilizadores autenticados de páginas de autenticação no carregamento inicial
+        navigate('/dashboard');
       }
     });
 
     return () => {
       authListener.subscription.unsubscribe();
     };
-  }, [navigate, location.pathname]); // Adicionar location.pathname às dependências
+  }, [navigate]); // Removido location.pathname das dependências
 
   return (
     <SessionContext.Provider value={{ session, user, isLoading }}>
