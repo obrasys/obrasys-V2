@@ -42,7 +42,7 @@ const BudgetChaptersSection: React.FC<BudgetChaptersSectionProps> = ({
       items: [
         {
           id: uuidv4(),
-          capitulo_id: "", // Will be set dynamically
+          capitulo_id: null, // Corrigido: Deve ser null, não uma string vazia
           capitulo: `Capítulo ${newChapterCode}`, // Adicionado para corresponder ao esquema
           servico: "Novo Serviço",
           quantidade: 1,
@@ -63,7 +63,7 @@ const BudgetChaptersSection: React.FC<BudgetChaptersSectionProps> = ({
     const chapterName = form.getValues(`chapters.${chapterIndex}.nome`); // Obter o nome do capítulo
     const newService: BudgetItem = {
       id: uuidv4(),
-      capitulo_id: chapterId,
+      capitulo_id: null, // Corrigido: Deve ser null, não uma string vazia
       capitulo: chapterName, // Usar o nome do capítulo
       servico: "Novo Serviço",
       quantidade: 1,
