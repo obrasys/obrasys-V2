@@ -3,7 +3,7 @@
 import { MadeWithDyad } from "@/components/made-with-dyad";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft } from "lucide-react";
+// Removed ArrowLeft as it's not needed here
 
 const Index = () => {
   return (
@@ -14,12 +14,7 @@ const Index = () => {
           Explore os diferentes módulos da sua plataforma.
         </p>
         <div className="space-y-4">
-          <Link to="/dashboard">
-            <Button variant="outline" className="mb-4 flex items-center gap-2 w-full md:w-auto">
-              <ArrowLeft className="h-4 w-4" />
-              Voltar à Dashboard
-            </Button>
-          </Link>
+          {/* Removed "Voltar à Dashboard" button from here */}
           <Link to="/budgeting">
             <Button size="lg" className="w-full md:w-auto">
               Ir para Módulo 1: Orçamentação
@@ -43,6 +38,11 @@ const Index = () => {
           <Link to="/crm-portal">
             <Button size="lg" className="w-full md:w-auto">
               Ir para Módulo 5: CRM e Portal do Cliente
+            </Button>
+          </Link>
+          <Link to="/automation-intelligence">
+            <Button size="lg" className="w-full md:w-auto">
+              Ir para Módulo 6: Automação & Inteligência
             </Button>
           </Link>
         </div>
