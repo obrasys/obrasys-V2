@@ -91,13 +91,16 @@ const AppContent = () => (
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <SessionContextProvider>
-          <AppContent />
-        </SessionContextProvider>
-      </BrowserRouter>
+      {/* Wrap these in a Fragment so TooltipProvider receives a single child */}
+      <>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <SessionContextProvider>
+            <AppContent />
+          </SessionContextProvider>
+        </BrowserRouter>
+      </>
     </TooltipProvider>
   </QueryClientProvider>
 );
