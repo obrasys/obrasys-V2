@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom'; // Import useLocation
 import { toast } from 'sonner';
 
 interface SessionContextType {
@@ -19,6 +19,7 @@ export const SessionContextProvider: React.FC<{ children: React.ReactNode }> = (
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
+  const location = useLocation(); // Use useLocation to get current path
 
   useEffect(() => {
     const { data: authListener } = supabase.auth.onAuthStateChange(
@@ -27,21 +28,21 @@ export const SessionContextProvider: React.FC<{ children: React.ReactNode }> = (
         setUser(currentSession?.user || null);
         setIsLoading(false);
 
-        if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-          if (currentSession && location.pathname === '/login') {
-            navigate('/dashboard');
+        const currentPath = location.pathname;
+        const isAuthPage = currentPath === '/login' || currentPath === '/signup';
+
+        if (currentSession) { // User is authenticated
+          if (isAuthPage) {
+            navigate('/dashboard'); // Redirect authenticated users from auth pages
             toast.success('Sessão iniciada com sucesso!');
           }
-        } else if (event === 'SIGNED_OUT') {
-          if (location.pathname !== '/login') {
-            navigate('/login');
-            toast.info('Sessão terminada.');
-          }
-        } else if (event === 'INITIAL_SESSION') {
-          if (!currentSession && location.pathname !== '/login') {
-            navigate('/login');
-          } else if (currentSession && location.pathname === '/login') {
-            navigate('/dashboard');
+        } else { // User is NOT authenticated
+          if (!isAuthPage) {
+            navigate('/login'); // Redirect unauthenticated users from protected pages
+            // Only show toast if they were previously signed in and then signed out
+            if (event === 'SIGNED_OUT') {
+              toast.info('Sessão terminada.');
+            }
           }
         }
       }
@@ -52,17 +53,21 @@ export const SessionContextProvider: React.FC<{ children: React.ReactNode }> = (
       setSession(session);
       setUser(session?.user || null);
       setIsLoading(false);
-      if (!session && location.pathname !== '/login') {
-        navigate('/login');
-      } else if (session && location.pathname === '/login') {
-        navigate('/dashboard');
+
+      const currentPath = location.pathname;
+      const isAuthPage = currentPath === '/login' || currentPath === '/signup';
+
+      if (!session && !isAuthPage) {
+        navigate('/login'); // Redirect unauthenticated users from protected pages on initial load
+      } else if (session && isAuthPage) {
+        navigate('/dashboard'); // Redirect authenticated users from auth pages on initial load
       }
     });
 
     return () => {
       authListener.subscription.unsubscribe();
     };
-  }, [navigate]);
+  }, [navigate, location.pathname]); // Adicionar location.pathname às dependências
 
   return (
     <SessionContext.Provider value={{ session, user, isLoading }}>
