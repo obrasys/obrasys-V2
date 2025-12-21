@@ -4,7 +4,7 @@ import React from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { v4 as uuidv4 } from "uuid";
-import { format, parseISO } from "date-fns"; // Importar parseISO
+import { format, parseISO } from "date-fns";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 
@@ -94,6 +94,7 @@ export function useNewBudgetForm({
     const fetchExistingBudget = async () => {
       if (!budgetIdToEdit || !userCompanyId) {
         setIsLoadingBudget(false);
+        console.log("[useNewBudgetForm] No budgetIdToEdit or userCompanyId. Not fetching existing budget.");
         return;
       }
       setIsLoadingBudget(true);
@@ -135,15 +136,15 @@ export function useNewBudgetForm({
       }
 
       if (budgetData) {
-        console("[useNewBudgetForm] Loaded budget data:", budgetData);
+        console.log("[useNewBudgetForm] Loaded budget data from DB:", budgetData);
         const transformedBudget: NewBudgetFormValues = {
           id: budgetData.id,
           nome: budgetData.nome,
           client_id: budgetData.client_id,
           localizacao: budgetData.localizacao || "",
-          tipo_obra: "Nova construção", // Assumindo um valor padrão ou buscar se existir
-          data_orcamento: budgetData.created_at ? format(parseISO(budgetData.created_at), "yyyy-MM-dd") : format(new Date(), "yyyy-MM-dd"),
-          observacoes_gerais: "", // Assumindo que não há observações gerais na DB ou buscar se existir
+          tipo_obra: budgetData.tipo_obra || "Nova construção", // Mapear tipo_obra
+          data_orcamento: budgetData.data_orcamento ? format(parseISO(budgetData.data_orcamento), "yyyy-MM-dd") : format(new Date(), "yyyy-MM-dd"), // Mapear data_orcamento
+          observacoes_gerais: budgetData.observacoes_gerais || "", // Mapear observacoes_gerais
           estado: budgetData.estado,
           chapters: (budgetData.budget_chapters || []).map(chapter => ({
             id: chapter.id,
@@ -166,6 +167,7 @@ export function useNewBudgetForm({
             })),
           })),
         };
+        console.log("[useNewBudgetForm] Transformed budget for form.reset():", transformedBudget);
         form.reset(transformedBudget);
         setApprovedBudgetId(transformedBudget.estado === "Aprovado" ? transformedBudget.id || null : null);
       }
@@ -207,7 +209,7 @@ export function useNewBudgetForm({
 
   const onSubmit = async (data: NewBudgetFormValues) => {
     console.log("--- onSubmit: Starting budget save process ---");
-    console.log("Current form data:", data);
+    console.log("Current form data (including ID):", data);
     console.log("User Company ID:", userCompanyId);
 
     if (!user || !userCompanyId) {
@@ -234,6 +236,9 @@ export function useNewBudgetForm({
           nome: data.nome,
           client_id: data.client_id,
           localizacao: data.localizacao,
+          tipo_obra: data.tipo_obra, // Incluir tipo_obra
+          data_orcamento: data.data_orcamento, // Incluir data_orcamento
+          observacoes_gerais: data.observacoes_gerais, // Incluir observacoes_gerais
           total_planeado: initialTotalPlanned,
           estado: data.estado,
           updated_at: new Date().toISOString(),
@@ -281,6 +286,9 @@ export function useNewBudgetForm({
           nome: data.nome,
           client_id: data.client_id,
           localizacao: data.localizacao,
+          tipo_obra: data.tipo_obra, // Incluir tipo_obra
+          data_orcamento: data.data_orcamento, // Incluir data_orcamento
+          observacoes_gerais: data.observacoes_gerais, // Incluir observacoes_gerais
           project_id: null,
           total_planeado: initialTotalPlanned,
           total_executado: 0,

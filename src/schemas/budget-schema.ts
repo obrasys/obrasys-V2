@@ -54,6 +54,11 @@ export const budgetDBSchema = z.object({
   company_id: z.string().uuid(),
   project_id: z.string().uuid().optional().nullable(),
   nome: z.string(),
+  client_id: z.string().uuid().optional().nullable(), // Added
+  localizacao: z.string().optional().nullable(), // Added
+  tipo_obra: z.enum(["Nova construção", "Remodelação", "Ampliação"]).optional().nullable(), // Added
+  data_orcamento: z.string().optional().nullable(), // Added
+  observacoes_gerais: z.string().optional().nullable(), // Added
   total_planeado: z.number(),
   total_executado: z.number(),
   estado: z.enum(["Rascunho", "Aprovado", "Rejeitado"]),
