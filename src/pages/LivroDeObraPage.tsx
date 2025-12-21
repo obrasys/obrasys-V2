@@ -6,6 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { v4 as uuidv4 } from "uuid";
 import { format, parseISO } from "date-fns";
 import { pt } from "date-fns/locale";
+import { useNavigate } from "react-router-dom"; // Importar useNavigate
 
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -14,7 +15,7 @@ import { LivroObra, LivroObraRdo, livroObraSchema } from "@/schemas/compliance-s
 import { formatCurrency, formatDate } from "@/utils/formatters";
 
 // Importar os novos componentes
-import LivroDeObraHeader from "@/components/compliance/LivroDeObraHeader";
+// import LivroDeObraHeader from "@/components/compliance/LivroDeObraHeader"; // Removido
 import LivroDeObraList from "@/components/compliance/LivroDeObraList";
 import LivroDeObraDetailsCard from "@/components/compliance/LivroDeObraDetailsCard";
 import LivroDeObraRdosTable from "@/components/compliance/LivroDeObraRdosTable";
@@ -22,7 +23,8 @@ import LivroDeObraAICompliance from "@/components/compliance/LivroDeObraAICompli
 import CreateLivroDeObraDialog from "@/components/compliance/CreateLivroDeObraDialog";
 import { Skeleton } from "@/components/ui/skeleton"; // Importar Skeleton
 import EmptyState from "@/components/EmptyState"; // Adicionada esta linha
-import { FileText } from "lucide-react"; // Importar FileText
+import { FileText, PlusCircle, ArrowLeft } from "lucide-react"; // Importar FileText, PlusCircle e ArrowLeft
+import { Button } from "@/components/ui/button"; // Importar Button
 
 // Mock de RDOs para demonstração (ajustado para incluir project_id e datas variadas)
 // Estes RDOs serão filtrados pelo período e project_id do Livro de Obra selecionado.
@@ -46,6 +48,7 @@ const LivroDeObraPage = () => {
   const [livrosObraRdos, setLivrosObraRdos] = React.useState<LivroObraRdo[]>([]); // Estado para RDOs filtrados
   const [isLoading, setIsLoading] = React.useState(true);
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
+  const navigate = useNavigate(); // Inicializar useNavigate
 
   const form = useForm<LivroObra>({
     resolver: zodResolver(livroObraSchema),
@@ -284,7 +287,14 @@ const LivroDeObraPage = () => {
   if (isLoading) {
     return (
       <div className="space-y-6">
-        <LivroDeObraHeader onNewLivroClick={() => {}} /> {/* Passa função vazia para estado de carregamento */}
+        {/* Esqueleto para o cabeçalho */}
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between pb-4 md:pb-6 border-b border-border mb-4 md:mb-6">
+          <div>
+            <Skeleton className="h-8 w-64 mb-2" />
+            <Skeleton className="h-4 w-48" />
+          </div>
+          <Skeleton className="h-10 w-40 mt-2 md:mt-0" />
+        </div>
         <div className="p-4 space-y-4">
           <Skeleton className="h-48 w-full" />
           <Skeleton className="h-32 w-full" />
@@ -298,7 +308,23 @@ const LivroDeObraPage = () => {
 
   return (
     <div className="space-y-6">
-      <LivroDeObraHeader onNewLivroClick={() => setIsDialogOpen(true)} />
+      {/* Cabeçalho da Página */}
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between pb-4 md:pb-6 border-b border-border mb-4 md:mb-6">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-bold text-primary">Livro de Obra Digital</h1>
+          <p className="text-muted-foreground text-sm">
+            Gestão e consolidação dos registos diários da obra
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2 mt-2 md:mt-0">
+          <Button variant="ghost" onClick={() => navigate("/compliance")} className="flex items-center gap-2 text-muted-foreground hover:text-foreground">
+            <ArrowLeft className="h-4 w-4" /> Voltar
+          </Button>
+          <Button onClick={() => setIsDialogOpen(true)} className="flex items-center gap-2">
+            <PlusCircle className="h-4 w-4" /> Novo Livro de Obra
+          </Button>
+        </div>
+      </div>
 
       <LivroDeObraList
         livrosObra={livrosObra}
