@@ -1,7 +1,7 @@
-import React from "react"; // Ensure React is imported for Fragment
+import React from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
+// import { TooltipProvider } from "@/components/ui/tooltip"; // Temporarily removed
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Dashboard from "./pages/Dashboard";
@@ -90,17 +90,16 @@ const AppContent = () => (
 );
 
 const App = () => (
-  <React.Fragment> {/* Use React.Fragment explicitly at the very top */}
+  <React.Fragment>
     <Toaster />
     <Sonner />
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <BrowserRouter>
-          <SessionContextProvider>
-            <AppContent />
-          </SessionContextProvider>
-        </BrowserRouter>
-      </TooltipProvider>
+      {/* TooltipProvider removed here */}
+      <BrowserRouter>
+        <SessionContextProvider>
+          <AppContent />
+        </SessionContextProvider>
+      </BrowserRouter>
     </QueryClientProvider>
   </React.Fragment>
 );
