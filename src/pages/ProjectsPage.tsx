@@ -40,8 +40,15 @@ const ProjectsPage = () => {
         client_name: project.clients?.nome || "Cliente Desconhecido", // Extrai o nome do cliente
       }));
       setProjects(formattedProjects);
+      // Se um projeto estava selecionado, atualiza-o com os novos dados
+      if (selectedProject) {
+        const updatedSelected = formattedProjects.find(p => p.id === selectedProject.id);
+        if (updatedSelected) {
+          setSelectedProject(updatedSelected);
+        }
+      }
     }
-  }, []);
+  }, [selectedProject]); // Adicionar selectedProject como dependência para atualizar o projeto selecionado
 
   React.useEffect(() => {
     fetchProjects();
@@ -113,13 +120,6 @@ const ProjectsPage = () => {
     }
   };
 
-  const handleScheduleUpdate = (overallProgress: number, status: Project["estado"]) => { // Tipo corrigido aqui
-    if (selectedProject) {
-      setSelectedProject(prev => prev ? { ...prev, progresso: overallProgress, estado: status } : null);
-      // Optionally, update the project in the database here
-    }
-  };
-
   const columns = createProjectColumns({
     onView: handleViewProject,
     onEdit: handleEditProject,
@@ -129,7 +129,7 @@ const ProjectsPage = () => {
   // Calculate KPIs
   const activeProjects = projects.filter(p => p.estado === "Em execução").length;
   const completedProjects = projects.filter(p => p.estado === "Concluída").length;
-  const delayedProjects = projects.filter(p => p.estado === "Em execução" && p.progresso < 50 && new Date(p.prazo) < new Date()).length; // Simplified logic
+  const delayedProjects = projects.filter(p => p.estado === "Atrasada").length; // Usar o novo estado 'Atrasada'
   const averageProgress = projects.length > 0
     ? (projects.reduce((sum, p) => sum + p.progresso, 0) / projects.length).toFixed(1)
     : "0.0";
@@ -201,7 +201,7 @@ const ProjectsPage = () => {
               <ScheduleTab
                 projectId={selectedProject.id}
                 budgetId={selectedProject.budget_id}
-                onScheduleUpdate={handleScheduleUpdate}
+                onScheduleRefetch={fetchProjects} // Passar fetchProjects para atualizar o projeto pai
               />
             ) : (
               <EmptyState

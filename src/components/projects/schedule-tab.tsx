@@ -7,10 +7,8 @@ import { Progress } from "@/components/ui/progress";
 import { CalendarDays, Play, CheckCircle, AlertTriangle, RefreshCw } from "lucide-react";
 import EmptyState from "@/components/EmptyState";
 import { Schedule, SchedulePhase } from "@/schemas/project-schema";
-import { BudgetItem } from "@/schemas/budget-schema";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { v4 as uuidv4 } from "uuid";
 import { format, differenceInDays, parseISO } from "date-fns";
 import { pt } from "date-fns/locale";
 import { Input } from "@/components/ui/input";
@@ -22,14 +20,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 interface ScheduleTabProps {
   projectId: string;
   budgetId: string;
-  onScheduleUpdate: (overallProgress: number, status: string) => void;
+  onScheduleRefetch: () => void; // Novo prop para notificar o pai para refetch do projeto
 }
 
-const ScheduleTab: React.FC<ScheduleTabProps> = ({ projectId, budgetId, onScheduleUpdate }) => {
+const ScheduleTab: React.FC<ScheduleTabProps> = ({ projectId, budgetId, onScheduleRefetch }) => {
   const [schedule, setSchedule] = React.useState<Schedule | null>(null);
   const [phases, setPhases] = React.useState<SchedulePhase[]>([]);
   const [loading, setLoading] = React.useState(true);
-  const [isGenerating, setIsGenerating] = React.useState(false);
   const [isEditingPhase, setIsEditingPhase] = React.useState<string | null>(null);
   const [editedPhase, setEditedPhase] = React.useState<Partial<SchedulePhase> | null>(null);
 
@@ -60,101 +57,18 @@ const ScheduleTab: React.FC<ScheduleTabProps> = ({ projectId, budgetId, onSchedu
         toast.error(`Erro ao carregar fases do cronograma: ${phasesError.message}`);
       } else {
         setPhases(fetchedPhases || []);
-        const overallProgress = calculateOverallProgress(fetchedPhases || []);
-        const overallStatus = calculateOverallStatus(fetchedPhases || []);
-        onScheduleUpdate(overallProgress, overallStatus);
       }
     } else {
       setSchedule(null);
       setPhases([]);
-      onScheduleUpdate(0, "Não iniciado");
     }
     setLoading(false);
-  }, [projectId, budgetId, onScheduleUpdate]);
+    onScheduleRefetch(); // Notificar o pai para refetch do projeto após carregar o cronograma
+  }, [projectId, budgetId, onScheduleRefetch]);
 
   React.useEffect(() => {
     fetchScheduleData();
   }, [fetchScheduleData]);
-
-  const calculateOverallProgress = (currentPhases: SchedulePhase[]) => {
-    if (currentPhases.length === 0) return 0;
-    const totalProgress = currentPhases.reduce((sum, phase) => sum + phase.progress, 0);
-    return parseFloat((totalProgress / currentPhases.length).toFixed(1));
-  };
-
-  const calculateOverallStatus = (currentPhases: SchedulePhase[]) => {
-    if (currentPhases.length === 0) return "Não iniciado";
-    const allCompleted = currentPhases.every(phase => phase.status === "Concluído");
-    const anyInProgress = currentPhases.some(phase => phase.status === "Em execução");
-    const anyDelayed = currentPhases.some(phase => phase.status === "Atrasado");
-
-    if (allCompleted) return "Concluído";
-    if (anyDelayed) return "Atrasado";
-    if (anyInProgress) return "Em execução";
-    return "Planeado";
-  };
-
-  const generateSchedule = async () => {
-    setIsGenerating(true);
-    try {
-      // 1. Fetch budget items (chapters)
-      const { data: budgetItems, error: budgetItemsError } = await supabase
-        .from("budget_items")
-        .select("capitulo")
-        .eq("budget_id", budgetId)
-        .order("capitulo", { ascending: true });
-
-      if (budgetItemsError) {
-        throw new Error(`Erro ao carregar capítulos do orçamento: ${budgetItemsError.message}`);
-      }
-
-      const uniqueChapters = Array.from(new Set(budgetItems.map((item) => item.capitulo)));
-
-      if (uniqueChapters.length === 0) {
-        toast.info("O orçamento não possui capítulos para gerar o cronograma.");
-        setIsGenerating(false);
-        return;
-      }
-
-      // 2. Create new schedule entry
-      const { data: newSchedule, error: newScheduleError } = await supabase
-        .from("schedules")
-        .insert({ project_id: projectId, budget_id: budgetId, overall_progress: 0, status: "Planeado" })
-        .select()
-        .single();
-
-      if (newScheduleError) {
-        throw new Error(`Erro ao criar cronograma: ${newScheduleError.message}`);
-      }
-
-      // 3. Create schedule phases from chapters
-      const phasesToInsert = uniqueChapters.map((chapter, index) => ({
-        schedule_id: newSchedule.id,
-        chapter_name: chapter,
-        start_date: null, // Initially null, editable by user
-        end_date: null,
-        duration_days: null,
-        status: "Planeado",
-        progress: 0,
-        order: index,
-      }));
-
-      const { error: phasesInsertError } = await supabase
-        .from("schedule_phases")
-        .insert(phasesToInsert);
-
-      if (phasesInsertError) {
-        throw new Error(`Erro ao inserir fases do cronograma: ${phasesInsertError.message}`);
-      }
-
-      toast.success("Cronograma gerado com sucesso a partir do orçamento!");
-      fetchScheduleData(); // Refresh data
-    } catch (error: any) {
-      toast.error(`Falha ao gerar cronograma: ${error.message}`);
-    } finally {
-      setIsGenerating(false);
-    }
-  };
 
   const handleEditPhase = (phase: SchedulePhase) => {
     setIsEditingPhase(phase.id || null);
@@ -177,7 +91,7 @@ const ScheduleTab: React.FC<ScheduleTabProps> = ({ projectId, budgetId, onSchedu
       }
 
       const { error } = await supabase
-        .from("schedule_phases")
+        .from("schedule_tasks")
         .update(updatedPhase)
         .eq("id", editedPhase.id);
 
@@ -188,7 +102,7 @@ const ScheduleTab: React.FC<ScheduleTabProps> = ({ projectId, budgetId, onSchedu
       toast.success("Fase do cronograma atualizada com sucesso!");
       setIsEditingPhase(null);
       setEditedPhase(null);
-      fetchScheduleData(); // Refresh data
+      fetchScheduleData(); // Refresh data, which will trigger project update via backend
     } catch (error: any) {
       toast.error(`Falha ao guardar fase: ${error.message}`);
     }
@@ -212,9 +126,7 @@ const ScheduleTab: React.FC<ScheduleTabProps> = ({ projectId, budgetId, onSchedu
       <EmptyState
         icon={CalendarDays}
         title="Cronograma não gerado"
-        description="Gere o cronograma automaticamente a partir dos capítulos do orçamento aprovado."
-        buttonText="Gerar Cronograma"
-        onButtonClick={generateSchedule}
+        description="O cronograma será gerado automaticamente após a aprovação do orçamento e a criação da obra."
       />
     );
   }
@@ -227,11 +139,8 @@ const ScheduleTab: React.FC<ScheduleTabProps> = ({ projectId, budgetId, onSchedu
             <CalendarDays className="h-6 w-6 text-primary" /> Cronograma da Obra
           </CardTitle>
           <div className="flex items-center gap-2">
-            <Button variant="outline" onClick={fetchScheduleData} disabled={isGenerating}>
+            <Button variant="outline" onClick={fetchScheduleData}>
               <RefreshCw className="h-4 w-4 mr-2" /> Atualizar
-            </Button>
-            <Button onClick={generateSchedule} disabled={isGenerating}>
-              <Play className="h-4 w-4 mr-2" /> Regenerar Cronograma
             </Button>
           </div>
         </CardHeader>
@@ -301,9 +210,11 @@ const ScheduleTab: React.FC<ScheduleTabProps> = ({ projectId, budgetId, onSchedu
                       value={editedPhase?.status || "Planeado"}
                       onValueChange={(value) => setEditedPhase({ ...editedPhase, status: value as SchedulePhase["status"] })}
                     >
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Estado" />
-                      </SelectTrigger>
+                      <FormControl>
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Estado" />
+                        </SelectTrigger>
+                      </FormControl>
                       <SelectContent>
                         <SelectItem value="Planeado">Planeado</SelectItem>
                         <SelectItem value="Em execução">Em execução</SelectItem>
