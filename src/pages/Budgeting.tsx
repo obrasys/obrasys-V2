@@ -4,7 +4,7 @@ import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, Filter, Download, Calculator, DollarSign, FileText, TrendingUp, LineChart, HardHat, CalendarDays } from "lucide-react";
+import { PlusCircle, Filter, Download, Calculator, DollarSign, FileText, TrendingUp, LineChart, HardHat, CalendarDays, UserPlus } from "lucide-react";
 import KPICard from "@/components/KPICard";
 import EmptyState from "@/components/EmptyState";
 import { DataTable } from "@/components/work-items/data-table"; // Reusing generic DataTable
@@ -12,6 +12,8 @@ import { createBudgetColumns } from "@/components/budgeting/columns";
 import { BudgetItem } from "@/schemas/budget-schema";
 import { v4 as uuidv4 } from "uuid";
 import { toast } from "sonner";
+import CreateEditClientDialog from "@/components/budgeting/create-edit-client-dialog"; // Import the new dialog
+import { Client } from "@/schemas/client-schema"; // Import Client type
 
 const mockBudgetItems: BudgetItem[] = [
   {
@@ -78,6 +80,8 @@ const mockBudgetItems: BudgetItem[] = [
 
 const Budgeting = () => {
   const [budgetItems, setBudgetItems] = React.useState<BudgetItem[]>(mockBudgetItems);
+  const [isClientDialogOpen, setIsClientDialogOpen] = React.useState(false);
+  const [clients, setClients] = React.useState<Client[]>([]); // State to store registered clients
 
   const handleViewBudgetItem = (budgetItem: BudgetItem) => {
     toast.info(`Visualizar detalhes do serviço: ${budgetItem.servico}`);
@@ -87,6 +91,17 @@ const Budgeting = () => {
   const handleEditBudgetItem = (budgetItem: BudgetItem) => {
     toast.info(`Editar serviço: ${budgetItem.servico}`);
     // Implement dialog or form for editing
+  };
+
+  const handleSaveClient = (newClient: Client) => {
+    setClients((prevClients) => {
+      if (newClient.id && prevClients.some((c) => c.id === newClient.id)) {
+        return prevClients.map((c) => (c.id === newClient.id ? newClient : c));
+      }
+      return [...prevClients, newClient];
+    });
+    // Here you would typically make the client available for selection in a budget
+    console.log("Cliente guardado:", newClient);
   };
 
   const columns = createBudgetColumns({
@@ -118,6 +133,9 @@ const Budgeting = () => {
           </p>
         </div>
         <div className="flex space-x-2">
+          <Button onClick={() => setIsClientDialogOpen(true)} variant="outline" className="flex items-center gap-2">
+            <UserPlus className="h-4 w-4" /> Cadastrar Cliente
+          </Button>
           <Button className="flex items-center gap-2">
             <PlusCircle className="h-4 w-4" /> Novo Orçamento
           </Button>
@@ -239,6 +257,13 @@ const Budgeting = () => {
           </CardContent>
         </Card>
       </div>
+
+      <CreateEditClientDialog
+        isOpen={isClientDialogOpen}
+        onClose={() => setIsClientDialogOpen(false)}
+        onSave={handleSaveClient}
+        clientToEdit={null} // For now, always create new client
+      />
     </div>
   );
 };
