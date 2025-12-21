@@ -198,8 +198,9 @@ const NewBudgetPage: React.FC = () => {
       }
       console.log("onSubmit: Using companyId:", companyId);
 
-      const totalPlanned = calculateCosts();
-      console.log("onSubmit: Calculated totalPlanned:", totalPlanned);
+      // The total_planeado will be calculated by the database triggers
+      // We can send a placeholder or the current calculated value, but the trigger will override it.
+      const initialTotalPlanned = calculateCosts(); 
 
       // 1. Insert the main budget record
       console.log("onSubmit: Attempting to insert main budget record.");
@@ -208,8 +209,9 @@ const NewBudgetPage: React.FC = () => {
         .insert({
           company_id: companyId,
           nome: data.nome,
-          project_id: null,
-          total_planeado: totalPlanned,
+          client_id: data.client_id, // Adicionado client_id
+          project_id: null, // Project ID is set later when creating a project
+          total_planeado: initialTotalPlanned, // Will be updated by trigger
           total_executado: 0,
           estado: data.estado,
           created_at: new Date().toISOString(),
@@ -224,34 +226,56 @@ const NewBudgetPage: React.FC = () => {
       }
       console.log("onSubmit: Main budget record inserted successfully:", budgetData);
 
-      // 2. Insert budget items for each chapter
-      const budgetItemsToInsert = data.chapters.flatMap((chapter) =>
-        chapter.items.map((item) => ({
+      // 2. Insert budget chapters and their items
+      for (const chapter of data.chapters) {
+        console.log(`onSubmit: Attempting to insert budget chapter: ${chapter.nome}`);
+        const { data: chapterData, error: chapterError } = await supabase
+          .from('budget_chapters')
+          .insert({
+            budget_id: budgetData.id,
+            title: chapter.nome,
+            code: chapter.codigo,
+            sort_order: 0, // Placeholder, could be chapterIndex
+            notes: chapter.observacoes,
+            subtotal: 0, // Will be updated by trigger
+            created_at: new Date().toISOString(),
+          })
+          .select()
+          .single();
+
+        if (chapterError) {
+          console.error("onSubmit: Supabase budget chapter insertion error:", chapterError);
+          throw chapterError;
+        }
+        console.log("onSubmit: Budget chapter inserted successfully:", chapterData);
+
+        const budgetItemsToInsert = chapter.items.map((item) => ({
           company_id: companyId,
           budget_id: budgetData.id,
+          chapter_id: chapterData.id, // Link to the newly created chapter
           capitulo: item.capitulo,
           servico: item.servico,
           quantidade: item.quantidade,
           unidade: item.unidade,
           preco_unitario: item.preco_unitario,
-          custo_planeado: item.custo_planeado,
+          custo_planeado: item.custo_planeado, // Will be updated by trigger
           custo_executado: 0,
           estado: item.estado,
           observacoes: "", // Add observacoes if needed in schema
-          article_id: item.article_id, // NOVO: Incluir article_id
-        })),
-      );
-      console.log("onSubmit: Budget items to insert:", budgetItemsToInsert);
+          article_id: item.article_id,
+        }));
+        console.log(`onSubmit: Budget items to insert for chapter ${chapter.nome}:`, budgetItemsToInsert);
 
-      const { error: itemsError } = await supabase
-        .from('budget_items')
-        .insert(budgetItemsToInsert);
+        const { error: itemsError } = await supabase
+          .from('budget_items')
+          .insert(budgetItemsToInsert);
 
-      if (itemsError) {
-        console.error("onSubmit: Supabase budget items insertion error:", itemsError);
-        throw itemsError;
+        if (itemsError) {
+          console.error("onSubmit: Supabase budget items insertion error:", itemsError);
+          throw itemsError;
+        }
+        console.log(`onSubmit: Budget items for chapter ${chapter.nome} inserted successfully.`);
       }
-      console.log("onSubmit: Budget items inserted successfully.");
 
       toast.success("Orçamento criado com sucesso!");
       navigate("/budgeting");
@@ -355,14 +379,14 @@ const NewBudgetPage: React.FC = () => {
       if (!companyId) throw new Error("ID da empresa não encontrado no perfil do utilizador.");
 
       const currentBudgetValues = form.getValues();
-      const totalPlanned = calculateCosts();
-
+      // The total_planeado will be updated by the database triggers after items are inserted/updated
+      // So, we just need to update the state.
+      
       // Update the budget status to 'Aprovado' in the database
       const { data: updatedBudget, error: updateError } = await supabase
         .from('budgets')
         .update({
           estado: "Aprovado",
-          total_planeado: totalPlanned,
           updated_at: new Date().toISOString(),
         })
         .eq('id', currentBudgetValues.id)
