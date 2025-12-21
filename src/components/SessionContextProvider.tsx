@@ -32,7 +32,7 @@ export const SessionContextProvider: React.FC<{ children: React.ReactNode }> = (
         const isAuthPage = currentPath === '/login' || currentPath === '/signup';
 
         if (currentSession) { // Utilizador autenticado
-          if (isAuthPage && currentPath !== '/dashboard') { // Redirecionar apenas se estiver numa página de autenticação E não estiver já no dashboard
+          if (isAuthPage) { // Redirecionar apenas se estiver numa página de autenticação
             navigate('/dashboard');
             toast.success('Sessão iniciada com sucesso!');
           }
@@ -58,7 +58,7 @@ export const SessionContextProvider: React.FC<{ children: React.ReactNode }> = (
 
       if (!session && !isAuthPage && currentPath !== '/login') { // Redirecionar utilizadores não autenticados de páginas protegidas no carregamento inicial
         navigate('/login');
-      } else if (session && isAuthPage && currentPath !== '/dashboard') { // Redirecionar utilizadores autenticados de páginas de autenticação no carregamento inicial
+      } else if (session && isAuthPage) { // Redirecionar utilizadores autenticados de páginas de autenticação no carregamento inicial
         navigate('/dashboard');
       }
     });
