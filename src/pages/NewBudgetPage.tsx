@@ -91,6 +91,15 @@ const NewBudgetPage: React.FC = () => {
       <Form {...form}>
         <form id="new-budget-form" onSubmit={form.handleSubmit(onSubmit, (errors) => {
           console.error("Form validation errors:", errors);
+          // Adicionado: Log específico para cada erro de validação
+          Object.entries(errors).forEach(([field, error]) => {
+            console.error(`Field: ${field}, Message: ${error?.message || JSON.stringify(error)}`);
+            if (error?.type === 'array' && error.message) {
+              toast.error(`Erro na lista de ${field}: ${error.message}`);
+            } else if (error?.message) {
+              toast.error(`Erro no campo ${field}: ${error.message}`);
+            }
+          });
           if (Object.keys(errors).length > 0) {
             toast.error("Por favor, corrija os erros no formulário antes de guardar.");
           }
