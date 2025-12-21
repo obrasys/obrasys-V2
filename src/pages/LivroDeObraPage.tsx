@@ -21,6 +21,7 @@ import LivroDeObraRdosTable from "@/components/compliance/LivroDeObraRdosTable";
 import LivroDeObraAICompliance from "@/components/compliance/LivroDeObraAICompliance";
 import CreateLivroDeObraDialog from "@/components/compliance/CreateLivroDeObraDialog";
 import { Skeleton } from "@/components/ui/skeleton"; // Importar Skeleton
+import EmptyState from "@/components/EmptyState"; // Adicionada esta linha
 
 // Mock de RDOs para demonstração (ajustado para incluir project_id e datas variadas)
 // Estes RDOs serão filtrados pelo período e project_id do Livro de Obra selecionado.
