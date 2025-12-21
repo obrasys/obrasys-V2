@@ -171,6 +171,7 @@ export function useNewBudgetForm({
         console.log(`onSubmit: Attempting to insert budget chapter: ${chapter.nome}`);
         const chapterPayload = {
           budget_id: budgetData.id,
+          company_id: companyId, // Adicionado: company_id para o capítulo
           title: chapter.nome,
           code: chapter.codigo,
           sort_order: 0, // Placeholder, could be chapterIndex
