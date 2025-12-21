@@ -95,8 +95,11 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, toggleSidebar }) => {
   return (
     <aside
       className={cn(
-        "flex flex-col h-screen bg-sidebar text-sidebar-foreground border-r border-sidebar-border transition-all duration-300 ease-in-out",
+        "flex flex-col h-screen bg-sidebar text-sidebar-foreground border-r border-sidebar-border transition-all duration-300 ease-in-out fixed md:relative z-50", // Adicionado fixed e z-50 para mobile
         isCollapsed ? "w-16" : "w-64",
+        isCollapsed && "md:w-16", // Colapsado em mobile e desktop
+        !isCollapsed && "md:w-64", // Expandido em desktop
+        isCollapsed ? "-translate-x-full md:translate-x-0" : "translate-x-0" // Esconder/mostrar sidebar em mobile
       )}
     >
       {/* Header / Logo */}

@@ -11,7 +11,6 @@ import CreateEditArticleDialog from "@/components/work-items/create-edit-article
 import { Article, Category, Subcategory } from "@/schemas/article-schema";
 import { toast } from "sonner";
 import { v4 as uuidv4 } from "uuid";
-// Removed Link and ArrowLeft as navigation is handled by Sidebar
 
 const mockCategories: Category[] = [
   { id: uuidv4(), nome: "Materiais Básicos", descricao: "Materiais fundamentais para a construção" },
@@ -95,30 +94,25 @@ const WorkItemsPage = () => {
   });
 
   return (
-    <div className="space-y-6"> {/* Main content wrapper */}
-      {/* Header Section */}
-      <div className="flex flex-col md:flex-row items-center justify-between gap-4 pb-6">
-        {/* Removed "Voltar à Dashboard" button */}
-        <h1 className="text-3xl md:text-4xl font-extrabold text-center text-primary dark:text-primary-foreground flex-grow">
-          Módulo: Base de Artigos de Construção
+    <div className="space-y-6">
+      <div className="flex flex-col md:flex-row items-center justify-between gap-4 pb-4 md:pb-6">
+        <h1 className="text-2xl md:text-3xl font-extrabold text-center md:text-left text-primary dark:text-primary-foreground flex-grow">
+          Base de Artigos de Construção
         </h1>
-        {/* Removed placeholder div */}
       </div>
 
-      {/* Introduction Section */}
       <section className="text-center max-w-3xl mx-auto mb-8">
-        <p className="text-lg md:text-xl text-muted-foreground leading-relaxed">
+        <p className="text-base md:text-lg text-muted-foreground leading-relaxed">
           Gerencie o seu catálogo interno de serviços, materiais e equipas com precisão e eficiência.
         </p>
       </section>
 
       <Separator className="my-8 bg-gray-300 dark:bg-gray-700" />
 
-      {/* Main Content */}
       <Card className="bg-card text-card-foreground border border-border">
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between space-y-2 sm:space-y-0 pb-2">
           <CardTitle className="text-2xl font-semibold">Catálogo Central de Artigos</CardTitle>
-          <div className="flex space-x-2">
+          <div className="flex flex-wrap gap-2"> {/* Usar flex-wrap para botões */}
             <Button onClick={() => { setArticleToEdit(null); setIsDialogOpen(true); }} className="flex items-center gap-2">
               <PlusCircle className="h-4 w-4" /> Novo Artigo
             </Button>

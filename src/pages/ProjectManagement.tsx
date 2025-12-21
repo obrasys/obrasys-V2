@@ -4,32 +4,26 @@ import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
-import { CalendarDays, Users, ClipboardList, BookText, MessageSquareMore, FolderOpen, Box, Zap } from "lucide-react"; // Import icons
-// Removed Link and ArrowLeft as navigation is handled by Sidebar
+import { CalendarDays, Users, ClipboardList, BookText, MessageSquareMore, FolderOpen, Box, Zap } from "lucide-react";
 
 const ProjectManagement = () => {
   return (
-    <div className="space-y-6"> {/* Main content wrapper */}
-      {/* Header Section */}
-      <div className="flex flex-col md:flex-row items-center justify-between gap-4 pb-6">
-        {/* Removed "Voltar à Página Inicial" button */}
-        <h1 className="text-3xl md:text-4xl font-extrabold text-center text-primary dark:text-primary-foreground flex-grow">
-          Módulo 2: Gestão de Projetos e Planeamento Integrados
+    <div className="space-y-6">
+      <div className="flex flex-col md:flex-row items-center justify-between gap-4 pb-4 md:pb-6">
+        <h1 className="text-2xl md:text-3xl font-extrabold text-center md:text-left text-primary dark:text-primary-foreground flex-grow">
+          Gestão de Projetos e Planeamento Integrados
         </h1>
-        {/* Removed placeholder div */}
       </div>
 
-      {/* Introduction Section */}
       <section className="text-center max-w-3xl mx-auto mb-8">
-        <p className="text-lg md:text-xl text-muted-foreground leading-relaxed">
+        <p className="text-base md:text-lg text-muted-foreground leading-relaxed">
           Este módulo visa centralizar e otimizar todas as atividades de gestão de projetos, desde o planeamento inicial até a execução.
         </p>
       </section>
 
       <Separator className="my-8 bg-gray-300 dark:bg-gray-700" />
 
-      {/* Features Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-8">
         <Card className="hover:shadow-xl transition-shadow duration-300 ease-in-out bg-card text-card-foreground border border-border">
           <CardHeader className="flex flex-row items-center space-x-4 pb-2">
             <CalendarDays className="h-8 w-8 text-blue-500 dark:text-blue-400" />

@@ -240,14 +240,14 @@ const Budgeting = () => {
   return (
     <div className="space-y-6">
       {/* Header da Página */}
-      <div className="flex items-center justify-between pb-6 border-b border-border mb-6">
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between pb-4 md:pb-6 border-b border-border mb-4 md:mb-6">
         <div>
-          <h1 className="text-3xl font-bold text-primary">Orçamentação e Controlo de Custos</h1>
+          <h1 className="text-2xl md:text-3xl font-bold text-primary">Orçamentação e Controlo de Custos</h1>
           <p className="text-muted-foreground text-sm">
             Planeamento, acompanhamento e controlo financeiro da obra
           </p>
         </div>
-        <div className="flex space-x-2">
+        <div className="flex flex-wrap gap-2 mt-2 md:mt-0">
           <Button onClick={() => setIsClientDialogOpen(true)} variant="outline" className="flex items-center gap-2">
             <UserPlus className="h-4 w-4" /> Cadastrar Cliente
           </Button>
@@ -265,19 +265,17 @@ const Budgeting = () => {
 
       {/* Seleção de Orçamento e Ações */}
       <Card className="bg-card text-card-foreground border border-border">
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between space-y-2 sm:space-y-0 pb-2">
           <CardTitle className="text-xl font-semibold">Gerir Orçamentos</CardTitle>
-          <div className="flex items-center space-x-2">
+          <div className="flex flex-wrap gap-2">
             <Select
               value={currentBudget?.id || ""}
               onValueChange={(budgetId) => setSelectedBudget(budgets.find(b => b.id === budgetId) || null)}
             >
-              <SelectTrigger className="w-[200px]">
-                {currentBudget ? (
-                  <SelectValue>{currentBudget.nome}</SelectValue>
-                ) : (
-                  <SelectValue placeholder="Selecione um Orçamento" />
-                )}
+              <SelectTrigger className="w-full sm:w-[200px]">
+                <SelectValue placeholder="Selecione um Orçamento">
+                  {currentBudget ? currentBudget.nome : "Selecione um Orçamento"}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 {budgets.map((budget) => (
@@ -320,7 +318,7 @@ const Budgeting = () => {
       </Card>
 
       {/* KPIs Financeiros */}
-      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
+      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 md:gap-6 mb-8">
         <KPICard
           title="Orçamento Total (€)"
           value={formatCurrency(totalBudget)}
@@ -398,7 +396,7 @@ const Budgeting = () => {
       </Card>
 
       {/* Integrações Conceituais */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
         <Card className="bg-card text-card-foreground border border-border">
           <CardHeader>
             <CardTitle className="text-xl font-semibold">Ligação com Gestão de Obras</CardTitle>

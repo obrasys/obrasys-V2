@@ -5,9 +5,17 @@ import Sidebar from "@/components/Sidebar";
 import { Outlet } from "react-router-dom";
 import { Bell, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useIsMobile } from "@/hooks/use-mobile"; // Importar o hook
 
 const MainLayout = () => {
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = React.useState(false);
+  const isMobile = useIsMobile();
+  // A sidebar deve estar colapsada por padrão em dispositivos móveis
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = React.useState(isMobile);
+
+  // Atualizar o estado da sidebar quando o isMobile mudar
+  React.useEffect(() => {
+    setIsSidebarCollapsed(isMobile);
+  }, [isMobile]);
 
   const toggleSidebar = () => {
     setIsSidebarCollapsed(!isSidebarCollapsed);
@@ -20,17 +28,15 @@ const MainLayout = () => {
         toggleSidebar={toggleSidebar}
       />
       <main
-        className={`flex-1 p-6 transition-all duration-300 ease-in-out ${
-          isSidebarCollapsed ? "ml-0" : "ml-0"
+        className={`flex-1 p-4 md:p-6 transition-all duration-300 ease-in-out ${
+          isSidebarCollapsed ? "ml-0" : "ml-0" // A classe ml-0 é suficiente, pois a sidebar não empurra o conteúdo
         }`}
       >
-        {/* This header is a generic one for all pages within the layout.
-            Individual pages can override or extend this with their specific titles/actions. */}
-        <header className="flex items-center justify-between pb-6 border-b border-border mb-6">
+        <header className="flex items-center justify-between pb-4 md:pb-6 border-b border-border mb-4 md:mb-6">
           <div className="flex-grow">
-            {/* The actual page title will be rendered by the Outlet content */}
+            {/* O título da página será renderizado pelo conteúdo do Outlet */}
           </div>
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-2 md:space-x-4">
             <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
               <Bell className="h-5 w-5" />
             </Button>
@@ -42,7 +48,7 @@ const MainLayout = () => {
             </div>
           </div>
         </header>
-        <Outlet /> {/* This is where the child routes will render */}
+        <Outlet /> {/* Aqui é onde as rotas filhas serão renderizadas */}
       </main>
     </div>
   );

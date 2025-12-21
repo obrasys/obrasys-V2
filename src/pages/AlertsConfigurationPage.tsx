@@ -7,13 +7,13 @@ import { BellRing } from "lucide-react";
 const AlertsConfigurationPage = () => {
   return (
     <div className="space-y-6">
-      <div className="flex flex-col md:flex-row items-center justify-between gap-4 pb-6">
-        <h1 className="text-3xl md:text-4xl font-extrabold text-center text-primary dark:text-primary-foreground flex-grow">
+      <div className="flex flex-col md:flex-row items-center justify-between gap-4 pb-4 md:pb-6">
+        <h1 className="text-2xl md:text-3xl font-extrabold text-center md:text-left text-primary dark:text-primary-foreground flex-grow">
           Configurar Alertas Inteligentes
         </h1>
       </div>
       <section className="text-center max-w-3xl mx-auto mb-8">
-        <p className="text-lg md:text-xl text-muted-foreground leading-relaxed">
+        <p className="text-base md:text-lg text-muted-foreground leading-relaxed">
           Defina regras personalizadas para receber notificações proativas sobre eventos críticos nos seus projetos.
         </p>
       </section>

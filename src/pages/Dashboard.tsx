@@ -23,23 +23,20 @@ import {
 import { Link } from "react-router-dom";
 
 const Dashboard = () => {
-  // isSidebarCollapsed and toggleSidebar are now handled by MainLayout
-
   return (
     <div className="space-y-6"> {/* Main content wrapper for Dashboard */}
       {/* Header - now specific to Dashboard content */}
-      <div className="flex items-center justify-between pb-6 border-b border-border mb-6">
+      <div className="flex flex-col md:flex-row items-center justify-between pb-4 md:pb-6 border-b border-border mb-4 md:mb-6">
         <div>
-          <h1 className="text-3xl font-bold text-primary">
+          <h1 className="text-2xl md:text-3xl font-bold text-primary">
             Bem-vindo, Bezerra Cavalcanti
           </h1>
           <p className="text-muted-foreground text-sm">Administrador</p>
         </div>
-        {/* Bell, Settings, Avatar are now in MainLayout's header, removed from here to avoid duplication */}
       </div>
 
       {/* KPI Cards */}
-      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
+      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 md:gap-6 mb-8">
         <KPICard
           title="Obras Ativas"
           value="0"
@@ -78,9 +75,9 @@ const Dashboard = () => {
       </section>
 
       {/* Main Content Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
         {/* Left Column */}
-        <div className="lg:col-span-2 space-y-6">
+        <div className="lg:col-span-2 space-y-4 md:space-y-6">
           {/* Obras Ativas */}
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
@@ -123,7 +120,7 @@ const Dashboard = () => {
         </div>
 
         {/* Right Column */}
-        <div className="lg:col-span-1 space-y-6">
+        <div className="lg:col-span-1 space-y-4 md:space-y-6">
           {/* Ações Rápidas */}
           <Card>
             <CardHeader>

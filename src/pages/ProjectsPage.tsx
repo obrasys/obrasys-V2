@@ -10,7 +10,7 @@ import EmptyState from "@/components/EmptyState";
 import { DataTable } from "@/components/work-items/data-table";
 import { createProjectColumns } from "@/components/projects/columns";
 import CreateEditProjectDialog from "@/components/projects/create-edit-project-dialog";
-import ScheduleTab from "@/components/projects/schedule-tab"; // Import the new ScheduleTab
+import ScheduleTab from "@/components/projects/schedule-tab";
 import { Project } from "@/schemas/project-schema";
 import { v4 as uuidv4 } from "uuid";
 import { toast } from "sonner";
@@ -115,7 +115,7 @@ const ProjectsPage = () => {
   const columns = createProjectColumns({
     onView: handleViewProject,
     onEdit: handleEditProject,
-    onDelete: handleDeleteProject, // Pass delete handler
+    onDelete: handleDeleteProject,
   });
 
   // Calculate KPIs
@@ -134,30 +134,30 @@ const ProjectsPage = () => {
   if (selectedProject) {
     return (
       <div className="space-y-6">
-        <div className="flex items-center justify-between pb-6 border-b border-border mb-6">
-          <Button variant="ghost" onClick={() => setSelectedProject(null)} className="flex items-center gap-2 text-muted-foreground hover:text-foreground">
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between pb-4 md:pb-6 border-b border-border mb-4 md:mb-6">
+          <Button variant="ghost" onClick={() => setSelectedProject(null)} className="flex items-center gap-2 text-muted-foreground hover:text-foreground mb-2 md:mb-0">
             <ArrowLeft className="h-4 w-4" /> Voltar à Lista de Obras
           </Button>
-          <div>
-            <h1 className="text-3xl font-bold text-primary">{selectedProject.nome}</h1>
+          <div className="text-center md:text-right flex-grow">
+            <h1 className="text-2xl md:text-3xl font-bold text-primary">{selectedProject.nome}</h1>
             <p className="text-muted-foreground text-sm">Detalhes da Obra</p>
           </div>
-          <Button onClick={() => handleEditProject(selectedProject)} className="flex items-center gap-2">
+          <Button onClick={() => handleEditProject(selectedProject)} className="flex items-center gap-2 mt-2 md:mt-0">
             <PlusCircle className="h-4 w-4" /> Editar Obra
           </Button>
         </div>
 
         <Tabs defaultValue="overview" className="w-full">
-          <TabsList className="grid w-full grid-cols-4"> {/* Adjusted for 4 tabs */}
+          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4"> {/* Ajustado para 2 colunas em mobile, 4 em sm+ */}
             <TabsTrigger value="overview">Visão Geral</TabsTrigger>
             <TabsTrigger value="budget">Orçamento</TabsTrigger>
-            <TabsTrigger value="schedule" disabled={!selectedProject.budget_id}>Cronograma</TabsTrigger> {/* Disabled if no budget */}
+            <TabsTrigger value="schedule" disabled={!selectedProject.budget_id}>Cronograma</TabsTrigger>
             <TabsTrigger value="rdo">RDO</TabsTrigger>
           </TabsList>
           <TabsContent value="overview">
             <Card>
               <CardHeader><CardTitle>Visão Geral da Obra</CardTitle></CardHeader>
-              <CardContent className="grid grid-cols-2 gap-4">
+              <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div><span className="font-semibold">Cliente:</span> {selectedProject.cliente}</div>
                 <div><span className="font-semibold">Localização:</span> {selectedProject.localizacao}</div>
                 <div><span className="font-semibold">Estado:</span> {selectedProject.estado}</div>
@@ -231,14 +231,14 @@ const ProjectsPage = () => {
   return (
     <div className="space-y-6">
       {/* Header da Página */}
-      <div className="flex items-center justify-between pb-6 border-b border-border mb-6">
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between pb-4 md:pb-6 border-b border-border mb-4 md:mb-6">
         <div>
-          <h1 className="text-3xl font-bold text-primary">Gestão de Obras</h1>
+          <h1 className="text-2xl md:text-3xl font-bold text-primary">Gestão de Obras</h1>
           <p className="text-muted-foreground text-sm">
             Controlo total da execução, progresso e custos da obra
           </p>
         </div>
-        <div className="flex space-x-2">
+        <div className="flex flex-wrap gap-2 mt-2 md:mt-0">
           <Button onClick={() => { setSelectedProject(null); setIsProjectDialogOpen(true); }} className="flex items-center gap-2">
             <PlusCircle className="h-4 w-4" /> Nova Obra
           </Button>
@@ -252,7 +252,7 @@ const ProjectsPage = () => {
       </div>
 
       {/* KPIs Principais */}
-      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
+      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 md:gap-6 mb-8">
         <KPICard
           title="Obras Ativas"
           value={activeProjects.toString()}
@@ -332,7 +332,7 @@ const ProjectsPage = () => {
       </Card>
 
       {/* Integração Conceitual */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
         <Card className="bg-card text-card-foreground border border-border">
           <CardHeader>
             <CardTitle className="text-xl font-semibold">Ligação com Orçamento</CardTitle>

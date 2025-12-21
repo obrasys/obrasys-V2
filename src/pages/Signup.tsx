@@ -86,10 +86,10 @@ const Signup: React.FC = () => {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100 p-4">
-      <div className="w-full max-w-md p-8 space-y-6 bg-white dark:bg-gray-800 rounded-lg shadow-lg">
-        <div className="flex flex-col items-center mb-6">
-          <img src="/marca_nav_bar.png" alt="Obra Sys Logo" className="h-12 w-auto mb-4" />
-          <h1 className="text-3xl font-bold text-center text-primary dark:text-primary-foreground">
+      <div className="w-full max-w-md p-6 sm:p-8 space-y-4 sm:space-y-6 bg-white dark:bg-gray-800 rounded-lg shadow-lg">
+        <div className="flex flex-col items-center mb-4 sm:mb-6">
+          <img src="/marca_nav_bar.png" alt="Obra Sys Logo" className="h-10 sm:h-12 w-auto mb-2 sm:mb-4" />
+          <h1 className="text-2xl sm:text-3xl font-bold text-center text-primary dark:text-primary-foreground">
             Criar Conta
           </h1>
           <p className="text-center text-muted-foreground text-sm">
@@ -247,7 +247,7 @@ const Signup: React.FC = () => {
                     />
                   </FormControl>
                   <div className="space-y-1 leading-none">
-                    <FormLabel>
+                    <FormLabel className="text-sm">
                       Aceito os{" "}
                       <Link to="#" className="text-primary hover:underline">
                         Termos de Serviço

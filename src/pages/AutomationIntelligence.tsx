@@ -13,15 +13,15 @@ const AutomationIntelligence = () => {
   return (
     <div className="space-y-6">
       {/* Header Section */}
-      <div className="flex flex-col md:flex-row items-center justify-between gap-4 pb-6">
-        <h1 className="text-3xl md:text-4xl font-extrabold text-center text-primary dark:text-primary-foreground flex-grow">
+      <div className="flex flex-col md:flex-row items-center justify-between gap-4 pb-4 md:pb-6">
+        <h1 className="text-2xl md:text-3xl font-extrabold text-center md:text-left text-primary dark:text-primary-foreground flex-grow">
           Automação & Inteligência
         </h1>
       </div>
 
       {/* Introduction Section */}
       <section className="text-center max-w-3xl mx-auto mb-8">
-        <p className="text-lg md:text-xl text-muted-foreground leading-relaxed">
+        <p className="text-base md:text-lg text-muted-foreground leading-relaxed">
           Aqui centraliza ferramentas de IA e automação para otimizar a tomada de decisões
           e a eficiência operacional.
         </p>
@@ -30,7 +30,7 @@ const AutomationIntelligence = () => {
       <Separator className="my-8 bg-gray-300 dark:bg-gray-700" />
 
       {/* Features Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-8">
         {/* Alertas Inteligentes */}
         <Card className="hover:shadow-xl transition-shadow duration-300 bg-card text-card-foreground border border-border">
           <CardHeader className="flex flex-row items-center space-x-4 pb-2">
