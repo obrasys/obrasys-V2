@@ -130,7 +130,7 @@ const Dashboard = () => {
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-2 gap-4">
-                <Button className="h-20 flex flex-col items-center justify-center text-center bg-blue-600 hover:bg-blue-700 text-white">
+                <Button className="h-20 flex flex-col items-center justify-center text-center"> {/* Removido bg-blue-600 */}
                   <HardHat className="h-5 w-5 mb-1" />
                   <span className="text-sm">Nova Obra</span>
                 </Button>

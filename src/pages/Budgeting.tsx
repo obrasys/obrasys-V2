@@ -266,7 +266,7 @@ const Budgeting = () => {
       {/* Seleção de Orçamento e Ações */}
       <Card className="bg-card text-card-foreground border border-border">
         <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between space-y-2 sm:space-y-0 pb-2">
-          <CardTitle className="text-lg sm:text-xl font-semibold">Gerir Orçamentos</CardTitle> {/* Ajuste de tamanho de texto */}
+          <CardTitle className="text-xl font-semibold">Gerir Orçamentos</CardTitle>
           <div className="flex flex-wrap gap-2">
             <Select
               value={currentBudget?.id || ""}
@@ -291,7 +291,7 @@ const Budgeting = () => {
               </Button>
             )}
             {currentBudget && currentBudget.estado === "Aprovado" && !currentBudget.project_id && (
-              <Button onClick={() => setIsProjectDialogOpen(true)} className="flex items-center gap-2 bg-green-600 hover:bg-green-700">
+              <Button onClick={() => setIsProjectDialogOpen(true)} className="flex items-center gap-2"> {/* Removido bg-green-600 */}
                 <HardHat className="h-4 w-4" /> Criar Obra
               </Button>
             )}
@@ -359,7 +359,7 @@ const Budgeting = () => {
       {/* Lista de Orçamentos / Capítulos */}
       <Card className="bg-card text-card-foreground border border-border">
         <CardHeader>
-          <CardTitle className="text-xl sm:text-2xl font-semibold">Detalhe do Orçamento</CardTitle> {/* Ajuste de tamanho de texto */}
+          <CardTitle className="text-2xl font-semibold">Detalhe do Orçamento</CardTitle>
         </CardHeader>
         <CardContent>
           {budgetItems.length > 0 ? (
@@ -382,7 +382,7 @@ const Budgeting = () => {
       {/* Controlo de Custos (Gráfico) */}
       <Card className="bg-card text-card-foreground border border-border">
         <CardHeader>
-          <CardTitle className="text-xl sm:text-2xl font-semibold flex items-center gap-2"> {/* Ajuste de tamanho de texto */}
+          <CardTitle className="text-2xl font-semibold flex items-center gap-2">
             <LineChart className="h-5 w-5 text-primary" /> Controlo de Custos
           </CardTitle>
         </CardHeader>
@@ -399,7 +399,7 @@ const Budgeting = () => {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
         <Card className="bg-card text-card-foreground border border-border">
           <CardHeader>
-            <CardTitle className="text-lg sm:text-xl font-semibold">Ligação com Gestão de Obras</CardTitle> {/* Ajuste de tamanho de texto */}
+            <CardTitle className="text-xl font-semibold">Ligação com Gestão de Obras</CardTitle>
           </CardHeader>
           <CardContent>
             <EmptyState
@@ -411,7 +411,7 @@ const Budgeting = () => {
         </Card>
         <Card className="bg-card text-card-foreground border border-border">
           <CardHeader>
-            <CardTitle className="text-lg sm:text-xl font-semibold">Ligação com Cronograma</CardTitle> {/* Ajuste de tamanho de texto */}
+            <CardTitle className="text-xl font-semibold">Ligação com Cronograma</CardTitle>
           </CardHeader>
           <CardContent>
             <EmptyState
@@ -423,7 +423,7 @@ const Budgeting = () => {
         </Card>
         <Card className="bg-card text-card-foreground border border-border">
           <CardHeader>
-            <CardTitle className="text-lg sm:text-xl font-semibold">Ligação com RDO</CardTitle> {/* Ajuste de tamanho de texto */}
+            <CardTitle className="text-xl font-semibold">Ligação com RDO</CardTitle>
           </CardHeader>
           <CardContent>
             <EmptyState
