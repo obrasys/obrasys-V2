@@ -3,9 +3,9 @@
 import React from "react";
 import Sidebar from "@/components/Sidebar";
 import { Outlet, useNavigate } from "react-router-dom";
-import { Bell, Settings, Menu, LogOut, User, Building2 } from "lucide-react"; // Importar o ícone Menu e outros
+import { Bell, Settings, Menu, LogOut, User, Building2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useIsMobile } from "@/hooks/use-mobile"; // Importar o hook
+import { useIsMobile } from "@/hooks/use-mobile";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -18,14 +18,14 @@ import {
 import { useSession } from "@/components/SessionContextProvider";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import EditProfileModal from "@/components/profile/EditProfileModal"; // Importar o novo modal
+import EditProfileModal from "@/components/profile/EditProfileModal";
 
 const MainLayout = () => {
   const isMobile = useIsMobile();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = React.useState(isMobile);
   const { user, isLoading: isSessionLoading } = useSession();
   const [profile, setProfile] = React.useState<{ first_name: string | null; last_name: string | null; avatar_url: string | null; role: string | null; } | null>(null);
-  const [isEditProfileModalOpen, setIsEditProfileModalOpen] = React.useState(false); // Estado para o modal
+  const [isEditProfileModalOpen, setIsEditProfileModalOpen] = React.useState(false);
   const navigate = useNavigate();
 
   React.useEffect(() => {
@@ -45,9 +45,9 @@ const MainLayout = () => {
       .single();
 
     if (profileError) {
-      if (profileError.code === 'PGRST116') { // No rows found, profile doesn't exist
+      if (profileError.code === 'PGRST116') {
         console.warn("No profile found for user. Assuming trigger will handle or profile is being created.");
-        setProfile(null); // Set profile to null, UI should handle loading/empty state
+        setProfile(null);
       } else {
         console.error("Erro ao carregar perfil:", profileError);
         toast.error(`Erro ao carregar dados do perfil: ${profileError.message}`);
@@ -78,16 +78,16 @@ const MainLayout = () => {
     }
   };
 
-  const userInitials = profile?.first_name && profile?.last_name
+  const userInitials: string = profile?.first_name && profile?.last_name
     ? `${profile.first_name.charAt(0)}${profile.last_name.charAt(0)}`.toUpperCase()
-    : user?.email?.charAt(0).toUpperCase() || 'US'; // Fallback to email initial
+    : user?.email?.charAt(0).toUpperCase() || 'US';
 
   return (
     <div className="flex min-h-screen bg-background text-foreground">
       <Sidebar
         isCollapsed={isSidebarCollapsed}
         toggleSidebar={toggleSidebar}
-        profile={profile} {/* Passando o profile para o Sidebar */}
+        profile={profile}
       />
       <main
         className={`flex-1 p-4 md:p-6 transition-all duration-300 ease-in-out ${
@@ -135,7 +135,7 @@ const MainLayout = () => {
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => setIsEditProfileModalOpen(true)}> {/* Abre o modal */}
+                <DropdownMenuItem onClick={() => setIsEditProfileModalOpen(true)}>
                   <User className="mr-2 h-4 w-4" />
                   <span>Perfil</span>
                 </DropdownMenuItem>
@@ -152,13 +152,13 @@ const MainLayout = () => {
             </DropdownMenu>
           </div>
         </header>
-        <Outlet /> {/* Aqui é onde as rotas filhas serão renderizadas */}
+        <Outlet />
       </main>
 
       <EditProfileModal
         isOpen={isEditProfileModalOpen}
         onClose={() => setIsEditProfileModalOpen(false)}
-        onProfileUpdated={fetchProfile} // Passa a função para atualizar o perfil no MainLayout
+        onProfileUpdated={fetchProfile}
       />
     </div>
   );
