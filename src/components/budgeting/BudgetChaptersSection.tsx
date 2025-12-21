@@ -1,3 +1,5 @@
+"use client";
+
 import React from "react";
 import { UseFormReturn, useFieldArray } from "react-hook-form";
 import { PlusCircle, ClipboardList } from "lucide-react";
@@ -7,8 +9,8 @@ import { Accordion } from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
 import EmptyState from "@/components/EmptyState";
 
-import { NewBudgetFormValues, BudgetItem, BudgetChapterForm } from "@/schemas/budget-schema";
-import BudgetChapterForm from "./BudgetChapterForm"; // <-- Importação correta
+import { NewBudgetFormValues, BudgetItem } from "@/schemas/budget-schema"; // Removido BudgetChapterForm daqui
+import BudgetChapterForm from "./BudgetChapterForm"; // <-- Importação correta do componente
 import { v4 as uuidv4 } from "uuid";
 
 interface BudgetChaptersSectionProps {
@@ -38,6 +40,7 @@ const BudgetChaptersSection: React.FC<BudgetChaptersSectionProps> = ({
         {
           id: uuidv4(),
           capitulo_id: "", // Will be set dynamically
+          capitulo: `Capítulo ${newChapterCode}`, // Adicionado para corresponder ao esquema
           servico: "Novo Serviço",
           quantidade: 1,
           unidade: "un",
@@ -53,9 +56,11 @@ const BudgetChaptersSection: React.FC<BudgetChaptersSectionProps> = ({
 
   const handleAddService = (chapterIndex: number) => {
     const chapterId = chapterFields[chapterIndex].id;
+    const chapterName = form.getValues(`chapters.${chapterIndex}.nome`); // Obter o nome do capítulo
     const newService: BudgetItem = {
       id: uuidv4(),
       capitulo_id: chapterId,
+      capitulo: chapterName, // Usar o nome do capítulo
       servico: "Novo Serviço",
       quantidade: 1,
       unidade: "un",
@@ -106,7 +111,7 @@ const BudgetChaptersSection: React.FC<BudgetChaptersSectionProps> = ({
         )}
         <Accordion type="multiple" className="w-full">
           {chapterFields.map((chapter, chapterIndex) => (
-            <BudgetChapterForm // <-- Uso correto do componente importado
+            <BudgetChapterForm
               key={chapter.id}
               form={form}
               isApproved={isApproved}

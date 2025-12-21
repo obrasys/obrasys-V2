@@ -16,6 +16,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { FormControl } from "@/components/ui/form"; // Adicionado: Importação de FormControl
 
 interface ScheduleTabProps {
   projectId: string;
@@ -91,7 +92,7 @@ const ScheduleTab: React.FC<ScheduleTabProps> = ({ projectId, budgetId, onSchedu
       }
 
       const { error } = await supabase
-        .from("schedule_tasks")
+        .from("schedule_phases") // Corrigido para schedule_phases
         .update(updatedPhase)
         .eq("id", editedPhase.id);
 
@@ -206,22 +207,22 @@ const ScheduleTab: React.FC<ScheduleTabProps> = ({ projectId, budgetId, onSchedu
                         />
                       </PopoverContent>
                     </Popover>
-                    <Select
-                      value={editedPhase?.status || "Planeado"}
-                      onValueChange={(value) => setEditedPhase({ ...editedPhase, status: value as SchedulePhase["status"] })}
-                    >
-                      <FormControl>
+                    <FormControl> {/* Adicionado FormControl */}
+                      <Select
+                        value={editedPhase?.status || "Planeado"}
+                        onValueChange={(value) => setEditedPhase({ ...editedPhase, status: value as SchedulePhase["status"] })}
+                      >
                         <SelectTrigger className="w-full">
                           <SelectValue placeholder="Estado" />
                         </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="Planeado">Planeado</SelectItem>
-                        <SelectItem value="Em execução">Em execução</SelectItem>
-                        <SelectItem value="Concluído">Concluído</SelectItem>
-                        <SelectItem value="Atrasado">Atrasado</SelectItem>
-                      </SelectContent>
-                    </Select>
+                        <SelectContent>
+                          <SelectItem value="Planeado">Planeado</SelectItem>
+                          <SelectItem value="Em execução">Em execução</SelectItem>
+                          <SelectItem value="Concluído">Concluído</SelectItem>
+                          <SelectItem value="Atrasado">Atrasado</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </FormControl> {/* Fechado FormControl */}
                     <Input
                       type="number"
                       value={editedPhase?.progress || 0}

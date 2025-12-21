@@ -5,7 +5,7 @@ export const projectSchema = z.object({
   nome: z.string().min(1, "O nome da obra é obrigatório."),
   client_id: z.string().uuid("Selecione um cliente válido.").optional().nullable(), // Alterado de 'cliente' para 'client_id'
   localizacao: z.string().min(1, "A localização é obrigatória."),
-  estado: z.enum(["Em execução", "Concluída", "Suspensa", "Planeada"], {
+  estado: z.enum(["Em execução", "Concluída", "Suspensa", "Planeada", "Atrasada"], { // Adicionado "Atrasada"
     required_error: "O estado é obrigatório.",
   }),
   progresso: z.number().min(0).max(100),

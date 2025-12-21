@@ -4,6 +4,7 @@ import { z } from "zod";
 export const budgetItemSchema = z.object({
   id: z.string().uuid().optional(), // Optional for new items
   capitulo_id: z.string().uuid().optional(), // Link to the chapter (internal form ID)
+  capitulo: z.string().min(1, "O capítulo é obrigatório."), // Adicionado: Campo para o nome do capítulo
   servico: z.string().min(1, "O serviço é obrigatório."),
   quantidade: z.coerce.number().min(0.01, "A quantidade deve ser um valor positivo."),
   unidade: z.string().min(1, "A unidade é obrigatória."),

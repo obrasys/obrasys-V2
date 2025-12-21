@@ -1,3 +1,5 @@
+"use client";
+
 import React from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -54,6 +56,7 @@ const NewBudgetPage: React.FC = () => {
             {
               id: uuidv4(),
               capitulo_id: "", // Will be set dynamically
+              capitulo: "Fundações", // Adicionado para corresponder ao esquema
               servico: "Escavação manual em vala",
               quantidade: 50,
               unidade: "m³",
@@ -145,7 +148,7 @@ const NewBudgetPage: React.FC = () => {
         chapter.items.map((item) => ({
           company_id: companyId,
           budget_id: budgetData.id,
-          capitulo: chapter.nome, // Use chapter name as capitulo
+          capitulo: item.capitulo, // Usar item.capitulo que agora existe no esquema
           servico: item.servico,
           quantidade: item.quantidade,
           unidade: item.unidade,

@@ -48,7 +48,7 @@ const mockBudgets: Budget[] = [
     budget_items: [
       {
         id: uuidv4(),
-        capitulo: "01. Fundações",
+        capitulo: "01. Fundações", // Adicionado
         servico: "Escavação manual em vala",
         quantidade: 50,
         unidade: "m³",
@@ -60,7 +60,7 @@ const mockBudgets: Budget[] = [
       },
       {
         id: uuidv4(),
-        capitulo: "01. Fundações",
+        capitulo: "01. Fundações", // Adicionado
         servico: "Betão C20/25 para sapatas",
         quantidade: 20,
         unidade: "m³",
@@ -72,7 +72,7 @@ const mockBudgets: Budget[] = [
       },
       {
         id: uuidv4(),
-        capitulo: "02. Estrutura",
+        capitulo: "02. Estrutura", // Adicionado
         servico: "Armadura em aço A500 NR",
         quantidade: 1500,
         unidade: "kg",
@@ -84,7 +84,7 @@ const mockBudgets: Budget[] = [
       },
       {
         id: uuidv4(),
-        capitulo: "03. Alvenarias",
+        capitulo: "03. Alvenarias", // Adicionado
         servico: "Alvenaria de tijolo cerâmico 11cm",
         quantidade: 200,
         unidade: "m²",
@@ -96,7 +96,7 @@ const mockBudgets: Budget[] = [
       },
       {
         id: uuidv4(),
-        capitulo: "04. Cobertura",
+        capitulo: "04. Cobertura", // Adicionado
         servico: "Telha cerâmica lusa",
         quantidade: 100,
         unidade: "m²",
@@ -118,7 +118,7 @@ const mockBudgets: Budget[] = [
     budget_items: [
       {
         id: uuidv4(),
-        capitulo: "01. Demolições",
+        capitulo: "01. Demolições", // Adicionado
         servico: "Remoção de paredes divisórias",
         quantidade: 30,
         unidade: "m²",
@@ -130,7 +130,7 @@ const mockBudgets: Budget[] = [
       },
       {
         id: uuidv4(),
-        capitulo: "02. Acabamentos",
+        capitulo: "02. Acabamentos", // Adicionado
         servico: "Pintura de paredes e tetos",
         quantidade: 200,
         unidade: "m²",
