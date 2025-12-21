@@ -94,12 +94,20 @@ const NewBudgetPage: React.FC = () => {
     currentChapters.forEach((chapter, chapterIndex) => {
       chapter.items.forEach((item, itemIndex) => {
         const plannedCost = item.quantidade * item.preco_unitario;
-        form.setValue(`chapters.${chapterIndex}.items.${itemIndex}.custo_planeado`, plannedCost);
+        // Only update if the value is different to avoid unnecessary re-renders
+        if (form.getValues(`chapters.${chapterIndex}.items.${itemIndex}.custo_planeado`) !== plannedCost) {
+          form.setValue(`chapters.${chapterIndex}.items.${itemIndex}.custo_planeado`, plannedCost);
+        }
         totalPlanned += plannedCost;
       });
     });
     return totalPlanned;
   }, [form]);
+
+  // Initial calculation on mount
+  React.useEffect(() => {
+    calculateCosts();
+  }, [calculateCosts]);
 
   // Watch for changes in quantities and prices to recalculate costs
   React.useEffect(() => {
@@ -108,7 +116,6 @@ const NewBudgetPage: React.FC = () => {
         calculateCosts();
       }
     });
-    calculateCosts(); // Initial calculation
     return () => subscription.unsubscribe();
   }, [form, calculateCosts]);
 
