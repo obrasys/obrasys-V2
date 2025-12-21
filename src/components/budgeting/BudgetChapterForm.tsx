@@ -1,5 +1,3 @@
-"use client";
-
 import React from "react";
 import { UseFormReturn } from "react-hook-form";
 import { ChevronDown, ChevronUp, ClipboardList, PlusCircle, Trash2 } from "lucide-react";
