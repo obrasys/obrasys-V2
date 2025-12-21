@@ -4,7 +4,7 @@ import React from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { v4 as uuidv4 } from "uuid";
-import { format } from "date-fns";
+import { format, parseISO } from "date-fns";
 import { pt } from "date-fns/locale";
 
 import { toast } from "sonner";
@@ -20,20 +20,28 @@ import LivroDeObraDetailsCard from "@/components/compliance/LivroDeObraDetailsCa
 import LivroDeObraRdosTable from "@/components/compliance/LivroDeObraRdosTable";
 import LivroDeObraAICompliance from "@/components/compliance/LivroDeObraAICompliance";
 import CreateLivroDeObraDialog from "@/components/compliance/CreateLivroDeObraDialog";
+import { Skeleton } from "@/components/ui/skeleton"; // Importar Skeleton
 
-// Mock de RDOs para demonstração
-const mockRdos: LivroObraRdo[] = [
-  { id: uuidv4(), livro_obra_id: "", rdo_id: uuidv4(), data: "2024-07-01", resumo: "Início da escavação para fundações. Equipa de 5 trabalhadores.", custos_diarios: 350.00 },
-  { id: uuidv4(), livro_obra_id: "", rdo_id: uuidv4(), data: "2024-07-02", resumo: "Continuação da escavação. Entrega de 10m³ de betão.", custos_diarios: 800.00 },
-  { id: uuidv4(), livro_obra_id: "", rdo_id: uuidv4(), data: "2024-07-03", resumo: "Montagem de cofragem para sapatas. 3 trabalhadores.", custos_diarios: 210.00 },
-  { id: uuidv4(), livro_obra_id: "", rdo_id: uuidv4(), data: "2024-07-04", resumo: "Vazamento de betão nas sapatas. 4 trabalhadores.", custos_diarios: 600.00 },
-  { id: uuidv4(), livro_obra_id: "", rdo_id: uuidv4(), data: "2024-07-05", resumo: "Cura do betão e desmame de cofragem. 2 trabalhadores.", custos_diarios: 140.00 },
+// Mock de RDOs para demonstração (ajustado para incluir project_id e datas variadas)
+// Estes RDOs serão filtrados pelo período e project_id do Livro de Obra selecionado.
+const allMockRdos: LivroObraRdo[] = [
+  { id: uuidv4(), livro_obra_id: "placeholder-id-1", rdo_id: uuidv4(), data: "2024-07-01", resumo: "Início da escavação para fundações. Equipa de 5 trabalhadores.", custos_diarios: 350.00 },
+  { id: uuidv4(), livro_obra_id: "placeholder-id-1", rdo_id: uuidv4(), data: "2024-07-02", resumo: "Continuação da escavação. Entrega de 10m³ de betão.", custos_diarios: 800.00 },
+  { id: uuidv4(), livro_obra_id: "placeholder-id-1", rdo_id: uuidv4(), data: "2024-07-03", resumo: "Montagem de cofragem para sapatas. 3 trabalhadores.", custos_diarios: 210.00 },
+  { id: uuidv4(), livro_obra_id: "placeholder-id-1", rdo_id: uuidv4(), data: "2024-07-04", resumo: "Vazamento de betão nas sapatas. 4 trabalhadores.", custos_diarios: 600.00 },
+  { id: uuidv4(), livro_obra_id: "placeholder-id-1", rdo_id: uuidv4(), data: "2024-07-05", resumo: "Cura do betão e desmame de cofragem. 2 trabalhadores.", custos_diarios: 140.00 },
+  { id: uuidv4(), livro_obra_id: "placeholder-id-2", rdo_id: uuidv4(), data: "2024-07-10", resumo: "Início da alvenaria do piso 1.", custos_diarios: 400.00 },
+  { id: uuidv4(), livro_obra_id: "placeholder-id-2", rdo_id: uuidv4(), data: "2024-07-11", resumo: "Entrega de tijolos e argamassa.", custos_diarios: 700.00 },
+  { id: uuidv4(), livro_obra_id: "placeholder-id-2", rdo_id: uuidv4(), data: "2024-07-12", resumo: "Continuação da alvenaria.", custos_diarios: 450.00 },
+  { id: uuidv4(), livro_obra_id: "placeholder-id-3", rdo_id: uuidv4(), data: "2024-08-01", resumo: "Instalação de sistemas elétricos.", custos_diarios: 900.00 },
+  { id: uuidv4(), livro_obra_id: "placeholder-id-3", rdo_id: uuidv4(), data: "2024-08-02", resumo: "Testes de iluminação.", custos_diarios: 200.00 },
 ];
 
 const LivroDeObraPage = () => {
   const [projects, setProjects] = React.useState<Project[]>([]);
   const [livrosObra, setLivrosObra] = React.useState<LivroObra[]>([]);
   const [selectedLivroObra, setSelectedLivroObra] = React.useState<LivroObra | null>(null);
+  const [livrosObraRdos, setLivrosObraRdos] = React.useState<LivroObraRdo[]>([]); // Estado para RDOs filtrados
   const [isLoading, setIsLoading] = React.useState(true);
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
 
@@ -71,13 +79,46 @@ const LivroDeObraPage = () => {
       console.error("Erro ao carregar livros de obra:", livrosObraError);
     } else {
       setLivrosObra(livrosObraData || []);
+      // Se houver livros, seleciona o primeiro por padrão para melhor UX
+      if (livrosObraData && livrosObraData.length > 0) {
+        setSelectedLivroObra(livrosObraData[0]);
+      }
     }
     setIsLoading(false);
   }, []);
 
+  // Função para filtrar RDOs com base no Livro de Obra selecionado
+  const filterRdosForSelectedLivro = React.useCallback(() => {
+    if (!selectedLivroObra) {
+      setLivrosObraRdos([]);
+      return;
+    }
+
+    const startDate = parseISO(selectedLivroObra.periodo_inicio);
+    const endDate = parseISO(selectedLivroObra.periodo_fim);
+
+    // Para fins de demonstração, filtramos os mockRdos pelo período e um ID de livro
+    // Numa aplicação real, os RDOs seriam provavelmente buscados do DB com base no livro_obra_id
+    const filtered = allMockRdos.filter(rdo => {
+      const rdoDate = parseISO(rdo.data);
+      // Assumimos que os mockRdos têm um 'livro_obra_id' que pode ser mapeado
+      // ou que filtramos apenas por data e project_id (se RDOs tivessem project_id)
+      return (
+        rdoDate >= startDate &&
+        rdoDate <= endDate &&
+        rdo.livro_obra_id === selectedLivroObra.id // Simula a ligação
+      );
+    });
+    setLivrosObraRdos(filtered);
+  }, [selectedLivroObra]);
+
   React.useEffect(() => {
     fetchProjectsAndLivrosObra();
   }, [fetchProjectsAndLivrosObra]);
+
+  React.useEffect(() => {
+    filterRdosForSelectedLivro(); // Chama o filtro sempre que o livro selecionado muda
+  }, [selectedLivroObra, filterRdosForSelectedLivro]);
 
   const handleCreateLivroObra = async (data: LivroObra) => {
     try {
@@ -92,6 +133,7 @@ const LivroDeObraPage = () => {
         .insert({
           ...data,
           company_id: companyId,
+          id: uuidv4(), // Garante que um ID é gerado para o mock de RDOs
         })
         .select()
         .single();
@@ -102,7 +144,7 @@ const LivroDeObraPage = () => {
       form.reset();
       setIsDialogOpen(false);
       fetchProjectsAndLivrosObra();
-      setSelectedLivroObra(newLivro); // Select the newly created book
+      setSelectedLivroObra(newLivro); // Seleciona o livro recém-criado
     } catch (error: any) {
       toast.error(`Erro ao criar Livro de Obra: ${error.message}`);
       console.error("Erro ao criar Livro de Obra:", error);
@@ -128,18 +170,23 @@ const LivroDeObraPage = () => {
           <meta charset="UTF-8">
           <meta name="viewport" content="width=device-width, initial-scale=1.0">
           <title>Livro de Obra Digital - ${project?.nome || 'N/A'}</title>
+          <link href="https://fonts.googleapis.com/css2?family=Red+Hat+Display:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
           <style>
-              body { font-family: 'Red Hat Display', sans-serif; margin: 40px; color: #333; }
-              h1, h2 { color: #00679d; }
+              body { font-family: 'Red Hat Display', sans-serif; margin: 40px; color: #333; line-height: 1.6; }
+              h1 { color: #00679d; text-align: center; margin-bottom: 30px; }
+              h2 { color: #00679d; border-bottom: 1px solid #eee; padding-bottom: 10px; margin-top: 40px; margin-bottom: 20px; }
               table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-              th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
-              th { background-color: #f2f2f2; }
-              .header-info p { margin: 5px 0; }
-              .summary { margin-top: 30px; }
-              .declaration { margin-top: 30px; font-style: italic; }
-              .signatures { margin-top: 50px; display: flex; justify-content: space-around; }
-              .signature-line { border-bottom: 1px solid #333; width: 250px; padding-bottom: 5px; }
-              .footer { margin-top: 50px; font-size: 0.8em; text-align: center; color: #777; }
+              th, td { border: 1px solid #ccc; padding: 10px; text-align: left; }
+              th { background-color: #f2f2f2; font-weight: 600; }
+              .header-info { margin-bottom: 30px; background-color: #f9f9f9; padding: 15px; border-radius: 8px; }
+              .header-info p { margin: 8px 0; font-size: 0.95em; }
+              .summary { margin-top: 30px; padding: 15px; background-color: #e6f7ff; border-left: 5px solid #00679d; border-radius: 8px; }
+              .summary p { margin: 5px 0; font-weight: 500; }
+              .declaration { margin-top: 30px; font-style: italic; text-align: center; color: #555; }
+              .signatures { margin-top: 60px; display: flex; justify-content: space-around; text-align: center; }
+              .signature-block { width: 45%; }
+              .signature-line { border-bottom: 1px solid #333; width: 80%; margin: 0 auto 10px auto; padding-bottom: 5px; }
+              .footer { margin-top: 50px; font-size: 0.75em; text-align: center; color: #777; border-top: 1px solid #eee; padding-top: 20px; }
               @media print {
                   body { margin: 0; }
                   .no-print { display: none; }
@@ -158,9 +205,12 @@ const LivroDeObraPage = () => {
               <p><strong>Cliente:</strong> ${project?.cliente || 'N/A'}</p>
               <p><strong>Empresa Responsável:</strong> Obra Sys</p>
               <p><strong>Período:</strong> ${formatDate(livro.periodo_inicio)} a ${formatDate(livro.periodo_fim)}</p>
+              <p><strong>Estado do Livro:</strong> <span style="text-transform: capitalize;">${livro.estado.replace('_', ' ')}</span></p>
+              ${livro.observacoes ? `<p><strong>Observações:</strong> ${livro.observacoes}</p>` : ''}
           </div>
 
-          <h2>Tabela de Registos Diários</h2>
+          <h2>Registos Diários de Obra (RDOs)</h2>
+          ${rdos.length > 0 ? `
           <table>
               <thead>
                   <tr>
@@ -173,6 +223,7 @@ const LivroDeObraPage = () => {
                   ${rdoRows}
               </tbody>
           </table>
+          ` : `<p style="text-align: center; margin-top: 20px; color: #777;">Nenhum RDO disponível para este período.</p>`}
 
           <div class="summary">
               <p><strong>Total de dias registados:</strong> ${totalDias}</p>
@@ -185,12 +236,12 @@ const LivroDeObraPage = () => {
           </p>
 
           <div class="signatures">
-              <div>
+              <div class="signature-block">
                   <p class="signature-line"></p>
                   <p>Responsável Técnico</p>
                   <p>Data: ___/___/____</p>
               </div>
-              <div>
+              <div class="signature-block">
                   <p class="signature-line"></p>
                   <p>Fiscal / Cliente</p>
                   <p>Data: ___/___/____</p>
@@ -212,8 +263,8 @@ const LivroDeObraPage = () => {
       return;
     }
     const project = projects.find(p => p.id === selectedLivroObra.project_id);
-    // Para demonstração, usamos mockRdos. Numa implementação real, seriam os rdos associados ao livro.
-    const content = generatePdfContent(selectedLivroObra, project, mockRdos);
+    // Usa os RDOs filtrados para o PDF
+    const content = generatePdfContent(selectedLivroObra, project, livrosObraRdos);
     const printWindow = window.open('', '_blank');
     if (printWindow) {
       printWindow.document.write(content);
@@ -226,8 +277,13 @@ const LivroDeObraPage = () => {
 
   if (isLoading) {
     return (
-      <div className="flex justify-center items-center h-64">
-        <p>A carregar dados...</p>
+      <div className="space-y-6">
+        <LivroDeObraHeader onNewLivroClick={() => {}} /> {/* Passa função vazia para estado de carregamento */}
+        <div className="p-4 space-y-4">
+          <Skeleton className="h-48 w-full" />
+          <Skeleton className="h-32 w-full" />
+          <Skeleton className="h-32 w-full" />
+        </div>
       </div>
     );
   }
@@ -246,7 +302,7 @@ const LivroDeObraPage = () => {
         onNewLivroClick={() => setIsDialogOpen(true)}
       />
 
-      {selectedLivroObra && (
+      {selectedLivroObra ? (
         <>
           <LivroDeObraDetailsCard
             selectedLivroObra={selectedLivroObra}
@@ -254,10 +310,20 @@ const LivroDeObraPage = () => {
             onGeneratePdf={handleGeneratePdf}
           />
 
-          <LivroDeObraRdosTable rdos={mockRdos} />
+          <LivroDeObraRdosTable rdos={livrosObraRdos} /> {/* Usa RDOs filtrados */}
 
           <LivroDeObraAICompliance />
         </>
+      ) : (
+        <div className="mt-8">
+          <EmptyState
+            icon={FileText}
+            title="Selecione um Livro de Obra"
+            description="Escolha um Livro de Obra da lista acima para ver os seus detalhes, RDOs e análise de conformidade, ou crie um novo."
+            buttonText="Criar Novo Livro de Obra"
+            onButtonClick={() => setIsDialogOpen(true)}
+          />
+        </div>
       )}
 
       <CreateLivroDeObraDialog
