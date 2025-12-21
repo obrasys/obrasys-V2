@@ -156,6 +156,7 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onClose, on
   };
 
   const onSubmit = async (data: PersonalProfileFormValues) => {
+    console.log("[EditProfileModal] >>> onSubmit function called <<<"); // ADDED THIS LOG
     if (!user) {
       toast.error("Utilizador não autenticado.");
       return;
