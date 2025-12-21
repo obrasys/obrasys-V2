@@ -1,5 +1,3 @@
-"use client";
-
 import React from "react";
 import { UseFormReturn, useFieldArray } from "react-hook-form";
 import { PlusCircle, ClipboardList } from "lucide-react";
