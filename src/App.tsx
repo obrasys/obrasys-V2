@@ -6,7 +6,8 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import Budgeting from "./pages/Budgeting";
-import ProjectManagement from "./pages/ProjectManagement"; // Import the new ProjectManagement page
+import ProjectManagement from "./pages/ProjectManagement";
+import SupplyChain from "./pages/SupplyChain"; // Import the new SupplyChain page
 
 const queryClient = new QueryClient();
 
@@ -19,7 +20,8 @@ const App = () => (
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/budgeting" element={<Budgeting />} />
-          <Route path="/project-management" element={<ProjectManagement />} /> {/* New route for Project Management */}
+          <Route path="/project-management" element={<ProjectManagement />} />
+          <Route path="/supply-chain" element={<SupplyChain />} /> {/* New route for Supply Chain */}
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
