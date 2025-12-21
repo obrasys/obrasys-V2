@@ -1,6 +1,6 @@
 import React from "react";
 import { UseFormReturn } from "react-hook-form";
-import { Trash2, Copy, Search, XCircle } from "lucide-react";
+import { Trash2, Copy, Search, XCircle, AlertTriangle, CheckCircle, Play } from "lucide-react";
 
 import { TableCell, TableRow } from "@/components/ui/table";
 import {
@@ -12,20 +12,27 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"; // Importar Tooltip components
+import { cn } from "@/lib/utils"; // Importar cn para classes condicionais
 
 import { NewBudgetFormValues, BudgetItem } from "@/schemas/budget-schema";
-import { Article } from "@/schemas/article-schema"; // Import Article type
+import { Article } from "@/schemas/article-schema";
 import { formatCurrency } from "@/utils/formatters";
-import ArticleSelectDialog from "./ArticleSelectDialog"; // Import the new dialog
+import ArticleSelectDialog from "./ArticleSelectDialog";
 
 interface BudgetServiceRowProps {
   form: UseFormReturn<NewBudgetFormValues>;
   isApproved: boolean;
   chapterIndex: number;
   itemIndex: number;
-  articles: Article[]; // Pass articles down
+  articles: Article[];
   handleRemoveService: (chapterIndex: number, itemIndex: number) => void;
   handleDuplicateService: (chapterIndex: number, itemIndex: number) => void;
+  focusRef: React.RefObject<HTMLInputElement>; // NOVO: Ref para focar o input
 }
 
 const BudgetServiceRow: React.FC<BudgetServiceRowProps> = ({
@@ -36,6 +43,7 @@ const BudgetServiceRow: React.FC<BudgetServiceRowProps> = ({
   articles,
   handleRemoveService,
   handleDuplicateService,
+  focusRef, // NOVO: Receber ref
 }) => {
   const item = form.watch(`chapters.${chapterIndex}.items.${itemIndex}`);
   const [isArticleSelectDialogOpen, setIsArticleSelectDialogOpen] = React.useState(false);
@@ -45,8 +53,7 @@ const BudgetServiceRow: React.FC<BudgetServiceRowProps> = ({
     form.setValue(`chapters.${chapterIndex}.items.${itemIndex}.unidade`, selectedArticle.unidade);
     form.setValue(`chapters.${chapterIndex}.items.${itemIndex}.preco_unitario`, selectedArticle.preco_unitario);
     form.setValue(`chapters.${chapterIndex}.items.${itemIndex}.article_id`, selectedArticle.id);
-    // Trigger recalculation of costs
-    form.trigger(`chapters.${chapterIndex}.items.${itemIndex}.quantidade`);
+    form.trigger(`chapters.${chapterIndex}.items.${itemIndex}.quantidade`); // Trigger recalculation
   };
 
   const handleClearArticle = () => {
@@ -54,15 +61,66 @@ const BudgetServiceRow: React.FC<BudgetServiceRowProps> = ({
     form.setValue(`chapters.${chapterIndex}.items.${itemIndex}.servico`, "");
     form.setValue(`chapters.${chapterIndex}.items.${itemIndex}.unidade`, "");
     form.setValue(`chapters.${chapterIndex}.items.${itemIndex}.preco_unitario`, 0);
-    // Trigger recalculation of costs
-    form.trigger(`chapters.${chapterIndex}.items.${itemIndex}.quantidade`);
+    form.trigger(`chapters.${chapterIndex}.items.${itemIndex}.quantidade`); // Trigger recalculation
   };
 
   const isArticleSelected = !!item.article_id;
+  const isQuantityInvalid = item.quantidade === 0 || isNaN(item.quantidade);
+  const isPriceInvalid = item.preco_unitario === 0 || isNaN(item.preco_unitario);
+
+  const getStatusBadge = (status: BudgetItem["estado"]) => {
+    let variant: "default" | "secondary" | "destructive" | "outline" = "secondary";
+    let colorClass = "";
+    let tooltipText = "";
+    let icon = null;
+
+    switch (status) {
+      case "Planeado":
+        variant = "outline";
+        colorClass = "text-gray-600 dark:text-gray-400 border-gray-300 dark:border-gray-700";
+        tooltipText = "Ainda não executado";
+        break;
+      case "Em andamento":
+        variant = "default";
+        colorClass = "bg-blue-500 hover:bg-blue-600 text-white";
+        tooltipText = "Trabalho em progresso";
+        icon = <Play className="h-3 w-3 mr-1" />;
+        break;
+      case "Concluído":
+        variant = "default";
+        colorClass = "bg-green-500 hover:bg-green-600 text-white";
+        tooltipText = "Serviço concluído";
+        icon = <CheckCircle className="h-3 w-3 mr-1" />;
+        break;
+      case "Atrasado":
+        variant = "destructive";
+        colorClass = "bg-orange-500 hover:bg-orange-600 text-white"; // Alterado para laranja
+        tooltipText = "Serviço com atraso";
+        icon = <AlertTriangle className="h-3 w-3 mr-1" />;
+        break;
+    }
+
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Badge className={cn("w-fit", colorClass)} variant={variant}>
+            {icon} {status}
+          </Badge>
+        </TooltipTrigger>
+        <TooltipContent>{tooltipText}</TooltipContent>
+      </Tooltip>
+    );
+  };
+
+  const handleRemoveClick = () => {
+    if (window.confirm("Tem certeza que deseja remover este serviço?")) {
+      handleRemoveService(chapterIndex, itemIndex);
+    }
+  };
 
   return (
     <TableRow>
-      <TableCell className="relative">
+      <TableCell className="relative py-2">
         <FormField
           control={form.control}
           name={`chapters.${chapterIndex}.items.${itemIndex}.servico`}
@@ -70,16 +128,32 @@ const BudgetServiceRow: React.FC<BudgetServiceRowProps> = ({
             <FormItem className="mb-0">
               <FormControl>
                 <div className="flex items-center gap-1">
-                  <Input {...field} disabled={isApproved || isArticleSelected} />
+                  <Input
+                    {...field}
+                    ref={itemIndex === 0 ? focusRef : null} // Focar apenas o primeiro serviço de um novo capítulo
+                    disabled={isApproved || isArticleSelected}
+                    placeholder="Ex: Demolição manual de parede"
+                    className="h-10 px-3 py-2"
+                  />
                   {!isApproved && (
                     isArticleSelected ? (
-                      <Button type="button" variant="ghost" size="icon" onClick={handleClearArticle} className="flex-shrink-0">
-                        <XCircle className="h-4 w-4 text-muted-foreground" />
-                      </Button>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button type="button" variant="ghost" size="icon" onClick={handleClearArticle} className="flex-shrink-0">
+                            <XCircle className="h-4 w-4 text-muted-foreground" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Limpar artigo selecionado</TooltipContent>
+                      </Tooltip>
                     ) : (
-                      <Button type="button" variant="ghost" size="icon" onClick={() => setIsArticleSelectDialogOpen(true)} className="flex-shrink-0">
-                        <Search className="h-4 w-4 text-muted-foreground" />
-                      </Button>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button type="button" variant="ghost" size="icon" onClick={() => setIsArticleSelectDialogOpen(true)} className="flex-shrink-0">
+                            <Search className="h-4 w-4 text-muted-foreground" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Selecionar artigo da base de dados</TooltipContent>
+                      </Tooltip>
                     )
                   )}
                 </div>
@@ -95,62 +169,105 @@ const BudgetServiceRow: React.FC<BudgetServiceRowProps> = ({
           onSelectArticle={handleSelectArticle}
         />
       </TableCell>
-      <TableCell className="w-[100px]">
+      <TableCell className="w-[100px] py-2">
         <FormField
           control={form.control}
           name={`chapters.${chapterIndex}.items.${itemIndex}.quantidade`}
           render={({ field }) => (
             <FormItem className="mb-0">
-              <FormControl>
-                <Input type="number" step="0.01" {...field} disabled={isApproved} />
-              </FormControl>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <FormControl>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      {...field}
+                      disabled={isApproved}
+                      placeholder="Ex: 50"
+                      className={cn("h-10 px-3 py-2", {
+                        "border-orange-500 focus-visible:ring-orange-500": isQuantityInvalid,
+                      })}
+                    />
+                  </FormControl>
+                </TooltipTrigger>
+                {isQuantityInvalid && <TooltipContent>Quantidade inválida</TooltipContent>}
+              </Tooltip>
               <FormMessage />
             </FormItem>
           )}
         />
       </TableCell>
-      <TableCell className="w-[80px]">
+      <TableCell className="w-[80px] py-2">
         <FormField
           control={form.control}
           name={`chapters.${chapterIndex}.items.${itemIndex}.unidade`}
           render={({ field }) => (
             <FormItem className="mb-0">
               <FormControl>
-                <Input {...field} disabled={isApproved || isArticleSelected} />
+                <Input
+                  {...field}
+                  disabled={isApproved || isArticleSelected}
+                  placeholder="m², m³, un"
+                  className="h-10 px-3 py-2"
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
           )}
         />
       </TableCell>
-      <TableCell className="w-[120px] text-right">
+      <TableCell className="w-[120px] text-right py-2">
         <FormField
           control={form.control}
           name={`chapters.${chapterIndex}.items.${itemIndex}.preco_unitario`}
           render={({ field }) => (
             <FormItem className="mb-0">
-              <FormControl>
-                <Input type="number" step="0.01" {...field} disabled={isApproved || isArticleSelected} />
-              </FormControl>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <FormControl>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      {...field}
+                      disabled={isApproved || isArticleSelected}
+                      placeholder="€"
+                      className={cn("h-10 px-3 py-2", {
+                        "border-orange-500 focus-visible:ring-orange-500": isPriceInvalid,
+                      })}
+                    />
+                  </FormControl>
+                </TooltipTrigger>
+                {isPriceInvalid && <TooltipContent>Preço unitário em falta</TooltipContent>}
+              </Tooltip>
               <FormMessage />
             </FormItem>
           )}
         />
       </TableCell>
-      <TableCell className="w-[120px] text-right font-medium">
+      <TableCell className="w-[120px] text-right font-medium py-2">
         {formatCurrency(item.custo_planeado)}
       </TableCell>
-      <TableCell className="w-[100px]">
-        <Badge variant="secondary">{item.estado}</Badge>
+      <TableCell className="w-[100px] py-2">
+        {getStatusBadge(item.estado)}
       </TableCell>
-      <TableCell className="w-[100px] text-right">
+      <TableCell className="w-[100px] text-right py-2">
         <div className="flex justify-end gap-1">
-          <Button type="button" variant="ghost" size="icon" onClick={() => handleDuplicateService(chapterIndex, itemIndex)} disabled={isApproved}>
-            <Copy className="h-4 w-4" />
-          </Button>
-          <Button type="button" variant="ghost" size="icon" onClick={() => handleRemoveService(chapterIndex, itemIndex)} disabled={isApproved}>
-            <Trash2 className="h-4 w-4 text-red-500" />
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button type="button" variant="ghost" size="icon" onClick={() => handleDuplicateService(chapterIndex, itemIndex)} disabled={isApproved}>
+                <Copy className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Duplicar serviço</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button type="button" variant="ghost" size="icon" onClick={handleRemoveClick} disabled={isApproved}>
+                <Trash2 className="h-4 w-4 text-red-500" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Remover serviço</TooltipContent>
+          </Tooltip>
         </div>
       </TableCell>
     </TableRow>
