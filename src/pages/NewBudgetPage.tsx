@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom"; // Importar useParams
 
 import { Button } from "@/components/ui/button";
 import { Form } from "@/components/ui/form";
@@ -24,6 +24,7 @@ import { toast } from "sonner"; // Importar toast
 
 const NewBudgetPage: React.FC = () => {
   const navigate = useNavigate();
+  const { budgetId } = useParams<{ budgetId: string }>(); // Obter budgetId da URL
   const [isClientDialogOpen, setIsClientDialogOpen] = React.useState(false);
   const [isProjectDialogOpen, setIsProjectDialogOpen] = React.useState(false);
 
@@ -57,6 +58,7 @@ const NewBudgetPage: React.FC = () => {
     fetchClients,
     setIsClientDialogOpen,
     setIsProjectDialogOpen,
+    budgetIdToEdit: budgetId, // Passar o budgetId para o hook
   });
 
   if (isLoadingData) {
@@ -68,14 +70,18 @@ const NewBudgetPage: React.FC = () => {
     );
   }
 
+  const pageTitle = budgetId ? "Editar Orçamento" : "Novo Orçamento";
+  const pageDescription = budgetId ? "Atualize os detalhes do orçamento existente" : "Crie e detalhe um novo orçamento para as suas obras";
+  const saveButtonText = budgetId ? "Guardar Alterações" : "Guardar Rascunho";
+
   return (
     <div className="space-y-6">
       {/* Header da Página */}
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between pb-4 md:pb-6 border-b border-border mb-4 md:mb-6">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-primary">Novo Orçamento</h1>
+          <h1 className="text-2xl md:text-3xl font-bold text-primary">{pageTitle}</h1>
           <p className="text-muted-foreground text-sm">
-            Crie e detalhe um novo orçamento para as suas obras
+            {pageDescription}
           </p>
         </div>
         <div className="flex flex-wrap gap-2 mt-2 md:mt-0">
@@ -83,7 +89,7 @@ const NewBudgetPage: React.FC = () => {
             <ArrowLeft className="h-4 w-4" /> Voltar
           </Button>
           <Button type="submit" form="new-budget-form" disabled={isSaving || isApproved} className="flex items-center gap-2">
-            <PlusCircle className="h-4 w-4" /> Guardar Rascunho
+            <PlusCircle className="h-4 w-4" /> {saveButtonText}
           </Button>
         </div>
       </div>

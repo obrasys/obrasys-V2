@@ -4,7 +4,7 @@ import React from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { v4 as uuidv4 } from "uuid";
-import { format } from "date-fns";
+import { format, parseISO } from "date-fns"; // Importar parseISO
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 
@@ -19,6 +19,7 @@ interface UseNewBudgetFormProps {
   fetchClients: () => Promise<void>;
   setIsClientDialogOpen: (isOpen: boolean) => void;
   setIsProjectDialogOpen: (isOpen: boolean) => void;
+  budgetIdToEdit?: string | null; // NOVO: ID do orçamento a editar
 }
 
 interface UseNewBudgetFormResult {
@@ -43,17 +44,19 @@ export function useNewBudgetForm({
   fetchClients,
   setIsClientDialogOpen,
   setIsProjectDialogOpen,
+  budgetIdToEdit, // Receber budgetIdToEdit
 }: UseNewBudgetFormProps): UseNewBudgetFormResult {
   const navigate = useNavigate();
   const { user } = useSession();
   const [isSaving, setIsSaving] = React.useState(false);
   const [approvedBudgetId, setApprovedBudgetId] = React.useState<string | null>(null);
+  const [isLoadingBudget, setIsLoadingBudget] = React.useState(!!budgetIdToEdit); // Novo estado para carregar orçamento
 
   const form = useForm<NewBudgetFormValues>({
     resolver: zodResolver(newBudgetFormSchema),
     defaultValues: {
       nome: "",
-      client_id: null, // Alterado para null
+      client_id: null,
       localizacao: "",
       tipo_obra: "Nova construção",
       data_orcamento: format(new Date(), "yyyy-MM-dd"),
@@ -68,7 +71,7 @@ export function useNewBudgetForm({
           items: [
             {
               id: uuidv4(),
-              capitulo_id: null, // Alterado para null
+              capitulo_id: null,
               capitulo: "Fundações",
               servico: "Escavação manual em vala",
               quantidade: 1,
@@ -85,6 +88,93 @@ export function useNewBudgetForm({
       ],
     },
   });
+
+  // Efeito para carregar o orçamento se budgetIdToEdit for fornecido
+  React.useEffect(() => {
+    const fetchExistingBudget = async () => {
+      if (!budgetIdToEdit || !userCompanyId) {
+        setIsLoadingBudget(false);
+        return;
+      }
+      setIsLoadingBudget(true);
+      console.log(`[useNewBudgetForm] Fetching budget for ID: ${budgetIdToEdit}`);
+
+      const { data: budgetData, error: budgetError } = await supabase
+        .from('budgets')
+        .select(`
+          *,
+          budget_chapters (
+            id,
+            title,
+            code,
+            notes,
+            budget_items (
+              id,
+              capitulo,
+              servico,
+              quantidade,
+              unidade,
+              preco_unitario,
+              custo_planeado,
+              custo_executado,
+              estado,
+              article_id
+            )
+          )
+        `)
+        .eq('id', budgetIdToEdit)
+        .eq('company_id', userCompanyId)
+        .single();
+
+      if (budgetError) {
+        console.error("[useNewBudgetForm] Erro ao carregar orçamento existente:", budgetError);
+        toast.error(`Erro ao carregar orçamento: ${budgetError.message}`);
+        navigate("/budgeting"); // Redirecionar se o orçamento não for encontrado ou houver erro
+        setIsLoadingBudget(false);
+        return;
+      }
+
+      if (budgetData) {
+        console("[useNewBudgetForm] Loaded budget data:", budgetData);
+        const transformedBudget: NewBudgetFormValues = {
+          id: budgetData.id,
+          nome: budgetData.nome,
+          client_id: budgetData.client_id,
+          localizacao: budgetData.localizacao || "",
+          tipo_obra: "Nova construção", // Assumindo um valor padrão ou buscar se existir
+          data_orcamento: budgetData.created_at ? format(parseISO(budgetData.created_at), "yyyy-MM-dd") : format(new Date(), "yyyy-MM-dd"),
+          observacoes_gerais: "", // Assumindo que não há observações gerais na DB ou buscar se existir
+          estado: budgetData.estado,
+          chapters: (budgetData.budget_chapters || []).map(chapter => ({
+            id: chapter.id,
+            codigo: chapter.code || "",
+            nome: chapter.title || "",
+            observacoes: chapter.notes || "",
+            items: (chapter.budget_items || []).map(item => ({
+              id: item.id,
+              capitulo_id: chapter.id, // Link item to its chapter
+              capitulo: item.capitulo,
+              servico: item.servico,
+              quantidade: item.quantidade,
+              unidade: item.unidade,
+              preco_unitario: item.preco_unitario,
+              custo_planeado: item.custo_planeado,
+              custo_executado: item.custo_executado,
+              desvio: item.custo_executado - item.custo_planeado,
+              estado: item.estado,
+              article_id: item.article_id,
+            })),
+          })),
+        };
+        form.reset(transformedBudget);
+        setApprovedBudgetId(transformedBudget.estado === "Aprovado" ? transformedBudget.id || null : null);
+      }
+      setIsLoadingBudget(false);
+    };
+
+    fetchExistingBudget();
+  }, [budgetIdToEdit, userCompanyId, navigate, form]);
+
 
   const calculateCosts = React.useCallback(() => {
     const currentChapters = form.getValues("chapters");
@@ -130,49 +220,97 @@ export function useNewBudgetForm({
 
     try {
       const companyId = userCompanyId;
-      // This check is redundant if the above `if` block handles `!userCompanyId`
-      // if (!companyId) {
-      //   throw new Error("ID da empresa não encontrado no perfil do utilizador.");
-      // }
       console.log("onSubmit: Using companyId:", companyId);
 
       const initialTotalPlanned = calculateCosts(); 
       console.log("onSubmit: Calculated initial total planned cost:", initialTotalPlanned);
 
-      // 1. Insert the main budget record
-      console.log("onSubmit: Attempting to insert main budget record.");
-      const budgetPayload = {
-        company_id: companyId,
-        nome: data.nome,
-        client_id: data.client_id,
-        localizacao: data.localizacao, // Adicionado: Incluir localizacao
-        project_id: null,
-        total_planeado: initialTotalPlanned,
-        total_executado: 0,
-        estado: data.estado,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      };
-      console.log("onSubmit: Budget payload:", budgetPayload);
+      let currentBudgetId = data.id;
 
-      const { data: budgetData, error: budgetError } = await supabase
-        .from('budgets')
-        .insert(budgetPayload)
-        .select()
-        .single();
+      if (currentBudgetId) {
+        // EDITING EXISTING BUDGET
+        console.log(`onSubmit: Attempting to update existing budget record with ID: ${currentBudgetId}`);
+        const budgetPayload = {
+          nome: data.nome,
+          client_id: data.client_id,
+          localizacao: data.localizacao,
+          total_planeado: initialTotalPlanned,
+          estado: data.estado,
+          updated_at: new Date().toISOString(),
+        };
+        console.log("onSubmit: Budget update payload:", budgetPayload);
 
-      if (budgetError) {
-        console.error("onSubmit: Supabase budget insertion error:", budgetError);
-        throw new Error(`Erro ao criar orçamento principal: ${budgetError.message}`);
+        const { error: budgetUpdateError } = await supabase
+          .from('budgets')
+          .update(budgetPayload)
+          .eq('id', currentBudgetId);
+
+        if (budgetUpdateError) {
+          console.error("onSubmit: Supabase budget update error:", budgetUpdateError);
+          throw new Error(`Erro ao atualizar orçamento principal: ${budgetUpdateError.message}`);
+        }
+        console.log("onSubmit: Main budget record updated successfully.");
+
+        // Delete existing chapters and items for this budget
+        console.log(`onSubmit: Deleting existing budget items for budget ID: ${currentBudgetId}`);
+        const { error: deleteItemsError } = await supabase
+          .from('budget_items')
+          .delete()
+          .eq('budget_id', currentBudgetId);
+        if (deleteItemsError) {
+          console.warn("onSubmit: Erro ao eliminar itens antigos do orçamento:", deleteItemsError);
+          // Don't throw, just warn, as chapters might still be linked
+        }
+
+        console.log(`onSubmit: Deleting existing budget chapters for budget ID: ${currentBudgetId}`);
+        const { error: deleteChaptersError } = await supabase
+          .from('budget_chapters')
+          .delete()
+          .eq('budget_id', currentBudgetId);
+        if (deleteChaptersError) {
+          console.error("onSubmit: Erro ao eliminar capítulos antigos do orçamento:", deleteChaptersError);
+          throw new Error(`Erro ao eliminar capítulos antigos: ${deleteChaptersError.message}`);
+        }
+        console.log("onSubmit: Existing chapters and items deleted successfully.");
+
+      } else {
+        // CREATING NEW BUDGET
+        console.log("onSubmit: Attempting to insert new main budget record.");
+        const budgetPayload = {
+          company_id: companyId,
+          nome: data.nome,
+          client_id: data.client_id,
+          localizacao: data.localizacao,
+          project_id: null,
+          total_planeado: initialTotalPlanned,
+          total_executado: 0,
+          estado: data.estado,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        };
+        console.log("onSubmit: New budget payload:", budgetPayload);
+
+        const { data: newBudgetData, error: budgetError } = await supabase
+          .from('budgets')
+          .insert(budgetPayload)
+          .select()
+          .single();
+
+        if (budgetError) {
+          console.error("onSubmit: Supabase new budget insertion error:", budgetError);
+          throw new Error(`Erro ao criar orçamento principal: ${budgetError.message}`);
+        }
+        currentBudgetId = newBudgetData.id;
+        form.setValue('id', newBudgetData.id); // Update form with new ID
+        console.log("onSubmit: New main budget record inserted successfully:", newBudgetData);
       }
-      console.log("onSubmit: Main budget record inserted successfully:", budgetData);
 
-      // 2. Insert budget chapters and their items
+      // Insert all chapters and their items (for both new and updated budgets)
       for (const chapter of data.chapters) {
         console.log(`onSubmit: Attempting to insert budget chapter: ${chapter.nome}`);
         const chapterPayload = {
-          budget_id: budgetData.id,
-          company_id: companyId, // Adicionado: company_id para o capítulo
+          budget_id: currentBudgetId,
+          company_id: companyId,
           title: chapter.nome,
           code: chapter.codigo,
           sort_order: 0, // Placeholder, could be chapterIndex
@@ -196,7 +334,7 @@ export function useNewBudgetForm({
 
         const budgetItemsToInsert = chapter.items.map((item) => ({
           company_id: companyId,
-          budget_id: budgetData.id,
+          budget_id: currentBudgetId,
           chapter_id: chapterData.id, // Link to the newly created chapter
           capitulo: item.capitulo,
           servico: item.servico,
@@ -222,11 +360,11 @@ export function useNewBudgetForm({
         console.log(`onSubmit: Budget items for chapter ${chapter.nome} inserted successfully.`);
       }
 
-      toast.success("Orçamento criado com sucesso!");
+      toast.success(`Orçamento ${data.id ? "atualizado" : "criado"} com sucesso!`);
       navigate("/budgeting");
     } catch (error: any) {
-      toast.error(`Erro ao criar orçamento: ${error.message}`);
-      console.error("onSubmit: Caught error during budget creation:", error);
+      toast.error(`Erro ao guardar orçamento: ${error.message}`);
+      console.error("onSubmit: Caught error during budget operation:", error);
     } finally {
       setIsSaving(false);
       console.log("--- onSubmit: Budget save process finished ---");
@@ -256,7 +394,7 @@ export function useNewBudgetForm({
       if (error) throw error;
 
       await fetchClients();
-      form.setValue("client_id", data.id || null); // Alterado para null
+      form.setValue("client_id", data.id || null);
       toast.success(`Cliente ${data.nome} registado com sucesso!`);
       setIsClientDialogOpen(false);
     } catch (error: any) {

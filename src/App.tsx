@@ -99,6 +99,8 @@ const AppContent = () => (
 
       {/* New route for creating a budget */}
       <Route path="/budgeting/new" element={<NewBudgetPage />} />
+      {/* New route for editing a budget */}
+      <Route path="/budgeting/edit/:budgetId" element={<NewBudgetPage />} />
     </Route>
 
     {/* Routes that do NOT use the MainLayout (e.g., landing pages, 404) */}

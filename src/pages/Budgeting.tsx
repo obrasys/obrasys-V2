@@ -4,7 +4,7 @@ import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, Filter, Download, Calculator, DollarSign, FileText, TrendingUp, LineChart, HardHat, CalendarDays, UserPlus, Check, Trash2 } from "lucide-react";
+import { PlusCircle, Filter, Download, Calculator, DollarSign, FileText, TrendingUp, LineChart, HardHat, CalendarDays, UserPlus, Check, Trash2, Edit } from "lucide-react";
 import KPICard from "@/components/KPICard";
 import EmptyState from "@/components/EmptyState";
 import { DataTable } from "@/components/work-items/data-table"; // Reusing generic DataTable
@@ -412,9 +412,14 @@ const Budgeting = () => {
               </SelectContent>
             </Select>
             {selectedBudget && selectedBudget.estado === "Rascunho" && (
-              <Button onClick={() => handleApproveBudget(selectedBudget.id)} className="flex items-center gap-2">
-                <Check className="h-4 w-4" /> Aprovar Orçamento
-              </Button>
+              <>
+                <Button onClick={() => navigate(`/budgeting/edit/${selectedBudget.id}`)} variant="outline" className="flex items-center gap-2">
+                  <Edit className="h-4 w-4" /> Editar Orçamento
+                </Button>
+                <Button onClick={() => handleApproveBudget(selectedBudget.id)} className="flex items-center gap-2">
+                  <Check className="h-4 w-4" /> Aprovar Orçamento
+                </Button>
+              </>
             )}
             {selectedBudget && selectedBudget.estado === "Aprovado" && !selectedBudget.project_id && (
               <Button onClick={() => setIsProjectDialogOpen(true)} className="flex items-center gap-2">
