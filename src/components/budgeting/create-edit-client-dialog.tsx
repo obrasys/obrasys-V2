@@ -25,7 +25,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Client, clientSchema } from "@/schemas/client-schema";
 import { toast } from "sonner";
-import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area"; // Importar ScrollArea e ScrollBar
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 
 interface CreateEditClientDialogProps {
   isOpen: boolean;
@@ -81,16 +81,16 @@ const CreateEditClientDialog: React.FC<CreateEditClientDialogProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[600px] flex flex-col max-h-[90vh]">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-[600px] flex flex-col max-h-[90vh] p-0"> {/* Removido padding padrão */}
+        <DialogHeader className="p-6 pb-4"> {/* Adicionado padding ao cabeçalho */}
           <DialogTitle>{clientToEdit ? "Editar Cliente" : "Registar Novo Cliente"}</DialogTitle>
           <DialogDescription>
             Preencha os detalhes do cliente.
           </DialogDescription>
         </DialogHeader>
-        <ScrollArea className="flex-grow pr-4">
+        <ScrollArea className="flex-grow px-6 pb-6"> {/* Adicionado padding ao ScrollArea */}
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-4 py-4">
+            <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-4"> {/* Removido py-4 */}
               <FormField
                 control={form.control}
                 name="nome"
@@ -104,7 +104,7 @@ const CreateEditClientDialog: React.FC<CreateEditClientDialogProps> = ({
                   </FormItem>
                 )}
               />
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4"> {/* Agrupamento de campos */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
                   name="nif"
@@ -184,7 +184,7 @@ const CreateEditClientDialog: React.FC<CreateEditClientDialogProps> = ({
                   </FormItem>
                 )}
               />
-              <div className="flex justify-end gap-2 mt-4">
+              <div className="flex justify-end gap-2 pt-4"> {/* Adicionado pt-4 em vez de mt-4 */}
                 <Button variant="outline" onClick={onClose} type="button">
                   Cancelar
                 </Button>
