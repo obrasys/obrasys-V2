@@ -11,17 +11,20 @@ import EmptyState from "@/components/EmptyState";
 
 import { NewBudgetFormValues, BudgetItem } from "@/schemas/budget-schema"; // Removido BudgetChapterForm daqui
 import BudgetChapterForm from "./BudgetChapterForm"; // <-- Importação correta do componente
+import { Article } from "@/schemas/article-schema"; // Import Article type
 import { v4 as uuidv4 } from "uuid";
 
 interface BudgetChaptersSectionProps {
   form: UseFormReturn<NewBudgetFormValues>;
   isApproved: boolean;
+  articles: Article[]; // NOVO: Passar artigos para os capítulos
   calculateCosts: () => number;
 }
 
 const BudgetChaptersSection: React.FC<BudgetChaptersSectionProps> = ({
   form,
   isApproved,
+  articles, // NOVO: Receber artigos
   calculateCosts,
 }) => {
   const { fields: chapterFields, append: appendChapter, remove: removeChapter, move: moveChapter } = useFieldArray({
@@ -49,6 +52,7 @@ const BudgetChaptersSection: React.FC<BudgetChaptersSectionProps> = ({
           custo_executado: 0,
           desvio: 0,
           estado: "Planeado",
+          article_id: null, // NOVO: Default para null
         },
       ],
     });
@@ -69,6 +73,7 @@ const BudgetChaptersSection: React.FC<BudgetChaptersSectionProps> = ({
       custo_executado: 0,
       desvio: 0,
       estado: "Planeado",
+      article_id: null, // NOVO: Default para null
     };
     const currentItems = form.getValues(`chapters.${chapterIndex}.items`);
     form.setValue(`chapters.${chapterIndex}.items`, [...currentItems, newService]);
@@ -118,6 +123,7 @@ const BudgetChaptersSection: React.FC<BudgetChaptersSectionProps> = ({
               chapterIndex={chapterIndex}
               chapterId={chapter.id}
               chapterFieldsLength={chapterFields.length}
+              articles={articles} // NOVO: Passar artigos
               handleAddService={handleAddService}
               handleRemoveService={handleRemoveService}
               handleDuplicateService={handleDuplicateService}

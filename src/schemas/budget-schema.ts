@@ -15,6 +15,7 @@ export const budgetItemSchema = z.object({
   estado: z.enum(["Em andamento", "Concluído", "Atrasado", "Planeado"], {
     required_error: "O estado é obrigatório.",
   }).default("Planeado"),
+  article_id: z.string().uuid().optional().nullable(), // NOVO: ID do artigo da base de dados de artigos
 });
 
 export type BudgetItem = z.infer<typeof budgetItemSchema>;

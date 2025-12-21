@@ -23,6 +23,7 @@ import { Textarea } from "@/components/ui/textarea";
 import EmptyState from "@/components/EmptyState";
 
 import { NewBudgetFormValues } from "@/schemas/budget-schema";
+import { Article } from "@/schemas/article-schema"; // Import Article type
 import BudgetServiceRow from "./BudgetServiceRow";
 
 interface BudgetChapterFormProps {
@@ -31,6 +32,7 @@ interface BudgetChapterFormProps {
   chapterIndex: number;
   chapterId: string;
   chapterFieldsLength: number;
+  articles: Article[]; // NOVO: Receber artigos
   handleAddService: (chapterIndex: number) => void;
   handleRemoveService: (chapterIndex: number, itemIndex: number) => void;
   handleDuplicateService: (chapterIndex: number, itemIndex: number) => void;
@@ -44,6 +46,7 @@ const BudgetChapterForm: React.FC<BudgetChapterFormProps> = ({
   chapterIndex,
   chapterId,
   chapterFieldsLength,
+  articles, // NOVO: Passar artigos
   handleAddService,
   handleRemoveService,
   handleDuplicateService,
@@ -151,6 +154,7 @@ const BudgetChapterForm: React.FC<BudgetChapterFormProps> = ({
                       isApproved={isApproved}
                       chapterIndex={chapterIndex}
                       itemIndex={itemIndex}
+                      articles={articles} // NOVO: Passar artigos
                       handleRemoveService={handleRemoveService}
                       handleDuplicateService={handleDuplicateService}
                     />

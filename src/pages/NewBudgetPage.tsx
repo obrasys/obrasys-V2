@@ -13,6 +13,7 @@ import { Form } from "@/components/ui/form";
 import { ArrowLeft, PlusCircle } from "lucide-react";
 import { NewBudgetFormValues, newBudgetFormSchema, BudgetItem } from "@/schemas/budget-schema";
 import { Client } from "@/schemas/client-schema";
+import { Article } from "@/schemas/article-schema"; // Import Article type
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import CreateEditClientDialog from "@/components/budgeting/create-edit-client-dialog";
@@ -31,6 +32,7 @@ const NewBudgetPage: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useSession();
   const [clients, setClients] = React.useState<Client[]>([]);
+  const [articles, setArticles] = React.useState<Article[]>([]); // NOVO: Estado para armazenar artigos
   const [isClientDialogOpen, setIsClientDialogOpen] = React.useState(false);
   const [isProjectDialogOpen, setIsProjectDialogOpen] = React.useState(false);
   const [approvedBudgetId, setApprovedBudgetId] = React.useState<string | null>(null);
@@ -59,13 +61,14 @@ const NewBudgetPage: React.FC = () => {
               capitulo_id: "", // Will be set dynamically
               capitulo: "Fundações", // Adicionado para corresponder ao esquema
               servico: "Escavação manual em vala",
-              quantidade: 50,
+              quantidade: 1,
               unidade: "m³",
-              preco_unitario: 15.00,
-              custo_planeado: 750.00,
+              preco_unitario: 0,
+              custo_planeado: 0,
               custo_executado: 0,
               desvio: 0,
               estado: "Planeado",
+              article_id: null, // NOVO: Default para null
             },
           ],
         },
@@ -117,10 +120,28 @@ const NewBudgetPage: React.FC = () => {
     }
   }, [userCompanyId]); // Agora depende de userCompanyId
 
-  // Buscar clientes ao montar o componente e quando userCompanyId muda
+  // NOVO: Função para buscar artigos (depende de userCompanyId)
+  const fetchArticles = React.useCallback(async () => {
+    if (!userCompanyId) {
+      setArticles([]);
+      console.log("NewBudgetPage: userCompanyId is null, articles set to empty array.");
+      return;
+    }
+    const { data, error } = await supabase.from('articles').select('*').eq('company_id', userCompanyId);
+    if (error) {
+      toast.error(`Erro ao carregar artigos: ${error.message}`);
+      console.error("NewBudgetPage: Erro ao carregar artigos:", error);
+    } else {
+      setArticles(data || []);
+      console.log("NewBudgetPage: Articles fetched for company_id", userCompanyId, ":", data);
+    }
+  }, [userCompanyId]);
+
+  // Buscar clientes e artigos ao montar o componente e quando userCompanyId muda
   React.useEffect(() => {
     fetchClients();
-  }, [fetchClients]);
+    fetchArticles(); // NOVO: Chamar fetchArticles
+  }, [fetchClients, fetchArticles]);
 
   // Calculate custo_planeado for each item and total budget
   const calculateCosts = React.useCallback(() => {
@@ -200,6 +221,7 @@ const NewBudgetPage: React.FC = () => {
           custo_executado: 0,
           estado: item.estado,
           observacoes: "", // Add observacoes if needed in schema
+          article_id: item.article_id, // NOVO: Incluir article_id
         })),
       );
 
@@ -381,6 +403,7 @@ const NewBudgetPage: React.FC = () => {
           <BudgetChaptersSection
             form={form}
             isApproved={isApproved}
+            articles={articles} // NOVO: Passar artigos para o componente
             calculateCosts={calculateCosts}
           />
 
