@@ -72,19 +72,21 @@ const NewBudgetPage: React.FC = () => {
     },
   });
 
+  // Função para buscar clientes
+  const fetchClients = React.useCallback(async () => {
+    const { data, error } = await supabase.from('clients').select('id, nome');
+    if (error) {
+      toast.error(`Erro ao carregar clientes: ${error.message}`);
+      console.error("Erro ao carregar clientes:", error);
+    } else {
+      setClients(data || []);
+    }
+  }, []); // Sem dependências, pois não usa variáveis externas que mudam
+
   // Fetch clients on component mount
   React.useEffect(() => {
-    const fetchClients = async () => {
-      const { data, error } = await supabase.from('clients').select('id, nome');
-      if (error) {
-        toast.error(`Erro ao carregar clientes: ${error.message}`);
-        console.error("Erro ao carregar clientes:", error);
-      } else {
-        setClients(data || []);
-      }
-    };
     fetchClients();
-  }, []);
+  }, [fetchClients]); // Adicionado fetchClients como dependência
 
   // Calculate custo_planeado for each item and total budget
   const calculateCosts = React.useCallback(() => {
@@ -206,12 +208,8 @@ const NewBudgetPage: React.FC = () => {
 
       if (error) throw error;
 
-      setClients((prevClients) => {
-        if (data.id && prevClients.some((c) => c.id === data.id)) {
-          return prevClients.map((c) => (c.id === data.id ? data : c));
-        }
-        return [...prevClients, data];
-      });
+      // Atualiza a lista de clientes e seleciona o novo cliente
+      await fetchClients(); // <--- CHAMA A FUNÇÃO PARA RECARREGAR CLIENTES
       form.setValue("client_id", data.id || ""); // Select the newly created/updated client
       toast.success(`Cliente ${data.nome} registado com sucesso!`);
       setIsClientDialogOpen(false); // Close the dialog
