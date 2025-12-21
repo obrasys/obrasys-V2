@@ -17,6 +17,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Link, useNavigate } from "react-router-dom";
+import { formatCurrency } from "@/utils/formatters"; // Importar formatCurrency
 
 const ProjectsPage = () => {
   const [projects, setProjects] = React.useState<Project[]>([]);
@@ -27,13 +28,17 @@ const ProjectsPage = () => {
   const fetchProjects = React.useCallback(async () => {
     const { data, error } = await supabase
       .from('projects')
-      .select('*');
+      .select('*, clients(nome)'); // Seleciona tudo de projects e faz join com clients para obter o nome
 
     if (error) {
       toast.error(`Erro ao carregar obras: ${error.message}`);
       console.error("Erro ao carregar obras:", error);
     } else {
-      setProjects(data || []);
+      const formattedProjects: Project[] = (data || []).map((project: any) => ({
+        ...project,
+        client_name: project.clients?.nome || "Cliente Desconhecido", // Extrai o nome do cliente
+      }));
+      setProjects(formattedProjects);
     }
   }, []);
 
@@ -54,20 +59,22 @@ const ProjectsPage = () => {
         .upsert({
           ...newProject,
           company_id: companyId,
+          // client_id já está em newProject do formulário
         })
-        .select()
+        .select('*, clients(nome)') // Seleciona com join para obter client_name de volta
         .single();
 
       if (error) throw error;
 
-      toast.success(`Obra "${newProject.nome}" ${newProject.id ? "atualizada" : "criada"} com sucesso!`);
+      const savedProject: Project = {
+        ...data,
+        client_name: (data as any).clients?.nome || "Cliente Desconhecido",
+      };
+
+      toast.success(`Obra "${savedProject.nome}" ${savedProject.id ? "atualizada" : "criada"} com sucesso!`);
       setIsProjectDialogOpen(false);
-      fetchProjects(); // Refresh the list
-      if (!newProject.id) { // If it's a new project, select it
-        setSelectedProject(data);
-      } else { // If editing, update the selected project
-        setSelectedProject(data);
-      }
+      fetchProjects(); // Atualiza a lista
+      setSelectedProject(savedProject); // Atualiza o projeto selecionado com client_name
     } catch (error: any) {
       toast.error(`Erro ao guardar obra: ${error.message}`);
       console.error("Erro ao guardar obra:", error);
@@ -158,7 +165,7 @@ const ProjectsPage = () => {
             <Card>
               <CardHeader><CardTitle>Visão Geral da Obra</CardTitle></CardHeader>
               <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div><span className="font-semibold">Cliente:</span> {selectedProject.cliente}</div>
+                <div><span className="font-semibold">Cliente:</span> {selectedProject.client_name || "N/A"}</div> {/* Usando client_name */}
                 <div><span className="font-semibold">Localização:</span> {selectedProject.localizacao}</div>
                 <div><span className="font-semibold">Estado:</span> {selectedProject.estado}</div>
                 <div><span className="font-semibold">Progresso:</span> {selectedProject.progresso}%</div>

@@ -30,7 +30,7 @@ const LivroDeObraDetailsCard: React.FC<LivroDeObraDetailsCardProps> = ({
       <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div><span className="font-semibold">Obra:</span> {currentProject?.nome || "N/A"}</div>
         <div><span className="font-semibold">Localização:</span> {currentProject?.localizacao || "N/A"}</div>
-        <div><span className="font-semibold">Cliente:</span> {currentProject?.cliente || "N/A"}</div>
+        <div><span className="font-semibold">Cliente:</span> {currentProject?.client_name || "N/A"}</div> {/* Usando client_name */}
         <div><span className="font-semibold">Período:</span> {formatDate(selectedLivroObra.periodo_inicio)} a {formatDate(selectedLivroObra.periodo_fim)}</div>
         <div><span className="font-semibold">Estado:</span> <span className="capitalize">{selectedLivroObra.estado.replace('_', ' ')}</span></div>
         <div><span className="font-semibold">Observações:</span> {selectedLivroObra.observacoes || "N/A"}</div>

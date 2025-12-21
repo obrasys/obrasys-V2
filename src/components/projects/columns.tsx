@@ -28,7 +28,7 @@ export const createProjectColumns = ({ onView, onEdit, onDelete }: ColumnsProps)
     header: "Nome da Obra",
   },
   {
-    accessorKey: "cliente",
+    accessorKey: "client_name", // Alterado de "cliente" para "client_name"
     header: "Cliente",
   },
   {

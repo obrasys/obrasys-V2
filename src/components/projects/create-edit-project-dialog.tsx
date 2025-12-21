@@ -38,6 +38,8 @@ import { CalendarIcon } from "lucide-react";
 
 import { Project, projectSchema } from "@/schemas/project-schema";
 import { toast } from "sonner";
+import { Client } from "@/schemas/client-schema"; // Import Client type
+import { supabase } from "@/integrations/supabase/client"; // Import supabase
 
 interface CreateEditProjectDialogProps {
   isOpen: boolean;
@@ -54,11 +56,26 @@ const CreateEditProjectDialog: React.FC<CreateEditProjectDialogProps> = ({
   projectToEdit,
   initialBudgetId = null,
 }) => {
+  const [clients, setClients] = React.useState<Client[]>([]);
+
+  React.useEffect(() => {
+    const fetchClients = async () => {
+      const { data, error } = await supabase.from('clients').select('id, nome');
+      if (error) {
+        toast.error(`Erro ao carregar clientes: ${error.message}`);
+        console.error("Erro ao carregar clientes:", error);
+      } else {
+        setClients(data || []);
+      }
+    };
+    fetchClients();
+  }, []);
+
   const form = useForm<Project>({
     resolver: zodResolver(projectSchema),
     defaultValues: projectToEdit || {
       nome: "",
-      cliente: "",
+      client_id: "", // Alterado de 'cliente' para 'client_id'
       localizacao: "",
       estado: "Planeada",
       progresso: 0,
@@ -75,7 +92,7 @@ const CreateEditProjectDialog: React.FC<CreateEditProjectDialogProps> = ({
     } else {
       form.reset({
         nome: "",
-        cliente: "",
+        client_id: "", // Alterado de 'cliente' para 'client_id'
         localizacao: "",
         estado: "Planeada",
         progresso: 0,
@@ -123,13 +140,24 @@ const CreateEditProjectDialog: React.FC<CreateEditProjectDialogProps> = ({
             />
             <FormField
               control={form.control}
-              name="cliente"
+              name="client_id" // Alterado de 'cliente' para 'client_id'
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Cliente</FormLabel>
-                  <FormControl>
-                    <Input {...field} />
-                  </FormControl>
+                  <Select onValueChange={field.onChange} value={field.value || ""}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione um cliente" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {clients.map((client) => (
+                        <SelectItem key={client.id} value={client.id}>
+                          {client.nome}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <FormMessage />
                 </FormItem>
               )}

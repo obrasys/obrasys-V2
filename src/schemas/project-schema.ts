@@ -3,7 +3,7 @@ import { z } from "zod";
 export const projectSchema = z.object({
   id: z.string().uuid(),
   nome: z.string().min(1, "O nome da obra é obrigatório."),
-  cliente: z.string().min(1, "O cliente é obrigatório."),
+  client_id: z.string().uuid("Selecione um cliente válido.").optional().nullable(), // Alterado de 'cliente' para 'client_id'
   localizacao: z.string().min(1, "A localização é obrigatória."),
   estado: z.enum(["Em execução", "Concluída", "Suspensa", "Planeada"], {
     required_error: "O estado é obrigatório.",
@@ -15,7 +15,9 @@ export const projectSchema = z.object({
   budget_id: z.string().uuid().optional().nullable(), // Adicionado para ligar ao orçamento
 });
 
-export type Project = z.infer<typeof projectSchema>;
+export type Project = z.infer<typeof projectSchema> & {
+  client_name?: string; // Adicionado para exibir o nome do cliente, preenchido por join
+};
 
 export const schedulePhaseSchema = z.object({
   id: z.string().uuid().optional(),

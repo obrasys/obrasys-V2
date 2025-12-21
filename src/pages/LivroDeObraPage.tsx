@@ -62,13 +62,17 @@ const LivroDeObraPage = () => {
     setIsLoading(true);
     const { data: projectsData, error: projectsError } = await supabase
       .from('projects')
-      .select('id, nome, localizacao, cliente');
+      .select('id, nome, localizacao, client_id, clients(nome)'); // Seleciona client_id e faz join com clients para obter o nome
 
     if (projectsError) {
       toast.error(`Erro ao carregar obras: ${projectsError.message}`);
       console.error("Erro ao carregar obras:", projectsError);
     } else {
-      setProjects(projectsData || []);
+      const formattedProjects: Project[] = (projectsData || []).map((project: any) => ({
+        ...project,
+        client_name: project.clients?.nome || "Cliente Desconhecido", // Extrai o nome do cliente
+      }));
+      setProjects(formattedProjects);
     }
 
     const { data: livrosObraData, error: livrosObraError } = await supabase
@@ -204,7 +208,7 @@ const LivroDeObraPage = () => {
           <div class="header-info">
               <p><strong>Obra:</strong> ${project?.nome || 'N/A'}</p>
               <p><strong>Localização:</strong> ${project?.localizacao || 'N/A'}</p>
-              <p><strong>Cliente:</strong> ${project?.cliente || 'N/A'}</p>
+              <p><strong>Cliente:</strong> ${project?.client_name || 'N/A'}</p> {/* Usando client_name */}
               <p><strong>Empresa Responsável:</strong> Obra Sys</p>
               <p><strong>Período:</strong> ${formatDate(livro.periodo_inicio)} a ${formatDate(livro.periodo_fim)}</p>
               <p><strong>Estado do Livro:</strong> <span style="text-transform: capitalize;">${livro.estado.replace('_', ' ')}</span></p>

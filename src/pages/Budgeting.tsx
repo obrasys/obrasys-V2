@@ -176,12 +176,18 @@ const Budgeting = () => {
 
   const handleSaveProject = async (newProject: Project) => {
     try {
+      const user = (await supabase.auth.getUser()).data.user;
+      if (!user) throw new Error("Utilizador não autenticado.");
+
+      const companyId = user.user_metadata.company_id; // Obter company_id do user metadata
+      if (!companyId) throw new Error("ID da empresa não encontrado no perfil do utilizador.");
+
       const { data, error } = await supabase
         .from('projects')
         .insert({
           id: newProject.id,
           nome: newProject.nome,
-          client_id: null, // Assuming client_id is handled elsewhere or can be null initially
+          client_id: newProject.client_id, // Usar client_id do newProject
           localizacao: newProject.localizacao,
           estado: newProject.estado,
           progresso: newProject.progresso,
@@ -189,7 +195,7 @@ const Budgeting = () => {
           custo_planeado: newProject.custo_planeado,
           custo_real: newProject.custo_real,
           budget_id: newProject.budget_id, // Link the budget
-          company_id: (await supabase.auth.getUser()).data.user?.user_metadata.company_id, // Assuming company_id is in user metadata
+          company_id: companyId, // Atribuir company_id
         })
         .select()
         .single();
