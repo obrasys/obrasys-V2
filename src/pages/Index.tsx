@@ -18,6 +18,11 @@ const Index = () => {
               Ir para Módulo 1: Orçamentação
             </Button>
           </Link>
+          <Link to="/project-management">
+            <Button size="lg" className="w-full md:w-auto">
+              Ir para Módulo 2: Gestão de Projetos
+            </Button>
+          </Link>
           {/* Add links to other modules as they are created */}
         </div>
       </div>
