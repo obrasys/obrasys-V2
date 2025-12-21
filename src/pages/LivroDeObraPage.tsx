@@ -1,42 +1,25 @@
 "use client";
 
 import React from "react";
-import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { v4 as uuidv4 } from "uuid";
-import { format, parseISO } from "date-fns";
+import { format } from "date-fns";
 import { pt } from "date-fns/locale";
 
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
-import { ArrowLeft, PlusCircle, FileText, CalendarDays, DollarSign, AlertTriangle, CheckCircle, Bot } from "lucide-react";
-import EmptyState from "@/components/EmptyState";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Textarea } from "@/components/ui/textarea";
-import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Project } from "@/schemas/project-schema";
 import { LivroObra, LivroObraRdo, livroObraSchema } from "@/schemas/compliance-schema";
 import { formatCurrency, formatDate } from "@/utils/formatters";
+
+// Importar os novos componentes
+import LivroDeObraHeader from "@/components/compliance/LivroDeObraHeader";
+import LivroDeObraList from "@/components/compliance/LivroDeObraList";
+import LivroDeObraDetailsCard from "@/components/compliance/LivroDeObraDetailsCard";
+import LivroDeObraRdosTable from "@/components/compliance/LivroDeObraRdosTable";
+import LivroDeObraAICompliance from "@/components/compliance/LivroDeObraAICompliance";
+import CreateLivroDeObraDialog from "@/components/compliance/CreateLivroDeObraDialog";
 
 // Mock de RDOs para demonstração
 const mockRdos: LivroObraRdo[] = [
@@ -48,7 +31,6 @@ const mockRdos: LivroObraRdo[] = [
 ];
 
 const LivroDeObraPage = () => {
-  const navigate = useNavigate();
   const [projects, setProjects] = React.useState<Project[]>([]);
   const [livrosObra, setLivrosObra] = React.useState<LivroObra[]>([]);
   const [selectedLivroObra, setSelectedLivroObra] = React.useState<LivroObra | null>(null);
@@ -97,7 +79,7 @@ const LivroDeObraPage = () => {
     fetchProjectsAndLivrosObra();
   }, [fetchProjectsAndLivrosObra]);
 
-  const onSubmit = async (data: LivroObra) => {
+  const handleCreateLivroObra = async (data: LivroObra) => {
     try {
       const user = (await supabase.auth.getUser()).data.user;
       if (!user) throw new Error("Utilizador não autenticado.");
@@ -254,317 +236,37 @@ const LivroDeObraPage = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col md:flex-row items-start md:items-center justify-between pb-4 md:pb-6 border-b border-border mb-4 md:mb-6">
-        <Button variant="ghost" onClick={() => navigate("/compliance")} className="flex items-center gap-2 text-muted-foreground hover:text-foreground mb-2 md:mb-0">
-          <ArrowLeft className="h-4 w-4" /> Voltar à Conformidade
-        </Button>
-        <div className="text-center md:text-right flex-grow">
-          <h1 className="text-2xl md:text-3xl font-bold text-primary">Livro de Obra Digital</h1>
-          <p className="text-muted-foreground text-sm">
-            Gestão e consolidação dos registos diários da obra
-          </p>
-        </div>
-        <Button onClick={() => setIsDialogOpen(true)} className="flex items-center gap-2 mt-2 md:mt-0">
-          <PlusCircle className="h-4 w-4" /> Novo Livro de Obra
-        </Button>
-      </div>
+      <LivroDeObraHeader onNewLivroClick={() => setIsDialogOpen(true)} />
 
-      {/* Lista de Livros de Obra */}
-      <Card className="bg-card text-card-foreground border border-border">
-        <CardHeader>
-          <CardTitle className="text-xl font-semibold">Livros de Obra Existentes</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {livrosObra.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {livrosObra.map((livro) => {
-                const project = projects.find(p => p.id === livro.project_id);
-                return (
-                  <Card
-                    key={livro.id}
-                    className={cn(
-                      "cursor-pointer hover:shadow-md transition-shadow",
-                      selectedLivroObra?.id === livro.id && "border-primary ring-2 ring-primary"
-                    )}
-                    onClick={() => setSelectedLivroObra(livro)}
-                  >
-                    <CardHeader>
-                      <CardTitle className="text-lg">{project?.nome || "Obra Desconhecida"}</CardTitle>
-                      <p className="text-sm text-muted-foreground">Período: {formatDate(livro.periodo_inicio)} - {formatDate(livro.periodo_fim)}</p>
-                    </CardHeader>
-                    <CardContent>
-                      <p className="text-sm">Estado: <span className="capitalize">{livro.estado.replace('_', ' ')}</span></p>
-                      <Button variant="outline" size="sm" className="mt-3 w-full" onClick={() => setSelectedLivroObra(livro)}>
-                        Ver Detalhes
-                      </Button>
-                    </CardContent>
-                  </Card>
-                );
-              })}
-            </div>
-          ) : (
-            <EmptyState
-              icon={FileText}
-              title="Nenhum Livro de Obra encontrado"
-              description="Crie um novo Livro de Obra para começar a gerir os registos diários."
-              buttonText="Criar Novo Livro"
-              onButtonClick={() => setIsDialogOpen(true)}
-            />
-          )}
-        </CardContent>
-      </Card>
+      <LivroDeObraList
+        livrosObra={livrosObra}
+        projects={projects}
+        selectedLivroObra={selectedLivroObra}
+        onSelectLivroObra={setSelectedLivroObra}
+        onNewLivroClick={() => setIsDialogOpen(true)}
+      />
 
       {selectedLivroObra && (
         <>
-          {/* Detalhes do Livro de Obra Selecionado */}
-          <Card className="bg-card text-card-foreground border border-border">
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="text-xl font-semibold">Detalhes do Livro de Obra</CardTitle>
-              <Button onClick={handleGeneratePdf} className="flex items-center gap-2">
-                <FileText className="h-4 w-4" /> Gerar PDF
-              </Button>
-            </CardHeader>
-            <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div><span className="font-semibold">Obra:</span> {currentProject?.nome || "N/A"}</div>
-              <div><span className="font-semibold">Localização:</span> {currentProject?.localizacao || "N/A"}</div>
-              <div><span className="font-semibold">Cliente:</span> {currentProject?.cliente || "N/A"}</div>
-              <div><span className="font-semibold">Período:</span> {formatDate(selectedLivroObra.periodo_inicio)} a {formatDate(selectedLivroObra.periodo_fim)}</div>
-              <div><span className="font-semibold">Estado:</span> <span className="capitalize">{selectedLivroObra.estado.replace('_', ' ')}</span></div>
-              <div><span className="font-semibold">Observações:</span> {selectedLivroObra.observacoes || "N/A"}</div>
-            </CardContent>
-          </Card>
+          <LivroDeObraDetailsCard
+            selectedLivroObra={selectedLivroObra}
+            currentProject={currentProject}
+            onGeneratePdf={handleGeneratePdf}
+          />
 
-          {/* RDOs Compilados (Mock) */}
-          <Card className="bg-card text-card-foreground border border-border">
-            <CardHeader>
-              <CardTitle className="text-xl font-semibold">Registos Diários de Obra (RDOs)</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {mockRdos.length > 0 ? (
-                <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-border">
-                    <thead>
-                      <tr>
-                        <th className="px-4 py-2 text-left text-sm font-medium text-muted-foreground">Data</th>
-                        <th className="px-4 py-2 text-left text-sm font-medium text-muted-foreground">Descrição dos Trabalhos</th>
-                        <th className="px-4 py-2 text-right text-sm font-medium text-muted-foreground">Custos Diários (€)</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-border">
-                      {mockRdos.map((rdo) => (
-                        <tr key={rdo.id}>
-                          <td className="px-4 py-2 whitespace-nowrap text-sm">{formatDate(rdo.data)}</td>
-                          <td className="px-4 py-2 text-sm">{rdo.resumo}</td>
-                          <td className="px-4 py-2 whitespace-nowrap text-right text-sm">{formatCurrency(rdo.custos_diarios)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              ) : (
-                <EmptyState
-                  icon={CalendarDays}
-                  title="Nenhum RDO compilado"
-                  description="Os RDOs serão automaticamente compilados para o período selecionado."
-                />
-              )}
-            </CardContent>
-          </Card>
+          <LivroDeObraRdosTable rdos={mockRdos} />
 
-          {/* IA de Conformidade Documental */}
-          <Card className="bg-card text-card-foreground border border-border">
-            <CardHeader>
-              <CardTitle className="text-xl font-semibold flex items-center gap-2">
-                <Bot className="h-5 w-5 text-primary" /> IA de Conformidade Documental
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-start gap-2 p-3 rounded-md bg-yellow-50 dark:bg-yellow-950 border border-yellow-200 dark:border-yellow-700 text-yellow-800 dark:text-yellow-200">
-                <AlertTriangle className="h-5 w-5 flex-shrink-0 mt-0.5" />
-                <p className="text-xs font-medium">
-                  <span className="font-bold">Importante:</span> Este processo é informativo e não substitui aconselhamento jurídico ou técnico especializado.
-                </p>
-              </div>
-              <p className="text-sm text-muted-foreground">
-                A IA atua como um agente de validação documental e organizacional, analisando o Livro de Obra Digital e os RDOs associados, o cronograma da obra, o orçamento aprovado e as aprovações existentes.
-              </p>
-              <h3 className="font-semibold text-md mt-4">Validações Executadas:</h3>
-              <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1">
-                <li>
-                  <strong>Integridade do Livro de Obra:</strong>
-                  <ul className="list-disc list-inside ml-4">
-                    <li>Verificar se existem RDOs para todos os dias úteis: <span className="text-green-500">OK</span></li>
-                    <li>Datas são contínuas no período: <span className="text-green-500">OK</span></li>
-                    <li>Custos diários estão preenchidos: <span className="text-green-500">OK</span></li>
-                  </ul>
-                </li>
-                <li>
-                  <strong>Coerência Técnica:</strong>
-                  <ul className="list-disc list-inside ml-4">
-                    <li>Comparar progresso descrito × cronograma: <span className="text-orange-500">Alerta: Progresso do RDO (80%) superior ao do cronograma (70%) para a fase 'Fundações'.</span></li>
-                    <li>Custos diários × orçamento: <span className="text-green-500">OK</span></li>
-                  </ul>
-                </li>
-                <li>
-                  <strong>Preparação para Aprovação:</strong>
-                  <ul className="list-disc list-inside ml-4">
-                    <li>Indicar se o Livro de Obra está completo: <span className="text-green-500">Completo</span></li>
-                    <li>Tem lacunas: <span className="text-green-500">Nenhuma</span></li>
-                    <li>Está pronto para submissão: <span className="text-orange-500">Requer revisão devido a inconsistência de progresso.</span></li>
-                  </ul>
-                </li>
-              </ul>
-              <h3 className="font-semibold text-md mt-4">Saída da IA:</h3>
-              <p className="text-sm text-muted-foreground">
-                <strong>Status:</strong> <span className="text-orange-500">Com inconsistências</span>
-              </p>
-              <p className="text-sm text-muted-foreground">
-                <strong>Lista objetiva de alertas:</strong>
-                <ul className="list-disc list-inside ml-4">
-                  <li>Inconsistência de progresso na fase 'Fundações' entre RDO e cronograma.</li>
-                </ul>
-              </p>
-              <p className="text-sm text-muted-foreground">
-                <strong>Sugestões de correção:</strong>
-                <ul className="list-disc list-inside ml-4">
-                  <li>Rever e ajustar o progresso registado no RDO ou atualizar o cronograma.</li>
-                  <li>Adicionar observações no Livro de Obra para justificar a diferença.</li>
-                </ul>
-              </p>
-            </CardContent>
-          </Card>
+          <LivroDeObraAICompliance />
         </>
       )}
 
-      {/* Dialog para Criar Novo Livro de Obra */}
-      <Popover open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <PopoverContent className="w-[400px] p-4">
-          <CardHeader className="px-0 pt-0">
-            <CardTitle className="text-xl font-semibold">Criar Novo Livro de Obra</CardTitle>
-            <p className="text-sm text-muted-foreground">Defina o período e a obra para o novo Livro de Obra.</p>
-          </CardHeader>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-4">
-              <FormField
-                control={form.control}
-                name="project_id"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Obra</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione uma obra" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {projects.map((project) => (
-                          <SelectItem key={project.id} value={project.id}>
-                            {project.nome}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="periodo_inicio"
-                render={({ field }) => (
-                  <FormItem className="flex flex-col">
-                    <FormLabel>Data de Início</FormLabel>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <FormControl>
-                          <Button
-                            variant={"outline"}
-                            className={cn(
-                              "w-full pl-3 text-left font-normal",
-                              !field.value && "text-muted-foreground"
-                            )}
-                          >
-                            {field.value ? (
-                              format(new Date(field.value), "PPP", { locale: pt })
-                            ) : (
-                              <span>Selecione uma data</span>
-                            )}
-                            <CalendarDays className="ml-auto h-4 w-4 opacity-50" />
-                          </Button>
-                        </FormControl>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar
-                          mode="single"
-                          selected={field.value ? parseISO(field.value) : undefined}
-                          onSelect={(date) => field.onChange(date ? format(date, "yyyy-MM-dd") : "")}
-                          initialFocus
-                          locale={pt}
-                        />
-                      </PopoverContent>
-                    </Popover>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="periodo_fim"
-                render={({ field }) => (
-                  <FormItem className="flex flex-col">
-                    <FormLabel>Data de Fim</FormLabel>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <FormControl>
-                          <Button
-                            variant={"outline"}
-                            className={cn(
-                              "w-full pl-3 text-left font-normal",
-                              !field.value && "text-muted-foreground"
-                            )}
-                          >
-                            {field.value ? (
-                              format(new Date(field.value), "PPP", { locale: pt })
-                            ) : (
-                              <span>Selecione uma data</span>
-                            )}
-                            <CalendarDays className="ml-auto h-4 w-4 opacity-50" />
-                          </Button>
-                        </FormControl>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar
-                          mode="single"
-                          selected={field.value ? parseISO(field.value) : undefined}
-                          onSelect={(date) => field.onChange(date ? format(date, "yyyy-MM-dd") : "")}
-                          initialFocus
-                          locale={pt}
-                        />
-                      </PopoverContent>
-                    </Popover>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="observacoes"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Observações (opcional)</FormLabel>
-                    <FormControl>
-                      <Textarea {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <Button type="submit" className="w-full">Criar Livro de Obra</Button>
-            </form>
-          </Form>
-        </PopoverContent>
-      </Popover>
+      <CreateLivroDeObraDialog
+        isOpen={isDialogOpen}
+        onClose={() => setIsDialogOpen(false)}
+        onSubmit={handleCreateLivroObra}
+        projects={projects}
+        form={form}
+      />
     </div>
   );
 };
