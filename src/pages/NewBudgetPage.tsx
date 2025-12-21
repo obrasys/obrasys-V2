@@ -183,15 +183,42 @@ const NewBudgetPage: React.FC = () => {
     }
   };
 
-  const handleSaveClient = (newClient: Client) => {
-    setClients((prevClients) => {
-      if (newClient.id && prevClients.some((c) => c.id === newClient.id)) {
-        return prevClients.map((c) => (c.id === newClient.id ? newClient : c));
-      }
-      return [...prevClients, newClient];
-    });
-    form.setValue("client_id", newClient.id || ""); // Select the newly created client
-    toast.success(`Cliente ${newClient.nome} registado com sucesso!`);
+  const handleSaveClient = async (newClient: Client) => {
+    if (!user) {
+      toast.error("Utilizador não autenticado.");
+      return;
+    }
+    try {
+      const companyId = user.user_metadata.company_id;
+      if (!companyId) throw new Error("ID da empresa não encontrado no perfil do utilizador.");
+
+      const clientDataToSave = {
+        ...newClient,
+        company_id: companyId,
+        id: newClient.id || uuidv4(), // Ensure ID exists for upsert
+      };
+
+      const { data, error } = await supabase
+        .from('clients')
+        .upsert(clientDataToSave)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      setClients((prevClients) => {
+        if (data.id && prevClients.some((c) => c.id === data.id)) {
+          return prevClients.map((c) => (c.id === data.id ? data : c));
+        }
+        return [...prevClients, data];
+      });
+      form.setValue("client_id", data.id || ""); // Select the newly created/updated client
+      toast.success(`Cliente ${data.nome} registado com sucesso!`);
+      setIsClientDialogOpen(false); // Close the dialog
+    } catch (error: any) {
+      toast.error(`Erro ao registar cliente: ${error.message}`);
+      console.error("Erro ao registar cliente:", error);
+    }
   };
 
   const handleSaveProject = async (newProject: Project) => {
