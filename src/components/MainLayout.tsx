@@ -46,9 +46,6 @@ const MainLayout = () => {
 
     if (profileError) {
       if (profileError.code === 'PGRST116') { // No rows found, profile doesn't exist
-        // This case should ideally be handled by the Supabase trigger on signup.
-        // If it's still null here, it means the trigger might not have run yet or failed.
-        // We should not attempt to create it from the client to avoid conflicts.
         console.warn("No profile found for user. Assuming trigger will handle or profile is being created.");
         setProfile(null); // Set profile to null, UI should handle loading/empty state
       } else {
@@ -90,6 +87,7 @@ const MainLayout = () => {
       <Sidebar
         isCollapsed={isSidebarCollapsed}
         toggleSidebar={toggleSidebar}
+        profile={profile} {/* Passando o profile para o Sidebar */}
       />
       <main
         className={`flex-1 p-4 md:p-6 transition-all duration-300 ease-in-out ${

@@ -26,15 +26,18 @@ import { Card } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import NavButton from "@/components/NavButton"; // Importar NavButton
+import { useSession } from "@/components/SessionContextProvider"; // Importar useSession
 
 interface SidebarProps {
   isCollapsed: boolean;
   toggleSidebar: () => void;
+  profile: { first_name: string | null; last_name: string | null; avatar_url: string | null; role: string | null; } | null; // Adicionada a prop profile
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, toggleSidebar }) => {
+const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, toggleSidebar, profile }) => {
   const location = useLocation();
   const navigate = useNavigate(); // Inicializar useNavigate
+  const { user } = useSession(); // Obter o user do useSession para o email
 
   const navItems = [
     {
@@ -99,6 +102,10 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, toggleSidebar }) => {
     navigate('/login'); // Redirecionar para a página de login
   };
 
+  const userInitials = profile?.first_name && profile?.last_name
+    ? `${profile.first_name.charAt(0)}${profile.last_name.charAt(0)}`.toUpperCase()
+    : user?.email?.charAt(0).toUpperCase() || 'US'; // Fallback to email initial
+
   return (
     <aside
       className={cn(
@@ -146,13 +153,13 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, toggleSidebar }) => {
         )}
       >
         <Avatar className="h-9 w-9">
-          <AvatarImage src="https://github.com/shadcn.png" alt="User Avatar" />
-          <AvatarFallback>BC</AvatarFallback>
+          <AvatarImage src={profile?.avatar_url || undefined} alt="User Avatar" /> {/* Usando profile.avatar_url */}
+          <AvatarFallback>{userInitials}</AvatarFallback>
         </Avatar>
         {!isCollapsed && (
           <div className="flex flex-col">
-            <span className="font-semibold text-sm">Bezerrra Cavalcanti</span>
-            <span className="text-xs text-muted-foreground">Administrador</span>
+            <span className="font-semibold text-sm">{profile?.first_name} {profile?.last_name}</span> {/* Usando profile.first_name e last_name */}
+            <span className="text-xs text-muted-foreground">{profile?.role || "Cliente"}</span> {/* Usando profile.role */}
           </div>
         )}
       </div>
