@@ -7,7 +7,8 @@ import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import Budgeting from "./pages/Budgeting";
 import ProjectManagement from "./pages/ProjectManagement";
-import SupplyChain from "./pages/SupplyChain"; // Import the new SupplyChain page
+import SupplyChain from "./pages/SupplyChain";
+import FinanceManagement from "./pages/FinanceManagement"; // Import the new FinanceManagement page
 
 const queryClient = new QueryClient();
 
@@ -21,7 +22,8 @@ const App = () => (
           <Route path="/" element={<Index />} />
           <Route path="/budgeting" element={<Budgeting />} />
           <Route path="/project-management" element={<ProjectManagement />} />
-          <Route path="/supply-chain" element={<SupplyChain />} /> {/* New route for Supply Chain */}
+          <Route path="/supply-chain" element={<SupplyChain />} />
+          <Route path="/finance-management" element={<FinanceManagement />} /> {/* New route for Finance Management */}
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
