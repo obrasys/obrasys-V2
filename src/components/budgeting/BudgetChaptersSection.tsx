@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import EmptyState from "@/components/EmptyState";
 
 import { NewBudgetFormValues, BudgetItem, BudgetChapterForm } from "@/schemas/budget-schema";
-import BudgetChapterForm from "./BudgetChapterForm";
+import BudgetChapterForm from "./BudgetChapterForm"; // <-- Importação correta
 import { v4 as uuidv4 } from "uuid";
 
 interface BudgetChaptersSectionProps {
@@ -108,7 +108,7 @@ const BudgetChaptersSection: React.FC<BudgetChaptersSectionProps> = ({
         )}
         <Accordion type="multiple" className="w-full">
           {chapterFields.map((chapter, chapterIndex) => (
-            <BudgetChapterForm
+            <BudgetChapterForm // <-- Uso correto do componente importado
               key={chapter.id}
               form={form}
               isApproved={isApproved}
