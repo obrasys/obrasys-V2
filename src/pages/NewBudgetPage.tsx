@@ -77,6 +77,7 @@ const NewBudgetPage: React.FC = () => {
   const fetchUserCompanyId = React.useCallback(async () => {
     if (!user) {
       setUserCompanyId(null);
+      console.log("NewBudgetPage: User not authenticated, userCompanyId set to null.");
       return;
     }
     const { data: profileData, error: profileError } = await supabase
@@ -86,10 +87,11 @@ const NewBudgetPage: React.FC = () => {
       .single();
 
     if (profileError) {
-      console.error("Erro ao carregar company_id do perfil:", profileError);
+      console.error("NewBudgetPage: Erro ao carregar company_id do perfil:", profileError);
       setUserCompanyId(null);
     } else if (profileData) {
       setUserCompanyId(profileData.company_id);
+      console.log("NewBudgetPage: User company_id fetched:", profileData.company_id);
     }
   }, [user]);
 
@@ -102,14 +104,16 @@ const NewBudgetPage: React.FC = () => {
   const fetchClients = React.useCallback(async () => {
     if (!userCompanyId) { // Só busca clientes se o companyId estiver disponível
       setClients([]);
+      console.log("NewBudgetPage: userCompanyId is null, clients set to empty array.");
       return;
     }
     const { data, error } = await supabase.from('clients').select('id, nome').eq('company_id', userCompanyId); // Filtra por company_id
     if (error) {
       toast.error(`Erro ao carregar clientes: ${error.message}`);
-      console.error("Erro ao carregar clientes:", error);
+      console.error("NewBudgetPage: Erro ao carregar clientes:", error);
     } else {
       setClients(data || []);
+      console.log("NewBudgetPage: Clients fetched for company_id", userCompanyId, ":", data);
     }
   }, [userCompanyId]); // Agora depende de userCompanyId
 
