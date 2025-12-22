@@ -37,7 +37,7 @@ const ApprovalsPage: React.FC = () => {
   const [approvals, setApprovals] = React.useState<ApprovalWithRelations[]>([]);
   const [selectedApproval, setSelectedApproval] = React.useState<ApprovalWithRelations | null>(null);
   const [isLoadingApprovals, setIsLoadingApprovals] = React.useState(true);
-  const [isProcessingApproval, setIsProcessingApproval] = React.useState(false);
+  const [isProcessingApproval, setIsProcessingApproval] = React.useState(false); // State for processing status
 
   // Fetch user's company ID
   const fetchUserCompanyId = React.useCallback(async () => {
@@ -167,6 +167,7 @@ const ApprovalsPage: React.FC = () => {
           approval={selectedApproval}
           onApprovalAction={fetchApprovals} // Callback to refresh list after action
           setIsProcessingApproval={setIsProcessingApproval}
+          isProcessingApproval={isProcessingApproval} // Pass the state here
         />
       ) : (
         <ApprovalsDashboard

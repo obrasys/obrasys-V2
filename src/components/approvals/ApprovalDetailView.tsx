@@ -40,17 +40,20 @@ import { Project } from "@/schemas/project-schema";
 import { BudgetDB, BudgetItemDB, BudgetChapterDB } from "@/schemas/budget-schema";
 import { RdoEntry } from "@/schemas/compliance-schema";
 import { formatCurrency } from "@/utils/formatters";
+import { Skeleton } from "@/components/ui/skeleton"; // Added import for Skeleton
 
 interface ApprovalDetailViewProps {
   approval: ApprovalWithRelations;
   onApprovalAction: () => void; // Callback to refresh approvals list
   setIsProcessingApproval: (isProcessing: boolean) => void;
+  isProcessingApproval: boolean; // Added prop
 }
 
 const ApprovalDetailView: React.FC<ApprovalDetailViewProps> = ({
   approval,
   onApprovalAction,
   setIsProcessingApproval,
+  isProcessingApproval, // Destructured prop
 }) => {
   const { user, isLoading: isSessionLoading } = useSession();
   const [approvalHistory, setApprovalHistory] = React.useState<ApprovalHistoryWithUser[]>([]);
@@ -162,7 +165,7 @@ const ApprovalDetailView: React.FC<ApprovalDetailViewProps> = ({
       toast.success(`Aprovação ${newStatus.replace('_', ' ')} com sucesso!`);
       onApprovalAction(); // Refresh parent list
       fetchApprovalHistory(); // Refresh local history
-      setSelectedApproval({ ...approval, status: newStatus, decision_at: new Date().toISOString(), decision_by_user_id: user.id, comments: comments }); // Update local state
+      // Removed direct setSelectedApproval call, parent will handle state update via onApprovalAction
     } catch (error: any) {
       toast.error(`Erro ao processar aprovação: ${error.message}`);
       console.error("Erro ao processar aprovação:", error);
