@@ -149,7 +149,7 @@ const LivroDeObraPage = () => {
     // Fetch RDO entries for the selected project and within the Livro de Obra's period
     const { data: rdoData, error: rdoError } = await supabase
       .from('rdo_entries')
-      .select('*, responsible_user:profiles(id, first_name, last_name, avatar_url)')
+      .select('*, responsible_user:profiles!rdo_entries_responsible_user_id_fkey(id, first_name, last_name, avatar_url)') // Explicitly use the foreign key
       .eq('project_id', selectedLivroObra.project_id)
       .eq('company_id', userCompanyId)
       .gte('date', selectedLivroObra.periodo_inicio)
@@ -170,7 +170,6 @@ const LivroDeObraPage = () => {
       setRdoEntries(formattedRdos);
 
       // Extract unique users from RDO entries
-      const uniqueUserIds = new Set(formattedRdos.map(rdo => rdo.responsible_user_id).filter(Boolean));
       const usersDetails = (rdoData || []).map((rdo: any) => rdo.responsible_user).filter(Boolean);
       const uniqueUsers = Array.from(new Map(usersDetails.map((user: any) => [user.id, user])).values());
       setProjectUsers(uniqueUsers);

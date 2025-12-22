@@ -81,7 +81,7 @@ serve(async (req) => {
     let budget: any = null;
     let budgetItems: any[] = [];
     if (project.budget_id) {
-      const { data: fetchedBudget, error: budgetFetchError } = await supabase // Renamed error variable
+      const { data: fetchedBudget, error: budgetFetchError } = await supabase
         .from('budgets')
         .select(`
           *,
@@ -117,7 +117,7 @@ serve(async (req) => {
     console.log('Edge Function: Fetching schedule data for project_id:', project.id);
     let schedule: any = null;
     let scheduleTasks: any[] = [];
-    const { data: fetchedSchedule, error: scheduleFetchError } = await supabase // Renamed error variable
+    const { data: fetchedSchedule, error: scheduleFetchError } = await supabase
       .from('schedules')
       .select('*')
       .eq('project_id', project.id)
@@ -137,7 +137,7 @@ serve(async (req) => {
       schedule = fetchedSchedule;
       console.log('Edge Function: Schedule data fetched successfully for project_id:', project.id);
       console.log('Edge Function: Fetching schedule tasks for schedule_id:', schedule.id);
-      const { data: fetchedTasks, error: tasksFetchError } = await supabase // Renamed error variable
+      const { data: fetchedTasks, error: tasksFetchError } = await supabase
         .from('schedule_tasks')
         .select('*')
         .eq('schedule_id', schedule.id);
@@ -161,9 +161,9 @@ serve(async (req) => {
 
     // --- Fetch RDO Entries ---
     console.log('Edge Function: Fetching RDO entries for project_id:', project.id);
-    const { data: rdoEntries, error: rdoFetchError } = await supabase // Renamed error variable
+    const { data: rdoEntries, error: rdoFetchError } = await supabase
       .from('rdo_entries')
-      .select('*, responsible_user:profiles(id, first_name, last_name, avatar_url)')
+      .select('*, responsible_user:profiles!rdo_entries_responsible_user_id_fkey(id, first_name, last_name, avatar_url)') // Explicitly use the foreign key
       .eq('project_id', project.id)
       .order('date', { ascending: false });
 
@@ -189,7 +189,7 @@ serve(async (req) => {
     const projectCostDeviationPercentage = project.custo_planeado > 0 ? (projectCostDeviation / project.custo_planeado) * 100 : 0;
     if (projectCostDeviationPercentage > 20) {
       generatedAlerts.push({
-        company_id: projectCompanyId, // Added company_id
+        company_id: projectCompanyId,
         project_id: project.id,
         project_name: projectName,
         type: "Cost Deviation",
@@ -199,7 +199,7 @@ serve(async (req) => {
       });
     } else if (projectCostDeviationPercentage > 5) {
       generatedAlerts.push({
-        company_id: projectCompanyId, // Added company_id
+        company_id: projectCompanyId,
         project_id: project.id,
         project_name: projectName,
         type: "Cost Deviation",
@@ -209,7 +209,7 @@ serve(async (req) => {
       });
     } else if (projectCostDeviationPercentage < -5) {
       generatedAlerts.push({
-        company_id: projectCompanyId, // Added company_id
+        company_id: projectCompanyId,
         project_id: project.id,
         project_name: projectName,
         type: "Cost Deviation",
@@ -225,7 +225,7 @@ serve(async (req) => {
       const itemDeviationPercentage = item.custo_planeado > 0 ? (itemDeviation / item.custo_planeado) * 100 : 0;
       if (itemDeviationPercentage > 20) {
         generatedAlerts.push({
-          company_id: projectCompanyId, // Added company_id
+          company_id: projectCompanyId,
           project_id: project.id,
           project_name: projectName,
           type: "Cost Deviation",
@@ -235,7 +235,7 @@ serve(async (req) => {
         });
       } else if (itemDeviationPercentage > 5) {
         generatedAlerts.push({
-          company_id: projectCompanyId, // Added company_id
+          company_id: projectCompanyId,
           project_id: project.id,
           project_name: projectName,
           type: "Cost Deviation",
@@ -251,7 +251,7 @@ serve(async (req) => {
     scheduleTasks.forEach(task => {
       if (task.estado === "Atrasado") {
         generatedAlerts.push({
-          company_id: projectCompanyId, // Added company_id
+          company_id: projectCompanyId,
           project_id: project.id,
           project_name: projectName,
           type: "Schedule Deviation",
@@ -262,7 +262,7 @@ serve(async (req) => {
       } else if (task.estado !== "Concluído" && task.data_fim && parseISO(task.data_fim) < today) {
         const daysLate = differenceInDays(today, parseISO(task.data_fim));
         generatedAlerts.push({
-          company_id: projectCompanyId, // Added company_id
+          company_id: projectCompanyId,
           project_id: project.id,
           project_name: projectName,
           type: "Schedule Deviation",
@@ -276,7 +276,7 @@ serve(async (req) => {
     // 4. Missing RDOs (Simplified: check for recent activity if Livro de Obra exists)
     if (rdoEntries && rdoEntries.length === 0) {
       generatedAlerts.push({
-        company_id: projectCompanyId, // Added company_id
+        company_id: projectCompanyId,
         project_id: project.id,
         project_name: projectName,
         type: "Missing RDOs",
@@ -290,7 +290,7 @@ serve(async (req) => {
       const daysSinceLastRDO = differenceInDays(today, lastRdoDate);
       if (daysSinceLastRDO > 3) { // Assuming 3 days is a reasonable threshold for "recent"
         generatedAlerts.push({
-          company_id: projectCompanyId, // Added company_id
+          company_id: projectCompanyId,
           project_id: project.id,
           project_name: projectName,
           type: "Missing RDOs",
@@ -311,7 +311,7 @@ serve(async (req) => {
 
       if (relatedRdoProgress && relatedRdoProgress.details.new_progress !== task.progresso) {
         generatedAlerts.push({
-          company_id: projectCompanyId, // Added company_id
+          company_id: projectCompanyId,
           project_id: project.id,
           project_name: projectName,
           type: "Inconsistent Execution vs Planning",
@@ -327,7 +327,7 @@ serve(async (req) => {
       const budgetMargin = budget.total_planeado > 0 ? ((budget.total_planeado - budget.total_executado) / budget.total_planeado) * 100 : 0;
       if (budgetMargin < 5) {
         generatedAlerts.push({
-          company_id: projectCompanyId, // Added company_id
+          company_id: projectCompanyId,
           project_id: project.id,
           project_name: projectName,
           type: "Margin Risk",
@@ -337,7 +337,7 @@ serve(async (req) => {
         });
       } else if (budgetMargin < 10) {
         generatedAlerts.push({
-          company_id: projectCompanyId, // Added company_id
+          company_id: projectCompanyId,
           project_id: project.id,
           project_name: projectName,
           type: "Margin Risk",
@@ -348,7 +348,7 @@ serve(async (req) => {
       }
     } else {
       generatedAlerts.push({
-        company_id: projectCompanyId, // Added company_id
+        company_id: projectCompanyId,
         project_id: project.id,
         project_name: projectName,
         type: "Margin Risk",
@@ -361,7 +361,7 @@ serve(async (req) => {
     // --- Persist Alerts to Database ---
     if (generatedAlerts.length > 0) {
       const alertsToInsert = generatedAlerts.map(alert => ({
-        company_id: alert.company_id, // Use company_id from the alert object
+        company_id: alert.company_id,
         project_id: alert.project_id,
         type: alert.type,
         severity: alert.severity,
@@ -378,7 +378,7 @@ serve(async (req) => {
       if (insertError) {
         console.error('Edge Function: Error inserting AI alerts into database:', insertError);
         generatedAlerts.push({
-          company_id: projectCompanyId, // Added company_id
+          company_id: projectCompanyId,
           project_id: project.id,
           project_name: projectName,
           type: "Persistence Error",
