@@ -67,28 +67,58 @@ const ApprovalsPage: React.FC = () => {
       return;
     }
     setIsLoadingApprovals(true);
-    const { data, error } = await supabase
+    const { data: approvalsData, error: approvalsError } = await supabase
       .from('approvals')
       .select(`
-        *,
-        projects(nome),
-        requested_by_user:profiles!approvals_requested_by_user_id_fkey(first_name, last_name, avatar_url),
-        decision_by_user:profiles!approvals_decision_by_user_id_fkey(first_name, last_name, avatar_url)
+        id, company_id, project_id, entity_type, entity_id, status, requested_by_user_id, requested_at, description, reason, attachments_url, decision_at, decision_by_user_id, comments, created_at, updated_at,
+        projects(nome)
       `)
       .eq('company_id', userCompanyId)
       .order('requested_at', { ascending: false });
 
-    if (error) {
-      toast.error(`Erro ao carregar aprovações: ${error.message}`);
-      console.error("Erro ao carregar aprovações:", error);
+    if (approvalsError) {
+      toast.error(`Erro ao carregar aprovações: ${approvalsError.message}`);
+      console.error("Erro ao carregar aprovações:", approvalsError);
       setApprovals([]);
-    } else {
-      setApprovals(data || []);
-      // If an approval was selected, try to re-select it with updated data
-      if (selectedApproval) {
-        const updatedSelected = (data || []).find(a => a.id === selectedApproval.id);
-        setSelectedApproval(updatedSelected || null);
+      setIsLoadingApprovals(false);
+      return;
+    }
+
+    const allUserIds = new Set<string>();
+    approvalsData?.forEach(approval => {
+      if (approval.requested_by_user_id) allUserIds.add(approval.requested_by_user_id);
+      if (approval.decision_by_user_id) allUserIds.add(approval.decision_by_user_id);
+    });
+
+    let usersMap = new Map<string, { first_name: string; last_name: string; avatar_url: string | null }>();
+    if (allUserIds.size > 0) {
+      const { data: usersData, error: usersError } = await supabase
+        .from('profiles')
+        .select('id, first_name, last_name, avatar_url')
+        .in('id', Array.from(allUserIds));
+
+      if (usersError) {
+        console.error("Erro ao carregar perfis de utilizadores:", usersError);
+        toast.error(`Erro ao carregar perfis de utilizadores: ${usersError.message}`);
+      } else {
+        usersData?.forEach(user => {
+          usersMap.set(user.id, { first_name: user.first_name, last_name: user.last_name, avatar_url: user.avatar_url });
+        });
       }
+    }
+
+    const formattedApprovals: ApprovalWithRelations[] = (approvalsData || []).map((approval: any) => ({
+      ...approval,
+      projects: approval.projects,
+      requested_by_user: approval.requested_by_user_id ? usersMap.get(approval.requested_by_user_id) : null,
+      decision_by_user: approval.decision_by_user_id ? usersMap.get(approval.decision_by_user_id) : null,
+    }));
+
+    setApprovals(formattedApprovals);
+    // If an approval was selected, try to re-select it with updated data
+    if (selectedApproval) {
+      const updatedSelected = formattedApprovals.find(a => a.id === selectedApproval.id);
+      setSelectedApproval(updatedSelected || null);
     }
     setIsLoadingApprovals(false);
   }, [userCompanyId, selectedApproval]);

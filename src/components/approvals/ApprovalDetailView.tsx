@@ -55,7 +55,7 @@ const ApprovalDetailView: React.FC<ApprovalDetailViewProps> = ({
   setIsProcessingApproval,
   isProcessingApproval, // Destructured prop
 }) => {
-  const { user, isLoading: isSessionLoading } = useSession();
+  const { user } = useSession(); // Removed isLoading: isSessionLoading as it's not used directly here
   const [approvalHistory, setApprovalHistory] = React.useState<ApprovalHistoryWithUser[]>([]);
   const [isLoadingHistory, setIsLoadingHistory] = React.useState(true);
   const [relatedEntityData, setRelatedEntityData] = React.useState<any>(null);
@@ -67,19 +67,48 @@ const ApprovalDetailView: React.FC<ApprovalDetailViewProps> = ({
 
   const fetchApprovalHistory = React.useCallback(async () => {
     setIsLoadingHistory(true);
-    const { data, error } = await supabase
+    const { data: historyData, error: historyError } = await supabase
       .from('approval_history')
-      .select('*, action_by_user:profiles!approval_history_action_by_user_id_fkey(first_name, last_name, avatar_url)')
+      .select('id, approval_id, action_type, action_by_user_id, action_at, comments, old_status, new_status, created_at')
       .eq('approval_id', approval.id!)
       .order('action_at', { ascending: true });
 
-    if (error) {
-      toast.error(`Erro ao carregar histórico de aprovação: ${error.message}`);
-      console.error("Erro ao carregar histórico de aprovação:", error);
+    if (historyError) {
+      toast.error(`Erro ao carregar histórico de aprovação: ${historyError.message}`);
+      console.error("Erro ao carregar histórico de aprovação:", historyError);
       setApprovalHistory([]);
-    } else {
-      setApprovalHistory(data || []);
+      setIsLoadingHistory(false);
+      return;
     }
+
+    const allUserIds = new Set<string>();
+    historyData?.forEach(item => {
+      if (item.action_by_user_id) allUserIds.add(item.action_by_user_id);
+    });
+
+    let usersMap = new Map<string, { first_name: string; last_name: string; avatar_url: string | null }>();
+    if (allUserIds.size > 0) {
+      const { data: usersData, error: usersError } = await supabase
+        .from('profiles')
+        .select('id, first_name, last_name, avatar_url')
+        .in('id', Array.from(allUserIds));
+
+      if (usersError) {
+        console.error("Erro ao carregar perfis de utilizadores para histórico:", usersError);
+        toast.error(`Erro ao carregar perfis de utilizadores para histórico: ${usersError.message}`);
+      } else {
+        usersData?.forEach(userProfile => {
+          usersMap.set(userProfile.id, { first_name: userProfile.first_name, last_name: userProfile.last_name, avatar_url: userProfile.avatar_url });
+        });
+      }
+    }
+
+    const formattedHistory: ApprovalHistoryWithUser[] = (historyData || []).map((item: any) => ({
+      ...item,
+      action_by_user: item.action_by_user_id ? usersMap.get(item.action_by_user_id) : null,
+    }));
+
+    setApprovalHistory(formattedHistory);
     setIsLoadingHistory(false);
   }, [approval.id]);
 
@@ -87,6 +116,7 @@ const ApprovalDetailView: React.FC<ApprovalDetailViewProps> = ({
     setIsLoadingEntityData(true);
     let data: any = null;
     let error: any = null;
+    let userIdsToFetch = new Set<string>();
 
     switch (approval.entity_type) {
       case 'budget':
@@ -97,7 +127,9 @@ const ApprovalDetailView: React.FC<ApprovalDetailViewProps> = ({
         ({ data, error } = await supabase.from('budget_items').select('*').eq('id', approval.entity_id).single());
         break;
       case 'rdo_entry':
-        ({ data, error } = await supabase.from('rdo_entries').select('*').eq('id', approval.entity_id).single());
+        // Fetch RDO entry and its responsible_user_id
+        ({ data, error } = await supabase.from('rdo_entries').select('*, responsible_user_id').eq('id', approval.entity_id).single());
+        if (data?.responsible_user_id) userIdsToFetch.add(data.responsible_user_id);
         break;
       case 'schedule_task':
         ({ data, error } = await supabase.from('schedule_tasks').select('*').eq('id', approval.entity_id).single());
@@ -111,6 +143,20 @@ const ApprovalDetailView: React.FC<ApprovalDetailViewProps> = ({
       console.error("Erro ao carregar entidade relacionada:", error);
       setRelatedEntityData(null);
     } else {
+      // If RDO entry, fetch responsible user profile
+      if (approval.entity_type === 'rdo_entry' && data && userIdsToFetch.size > 0) {
+        const { data: usersData, error: usersError } = await supabase
+          .from('profiles')
+          .select('id, first_name, last_name, avatar_url')
+          .in('id', Array.from(userIdsToFetch));
+
+        if (usersError) {
+          console.error("Erro ao carregar perfil do utilizador responsável pelo RDO:", usersError);
+          toast.error(`Erro ao carregar perfil do utilizador responsável pelo RDO: ${usersError.message}`);
+        } else if (usersData && usersData.length > 0) {
+          data.responsible_user = usersData[0]; // Attach the user profile to the RDO data
+        }
+      }
       setRelatedEntityData(data);
     }
     setIsLoadingEntityData(false);
@@ -165,7 +211,7 @@ const ApprovalDetailView: React.FC<ApprovalDetailViewProps> = ({
       toast.success(`Aprovação ${newStatus.replace('_', ' ')} com sucesso!`);
       onApprovalAction(); // Refresh parent list
       fetchApprovalHistory(); // Refresh local history
-      // Removed direct setSelectedApproval call, parent will handle state update via onApprovalAction
+      // The parent component (ApprovalsPage) will re-fetch and update the selectedApproval state.
     } catch (error: any) {
       toast.error(`Erro ao processar aprovação: ${error.message}`);
       console.error("Erro ao processar aprovação:", error);
@@ -232,12 +278,14 @@ const ApprovalDetailView: React.FC<ApprovalDetailViewProps> = ({
           </div>
         );
       case 'rdo_entry':
-        const rdoEntry = relatedEntityData as RdoEntry;
+        const rdoEntry = relatedEntityData as RdoEntry & { responsible_user?: { first_name: string; last_name: string; avatar_url: string | null } };
+        const responsibleUser = rdoEntry.responsible_user;
         return (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div><span className="font-semibold">Data:</span> {format(parseISO(rdoEntry.date), "dd/MM/yyyy", { locale: pt })}</div>
             <div><span className="font-semibold">Tipo de Evento:</span> {rdoEntry.event_type}</div>
             <div className="md:col-span-2"><span className="font-semibold">Descrição:</span> {rdoEntry.description}</div>
+            {responsibleUser && <div><span className="font-semibold">Responsável:</span> {responsibleUser.first_name} {responsibleUser.last_name}</div>}
             {rdoEntry.observations && <div className="md:col-span-2"><span className="font-semibold">Observações:</span> {rdoEntry.observations}</div>}
             {rdoEntry.attachments_url && rdoEntry.attachments_url.length > 0 && (
               <div className="md:col-span-2">
