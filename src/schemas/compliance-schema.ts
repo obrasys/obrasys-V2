@@ -4,6 +4,7 @@ export const livroObraSchema = z.object({
   id: z.string().uuid().optional(),
   company_id: z.string().uuid().optional(), // Adicionado para RLS
   project_id: z.string().uuid().min(1, "Selecione uma obra."),
+  budget_id: z.string().uuid().optional().nullable(), // Adicionado: Link para o orçamento
   periodo_inicio: z.string().min(1, "A data de início é obrigatória."),
   periodo_fim: z.string().min(1, "A data de fim é obrigatória."),
   estado: z.enum(["em_preparacao", "aprovado", "arquivado"], {
