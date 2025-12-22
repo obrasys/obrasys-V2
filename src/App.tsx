@@ -28,7 +28,7 @@ import PriceDatabasePage from "./pages/PriceDatabasePage";
 import WorkItemsPage from "./pages/WorkItemsPage";
 
 // New pages for Automation & Intelligence module
-import AlertsConfigurationPage from "./pages/AlertsConfigurationPage";
+import AIAssistantAlertsPage from "./pages/AIAssistantAlertsPage"; // Rota atualizada
 import ReplanningSuggestionsPage from "./pages/ReplanningSuggestionsPage";
 import AIAssistantPage from "./pages/AIAssistantPage";
 import PerformanceAnalysisPage from "./pages/PerformanceAnalysisPage";
@@ -86,7 +86,7 @@ const AppContent = () => (
       <Route path="/work-items" element={<WorkItemsPage />} />
 
       {/* New routes for Automation & Intelligence features */}
-      <Route path="/automation-intelligence/alerts-configuration" element={<AlertsConfigurationPage />} />
+      <Route path="/automation-intelligence/ai-alerts" element={<AIAssistantAlertsPage />} /> {/* Rota atualizada */}
       <Route path="/automation-intelligence/replanning-suggestions" element={<ReplanningSuggestionsPage />} />
       <Route path="/automation-intelligence/ai-assistant" element={<AIAssistantPage />} />
       <Route path="/automation-intelligence/performance-analysis" element={<PerformanceAnalysisPage />} />

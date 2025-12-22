@@ -43,7 +43,7 @@ serve(async (req) => {
       });
     }
 
-    const alerts: any[] = [];
+    const generatedAlerts: any[] = [];
 
     // --- Fetch Project Data ---
     const { data: project, error: projectError } = await supabase
@@ -86,10 +86,10 @@ serve(async (req) => {
 
       if (budgetError && budgetError.code !== 'PGRST116') { // PGRST116 means no rows found
         console.warn('Error fetching budget for project:', projectError);
-        alerts.push({
+        generatedAlerts.push({
           project_id: project.id,
           project_name: projectName,
-          alert_type: "Data Inconsistency",
+          type: "Data Inconsistency",
           severity: "warning",
           title: "Erro ao carregar orçamento",
           message: `Não foi possível carregar o orçamento associado ao projeto: ${budgetError.message}.`,
@@ -111,10 +111,10 @@ serve(async (req) => {
 
     if (scheduleError && scheduleError.code !== 'PGRST116') {
       console.warn('Error fetching schedule for project:', scheduleError);
-      alerts.push({
+      generatedAlerts.push({
         project_id: project.id,
         project_name: projectName,
-        alert_type: "Data Inconsistency",
+        type: "Data Inconsistency",
         severity: "warning",
         title: "Erro ao carregar cronograma",
         message: `Não foi possível carregar o cronograma associado ao projeto: ${scheduleError.message}.`,
@@ -127,10 +127,10 @@ serve(async (req) => {
         .eq('schedule_id', schedule.id);
       if (tasksError) {
         console.warn('Error fetching schedule tasks:', tasksError);
-        alerts.push({
+        generatedAlerts.push({
           project_id: project.id,
           project_name: projectName,
-          alert_type: "Data Inconsistency",
+          type: "Data Inconsistency",
           severity: "warning",
           title: "Erro ao carregar tarefas do cronograma",
           message: `Não foi possível carregar as tarefas do cronograma: ${tasksError.message}.`,
@@ -149,10 +149,10 @@ serve(async (req) => {
 
     if (rdoError) {
       console.warn('Error fetching RDO entries:', rdoError);
-      alerts.push({
+      generatedAlerts.push({
         project_id: project.id,
         project_name: projectName,
-        alert_type: "Data Inconsistency",
+        type: "Data Inconsistency",
         severity: "warning",
         title: "Erro ao carregar RDOs",
         message: `Não foi possível carregar os registos diários de obra: ${rdoError.message}.`,
@@ -165,28 +165,28 @@ serve(async (req) => {
     const projectCostDeviation = project.custo_real - project.custo_planeado;
     const projectCostDeviationPercentage = project.custo_planeado > 0 ? (projectCostDeviation / project.custo_planeado) * 100 : 0;
     if (projectCostDeviationPercentage > 20) {
-      alerts.push({
+      generatedAlerts.push({
         project_id: project.id,
         project_name: projectName,
-        alert_type: "Cost Deviation",
+        type: "Cost Deviation",
         severity: "critical",
         title: "Desvio de Custo Crítico no Projeto",
         message: `O custo real do projeto (${project.custo_real}€) excede o custo planeado (${project.custo_planeado}€) em ${projectCostDeviation.toFixed(2)}€ (${projectCostDeviationPercentage.toFixed(1)}%).`,
       });
     } else if (projectCostDeviationPercentage > 5) {
-      alerts.push({
+      generatedAlerts.push({
         project_id: project.id,
         project_name: projectName,
-        alert_type: "Cost Deviation",
+        type: "Cost Deviation",
         severity: "warning",
         title: "Desvio de Custo no Projeto",
         message: `O custo real do projeto (${project.custo_real}€) excede o custo planeado (${project.custo_planeado}€) em ${projectCostDeviation.toFixed(2)}€ (${projectCostDeviationPercentage.toFixed(1)}%).`,
       });
     } else if (projectCostDeviationPercentage < -5) {
-      alerts.push({
+      generatedAlerts.push({
         project_id: project.id,
         project_name: projectName,
-        alert_type: "Cost Deviation",
+        type: "Cost Deviation",
         severity: "info",
         title: "Custo Abaixo do Planeado",
         message: `O custo real do projeto (${project.custo_real}€) está abaixo do custo planeado (${project.custo_planeado}€) em ${Math.abs(projectCostDeviation).toFixed(2)}€ (${Math.abs(projectCostDeviationPercentage).toFixed(1)}%).`,
@@ -198,19 +198,19 @@ serve(async (req) => {
       const itemDeviation = item.custo_executado - item.custo_planeado;
       const itemDeviationPercentage = item.custo_planeado > 0 ? (itemDeviation / item.custo_planeado) * 100 : 0;
       if (itemDeviationPercentage > 20) {
-        alerts.push({
+        generatedAlerts.push({
           project_id: project.id,
           project_name: projectName,
-          alert_type: "Cost Deviation",
+          type: "Cost Deviation",
           severity: "critical",
           title: `Desvio de Custo Crítico no Serviço: ${item.servico}`,
           message: `O custo executado para o serviço '${item.servico}' (${item.custo_executado}€) excede o planeado (${item.custo_planeado}€) em ${itemDeviation.toFixed(2)}€ (${itemDeviationPercentage.toFixed(1)}%).`,
         });
       } else if (itemDeviationPercentage > 5) {
-        alerts.push({
+        generatedAlerts.push({
           project_id: project.id,
           project_name: projectName,
-          alert_type: "Cost Deviation",
+          type: "Cost Deviation",
           severity: "warning",
           title: `Desvio de Custo no Serviço: ${item.servico}`,
           message: `O custo executado para o serviço '${item.servico}' (${item.custo_executado}€) excede o planeado (${item.custo_planeado}€) em ${itemDeviation.toFixed(2)}€ (${itemDeviationPercentage.toFixed(1)}%).`,
@@ -222,20 +222,20 @@ serve(async (req) => {
     const today = new Date();
     scheduleTasks.forEach(task => {
       if (task.estado === "Atrasado") {
-        alerts.push({
+        generatedAlerts.push({
           project_id: project.id,
           project_name: projectName,
-          alert_type: "Schedule Deviation",
+          type: "Schedule Deviation",
           severity: "critical",
           title: `Tarefa Atrasada: ${task.capitulo}`,
           message: `A fase '${task.capitulo}' está marcada como 'Atrasado'.`,
         });
       } else if (task.estado !== "Concluído" && task.data_fim && parseISO(task.data_fim) < today) {
         const daysLate = differenceInDays(today, parseISO(task.data_fim));
-        alerts.push({
+        generatedAlerts.push({
           project_id: project.id,
           project_name: projectName,
-          alert_type: "Schedule Deviation",
+          type: "Schedule Deviation",
           severity: daysLate > 7 ? "critical" : "warning",
           title: `Tarefa com Prazo Expirado: ${task.capitulo}`,
           message: `A fase '${task.capitulo}' não foi concluída e o prazo final (${format(parseISO(task.data_fim), 'dd/MM/yyyy')}) expirou há ${daysLate} dias.`,
@@ -245,10 +245,10 @@ serve(async (req) => {
 
     // 4. Missing RDOs (Simplified: check for recent activity if Livro de Obra exists)
     if (rdoEntries && rdoEntries.length === 0) {
-      alerts.push({
+      generatedAlerts.push({
         project_id: project.id,
         project_name: projectName,
-        alert_type: "Missing RDOs",
+        type: "Missing RDOs",
         severity: "warning",
         title: "Faltam Registos Diários de Obra (RDOs)",
         message: "Não foram encontrados registos diários de obra para este projeto. É crucial manter os RDOs atualizados.",
@@ -258,10 +258,10 @@ serve(async (req) => {
       const lastRdoDate = parseISO(rdoEntries[0].date);
       const daysSinceLastRDO = differenceInDays(today, lastRdoDate);
       if (daysSinceLastRDO > 3) { // Assuming 3 days is a reasonable threshold for "recent"
-        alerts.push({
+        generatedAlerts.push({
           project_id: project.id,
           project_name: projectName,
-          alert_type: "Missing RDOs",
+          type: "Missing RDOs",
           severity: "warning",
           title: "RDOs Desatualizados",
           message: `O último registo diário de obra foi há ${daysSinceLastRDO} dias (${format(lastRdoDate, 'dd/MM/yyyy')}). Considere adicionar RDOs mais recentes.`,
@@ -278,10 +278,10 @@ serve(async (req) => {
       );
 
       if (relatedRdoProgress && relatedRdoProgress.details.new_progress !== task.progresso) {
-        alerts.push({
+        generatedAlerts.push({
           project_id: project.id,
           project_name: projectName,
-          alert_type: "Inconsistent Execution vs Planning",
+          type: "Inconsistent Execution vs Planning",
           severity: "warning",
           title: `Inconsistência de Progresso na Fase: ${task.capitulo}`,
           message: `O progresso da fase '${task.capitulo}' no cronograma (${task.progresso}%) difere do progresso reportado no RDO (${relatedRdoProgress.details.new_progress}%).`,
@@ -293,36 +293,65 @@ serve(async (req) => {
     if (budget) {
       const budgetMargin = budget.total_planeado > 0 ? ((budget.total_planeado - budget.total_executado) / budget.total_planeado) * 100 : 0;
       if (budgetMargin < 5) {
-        alerts.push({
+        generatedAlerts.push({
           project_id: project.id,
           project_name: projectName,
-          alert_type: "Margin Risk",
+          type: "Margin Risk",
           severity: "critical",
           title: "Risco Crítico na Margem de Lucro do Orçamento",
           message: `A margem de lucro atual do orçamento (${budgetMargin.toFixed(1)}%) está abaixo do limite crítico de 5%.`,
         });
       } else if (budgetMargin < 10) {
-        alerts.push({
+        generatedAlerts.push({
           project_id: project.id,
           project_name: projectName,
-          alert_type: "Margin Risk",
+          type: "Margin Risk",
           severity: "warning",
           title: "Risco na Margem de Lucro do Orçamento",
           message: `A margem de lucro atual do orçamento (${budgetMargin.toFixed(1)}%) está abaixo do limite de atenção de 10%.`,
         });
       }
     } else {
-      alerts.push({
+      generatedAlerts.push({
         project_id: project.id,
         project_name: projectName,
-        alert_type: "Margin Risk",
+        type: "Margin Risk",
         severity: "info",
         title: "Orçamento não disponível para análise de margem",
         message: "Não foi possível calcular o risco de margem pois o orçamento associado não foi encontrado ou está incompleto.",
       });
     }
 
-    return new Response(JSON.stringify(alerts), {
+    // --- Persist Alerts to Database ---
+    if (generatedAlerts.length > 0) {
+      const alertsToInsert = generatedAlerts.map(alert => ({
+        project_id: alert.project_id,
+        type: alert.type,
+        severity: alert.severity,
+        title: alert.title,
+        message: alert.message,
+        resolved: false, // New alerts are unresolved by default
+      }));
+
+      const { error: insertError } = await supabase
+        .from('ai_alerts')
+        .insert(alertsToInsert);
+
+      if (insertError) {
+        console.error('Error inserting AI alerts into database:', insertError);
+        // Optionally, add an alert about the failure to persist alerts
+        generatedAlerts.push({
+          project_id: project.id,
+          project_name: projectName,
+          type: "Persistence Error",
+          severity: "critical",
+          title: "Erro ao guardar alertas",
+          message: `Não foi possível guardar os alertas gerados na base de dados: ${insertError.message}.`,
+        });
+      }
+    }
+
+    return new Response(JSON.stringify(generatedAlerts), {
       status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });

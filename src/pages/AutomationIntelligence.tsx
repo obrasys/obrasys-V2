@@ -45,9 +45,9 @@ const AutomationIntelligence = () => {
             </p>
             <NavButton
               className="mt-6 w-full"
-              to="/automation-intelligence/alerts-configuration"
+              to="/automation-intelligence/ai-alerts" {/* Rota atualizada */}
             >
-              Configurar Alertas
+              Ver Alertas
             </NavButton>
           </CardContent>
         </Card>
