@@ -10,71 +10,152 @@ import { createColumns } from "@/components/work-items/columns";
 import CreateEditArticleDialog from "@/components/work-items/create-edit-article-dialog";
 import { Article, Category, Subcategory } from "@/schemas/article-schema";
 import { toast } from "sonner";
-import { v4 as uuidv4 } from "uuid";
-
-const mockCategories: Category[] = [
-  { id: uuidv4(), nome: "Materiais Básicos", descricao: "Materiais fundamentais para a construção" },
-  { id: uuidv4(), nome: "Acabamentos", descricao: "Materiais para o acabamento final" },
-  { id: uuidv4(), nome: "Serviços", descricao: "Serviços de mão de obra e subempreitadas" },
-  { id: uuidv4(), nome: "Equipamentos", descricao: "Aluguer ou uso de equipamentos" },
-];
-
-const mockSubcategories: Subcategory[] = [
-  { id: uuidv4(), categoria_id: mockCategories[0].id, nome: "Concreto", descricao: "Tipos de concreto" },
-  { id: uuidv4(), categoria_id: mockCategories[0].id, nome: "Aço", descricao: "Vergalhões e estruturas metálicas" },
-  { id: uuidv4(), categoria_id: mockCategories[1].id, nome: "Pisos", descricao: "Tipos de revestimento de piso" },
-  { id: uuidv4(), categoria_id: mockCategories[2].id, nome: "Alvenaria", descricao: "Serviços de construção de paredes" },
-];
-
-const initialMockArticles: Article[] = [
-  {
-    id: uuidv4(),
-    codigo: "A.01.01.03",
-    descricao: "Concreto fck=25MPa com brita 1 e areia média, fornecido usinado",
-    unidade: "m³",
-    categoria_id: mockCategories[0].id,
-    subcategoria_id: mockSubcategories[0].id,
-    tipo: "material",
-    preco_unitario: 495.30,
-    fonte_referencia: "SINAPI",
-    observacoes: "Para estruturas de concreto armado",
-  },
-  {
-    id: uuidv4(),
-    codigo: "S.02.01.01",
-    descricao: "Mão de obra para assentamento de alvenaria de vedação",
-    unidade: "m²",
-    categoria_id: mockCategories[2].id,
-    subcategoria_id: mockSubcategories[3].id,
-    tipo: "servico",
-    preco_unitario: 35.00,
-    fonte_referencia: "Manual Interno",
-    observacoes: "Inclui argamassa e rejunte",
-  },
-  {
-    id: uuidv4(),
-    codigo: "M.03.01.05",
-    descricao: "Cimento Portland CP II-Z-32",
-    unidade: "saco (50kg)",
-    categoria_id: mockCategories[0].id,
-    subcategoria_id: mockSubcategories[0].id,
-    tipo: "material",
-    preco_unitario: 28.50,
-    fonte_referencia: "CYPE",
-    observacoes: "Para uso geral em argamassas e concretos",
-  },
-];
+import { v4 as uuidv4 } from "uuid"; // Still useful for new client-side IDs before DB assignment
+import { supabase } from "@/integrations/supabase/client"; // Import supabase
+import { useSession } from "@/components/SessionContextProvider"; // Import useSession
+import { Skeleton } from "@/components/ui/skeleton"; // Import Skeleton for loading state
 
 const WorkItemsPage = () => {
-  const [articles, setArticles] = React.useState<Article[]>(initialMockArticles);
+  const { user, isLoading: isSessionLoading } = useSession();
+  const [userCompanyId, setUserCompanyId] = React.useState<string | null>(null);
+
+  const [articles, setArticles] = React.useState<Article[]>([]);
+  const [categories, setCategories] = React.useState<Category[]>([]);
+  const [subcategories, setSubcategories] = React.useState<Subcategory[]>([]);
+  const [isLoadingData, setIsLoadingData] = React.useState(true);
+
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
   const [articleToEdit, setArticleToEdit] = React.useState<Article | null>(null);
 
-  const handleSaveArticle = (newArticle: Article) => {
-    if (newArticle.id && articles.some((a) => a.id === newArticle.id)) {
-      setArticles(articles.map((a) => (a.id === newArticle.id ? newArticle : a)));
+  // Fetch user's company ID
+  const fetchUserCompanyId = React.useCallback(async () => {
+    if (!user) {
+      setUserCompanyId(null);
+      return;
+    }
+    const { data: profileData, error: profileError } = await supabase
+      .from('profiles')
+      .select('company_id')
+      .eq('id', user.id)
+      .single();
+
+    if (profileError) {
+      console.error("Erro ao carregar company_id do perfil:", profileError);
+      setUserCompanyId(null);
+    } else if (profileData) {
+      setUserCompanyId(profileData.company_id);
+    }
+  }, [user]);
+
+  // Fetch articles
+  const fetchArticles = React.useCallback(async () => {
+    if (!userCompanyId) {
+      setArticles([]);
+      return;
+    }
+    const { data, error } = await supabase
+      .from('articles')
+      .select('*')
+      .eq('company_id', userCompanyId)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      toast.error(`Erro ao carregar artigos: ${error.message}`);
+      console.error("Erro ao carregar artigos:", error);
+      setArticles([]);
     } else {
-      setArticles([...articles, { ...newArticle, id: uuidv4() }]);
+      setArticles(data || []);
+    }
+  }, [userCompanyId]);
+
+  // Fetch categories
+  const fetchCategories = React.useCallback(async () => {
+    if (!userCompanyId) {
+      setCategories([]);
+      return;
+    }
+    const { data, error } = await supabase
+      .from('categories')
+      .select('*')
+      .eq('company_id', userCompanyId)
+      .order('nome', { ascending: true });
+
+    if (error) {
+      toast.error(`Erro ao carregar categorias: ${error.message}`);
+      console.error("Erro ao carregar categorias:", error);
+      setCategories([]);
+    } else {
+      setCategories(data || []);
+    }
+  }, [userCompanyId]);
+
+  // Fetch subcategories
+  const fetchSubcategories = React.useCallback(async () => {
+    if (!userCompanyId) {
+      setSubcategories([]);
+      return;
+    }
+    const { data, error } = await supabase
+      .from('subcategories')
+      .select('*')
+      .eq('company_id', userCompanyId)
+      .order('nome', { ascending: true });
+
+    if (error) {
+      toast.error(`Erro ao carregar subcategorias: ${error.message}`);
+      console.error("Erro ao carregar subcategorias:", error);
+      setSubcategories([]);
+    } else {
+      setSubcategories(data || []);
+    }
+  }, [userCompanyId]);
+
+  // Initial data load
+  React.useEffect(() => {
+    if (!isSessionLoading) {
+      fetchUserCompanyId();
+    }
+  }, [isSessionLoading, fetchUserCompanyId]);
+
+  React.useEffect(() => {
+    const loadAllData = async () => {
+      if (userCompanyId) {
+        setIsLoadingData(true);
+        await Promise.all([
+          fetchArticles(),
+          fetchCategories(),
+          fetchSubcategories(),
+        ]);
+        setIsLoadingData(false);
+      }
+    };
+    loadAllData();
+  }, [userCompanyId, fetchArticles, fetchCategories, fetchSubcategories]);
+
+  const handleSaveArticle = async (article: Article) => {
+    if (!userCompanyId) {
+      toast.error("ID da empresa não encontrado. Por favor, faça login novamente.");
+      return;
+    }
+    try {
+      const articleDataToSave = {
+        ...article,
+        company_id: userCompanyId,
+        id: article.id || uuidv4(), // Generate ID if new article
+      };
+
+      const { error } = await supabase
+        .from('articles')
+        .upsert(articleDataToSave);
+
+      if (error) throw error;
+
+      toast.success(`Artigo ${article.id ? "atualizado" : "criado"} com sucesso!`);
+      fetchArticles(); // Refresh the list
+      setIsDialogOpen(false);
+    } catch (error: any) {
+      toast.error(`Erro ao guardar artigo: ${error.message}`);
+      console.error("Erro ao guardar artigo:", error);
     }
   };
 
@@ -83,15 +164,54 @@ const WorkItemsPage = () => {
     setIsDialogOpen(true);
   };
 
-  const handleDeleteArticle = (id: string) => {
-    setArticles(articles.filter((a) => a.id !== id));
-    toast.success("Artigo eliminado com sucesso!");
+  const handleDeleteArticle = async (id: string) => {
+    if (!window.confirm("Tem certeza que deseja eliminar este artigo?")) return;
+    try {
+      const { error } = await supabase
+        .from('articles')
+        .delete()
+        .eq('id', id)
+        .eq('company_id', userCompanyId); // Ensure RLS is respected
+
+      if (error) throw error;
+
+      toast.success("Artigo eliminado com sucesso!");
+      fetchArticles(); // Refresh the list
+    } catch (error: any) {
+      toast.error(`Erro ao eliminar artigo: ${error.message}`);
+      console.error("Erro ao eliminar artigo:", error);
+    }
   };
 
   const columns = createColumns({
     onEdit: handleEditArticle,
     onDelete: handleDeleteArticle,
   });
+
+  if (isLoadingData) {
+    return (
+      <div className="space-y-6">
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between pb-4 md:pb-6 border-b border-border mb-4 md:mb-6">
+          <div>
+            <Skeleton className="h-8 w-64 mb-2" />
+            <Skeleton className="h-4 w-48" />
+          </div>
+          <div className="flex gap-2">
+            <Skeleton className="h-10 w-32" />
+            <Skeleton className="h-10 w-32" />
+            <Skeleton className="h-10 w-32" />
+            <Skeleton className="h-10 w-32" />
+          </div>
+        </div>
+        <Card className="bg-card text-card-foreground border border-border">
+          <CardHeader><CardTitle><Skeleton className="h-6 w-48" /></CardTitle></CardHeader>
+          <CardContent>
+            <Skeleton className="h-96 w-full" />
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -112,7 +232,7 @@ const WorkItemsPage = () => {
       <Card className="bg-card text-card-foreground border border-border">
         <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between space-y-2 sm:space-y-0 pb-2">
           <CardTitle className="text-2xl font-semibold">Catálogo Central de Artigos</CardTitle>
-          <div className="flex flex-wrap gap-2"> {/* Usar flex-wrap para botões */}
+          <div className="flex flex-wrap gap-2">
             <Button onClick={() => { setArticleToEdit(null); setIsDialogOpen(true); }} className="flex items-center gap-2">
               <PlusCircle className="h-4 w-4" /> Novo Artigo
             </Button>
@@ -142,8 +262,8 @@ const WorkItemsPage = () => {
         onClose={() => setIsDialogOpen(false)}
         onSave={handleSaveArticle}
         articleToEdit={articleToEdit}
-        categories={mockCategories}
-        subcategories={mockSubcategories}
+        categories={categories}
+        subcategories={subcategories}
       />
     </div>
   );

@@ -174,11 +174,13 @@ serve(async (req) => {
 
     // --- Fetch RDO Entries ---
     console.log('Edge Function: Fetching RDO entries for project_id:', project.id);
-    const { data: rdoEntries, error: rdoFetchError } = await supabase
+    let rdoEntries: any[] = [];
+    const { data: rawRdoEntries, error: rdoFetchError } = await supabase
       .from('rdo_entries')
-      .select('*, responsible_user:profiles!rdo_entries_responsible_user_id_fkey(id, first_name, last_name, avatar_url)') // Explicitly use the foreign key
+      .select('id, company_id, project_id, budget_id, chapter_id, budget_item_id, date, responsible_user_id, event_type, description, details, observations, attachments_url, status, created_at, updated_at') // Select responsible_user_id directly
       .eq('project_id', project.id)
-      .order('date', { ascending: false });
+      .order('date', { ascending: false })
+      .order('created_at', { ascending: false });
 
     if (rdoFetchError) {
       console.warn('Edge Function: Error fetching RDO entries:', rdoFetchError);
@@ -192,7 +194,47 @@ serve(async (req) => {
         message: `Não foi possível carregar os registos diários de obra: ${rdoFetchError.message}.`,
       });
     } else {
-      console.log('Edge Function: RDO entries fetched successfully. Count:', rdoEntries?.length);
+      console.log('Edge Function: Raw RDO entries fetched successfully. Count:', rawRdoEntries?.length);
+
+      // Fetch responsible user profiles for RDO entries
+      const uniqueResponsibleUserIds = new Set<string>();
+      rawRdoEntries?.forEach(entry => {
+        if (entry.responsible_user_id) {
+          uniqueResponsibleUserIds.add(entry.responsible_user_id);
+        }
+      });
+
+      let responsibleUsersMap = new Map<string, { id: string; first_name: string; last_name: string; avatar_url: string | null; }>();
+      if (uniqueResponsibleUserIds.size > 0) {
+        const { data: usersData, error: usersError } = await supabase
+          .from('profiles')
+          .select('id, first_name, last_name, avatar_url')
+          .in('id', Array.from(uniqueResponsibleUserIds));
+
+        if (usersError) {
+          console.error("Edge Function: Error fetching responsible user profiles:", usersError);
+          generatedAlerts.push({
+            company_id: projectCompanyId,
+            project_id: project.id,
+            project_name: projectName,
+            type: "Data Inconsistency",
+            severity: "warning",
+            title: "Erro ao carregar perfis de utilizadores responsáveis por RDOs",
+            message: `Não foi possível carregar os perfis dos utilizadores responsáveis pelos RDOs: ${usersError.message}.`,
+          });
+        } else {
+          usersData?.forEach(userProfile => {
+            responsibleUsersMap.set(userProfile.id, userProfile);
+          });
+        }
+      }
+
+      // Merge user profiles into RDO entries
+      rdoEntries = (rawRdoEntries || []).map(entry => ({
+        ...entry,
+        responsible_user: entry.responsible_user_id ? responsibleUsersMap.get(entry.responsible_user_id) : null,
+      }));
+      console.log('Edge Function: RDO entries with responsible user profiles merged. Count:', rdoEntries?.length);
     }
 
     // --- Analysis and Alert Generation ---
