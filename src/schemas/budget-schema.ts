@@ -113,6 +113,6 @@ export type BudgetChapterWithItems = BudgetChapterDB & {
 
 // Type for a budget with its chapters and items, and client name (for fetching)
 export type BudgetWithRelations = BudgetDB & {
-  clients: { nome: string } | null;
+  clients: { nome: string }[] | null; // Changed to array
   budget_chapters: BudgetChapterWithItems[];
 };

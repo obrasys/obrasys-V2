@@ -130,11 +130,12 @@ const Budgeting = () => {
       setBudgets([]);
     } else {
       // Cast budgetsData to BudgetWithRelations[]
-      const fetchedBudgets: BudgetWithRelations[] = (budgetsData as BudgetWithRelations[] || []).map(budget => ({
+      const fetchedBudgets: BudgetWithRelations[] = (budgetsData || []).map((budget: any) => ({
         ...budget,
-        budget_chapters: (budget.budget_chapters || []).map(chapter => ({
+        clients: budget.clients || null, // Ensure clients is an array or null
+        budget_chapters: (budget.budget_chapters || []).map((chapter: any) => ({
           ...chapter,
-          budget_items: (chapter.budget_items || []).map(item => ({
+          budget_items: (chapter.budget_items || []).map((item: any) => ({
             ...item,
             // Recalcular desvio no frontend, pois custo_executado pode ser atualizado
             desvio: ((item.custo_real_material || 0) + (item.custo_real_mao_obra || 0)) - item.custo_planeado, // Ensure null/undefined handling
@@ -324,11 +325,6 @@ const Budgeting = () => {
   const budgetDeviationPercentage = totalBudget > 0 ? (budgetDeviation / totalBudget) * 100 : 0;
   const predictedFinalCost = totalBudget + budgetDeviation; // Simplificado
   const currentMargin = totalBudget > 0 ? ((totalBudget - executedCost) / totalBudget) * 100 : 0; // Simplificado
-
-  const formatCurrency = (value: number) => new Intl.NumberFormat("pt-PT", {
-    style: "currency",
-    currency: "EUR",
-  }).format(value);
 
   if (isLoading) {
     return (

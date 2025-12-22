@@ -156,20 +156,20 @@ export function useNewBudgetForm({
 
       if (budgetData) {
         const transformedBudget: NewBudgetFormValues = {
-          id: (budgetData as BudgetWithRelations).id,
-          nome: (budgetData as BudgetWithRelations).nome,
-          client_id: (budgetData as BudgetWithRelations).client_id,
-          localizacao: (budgetData as BudgetWithRelations).localizacao || "",
-          tipo_obra: (budgetData as BudgetWithRelations).tipo_obra || "Nova construção",
-          data_orcamento: (budgetData as BudgetWithRelations).data_orcamento ? format(parseISO((budgetData as BudgetWithRelations).data_orcamento), "yyyy-MM-dd") : format(new Date(), "yyyy-MM-dd"),
-          observacoes_gerais: (budgetData as BudgetWithRelations).observacoes_gerais || "",
-          estado: (budgetData as BudgetWithRelations).estado,
-          chapters: ((budgetData as BudgetWithRelations).budget_chapters || []).map(chapter => ({
+          id: budgetData.id,
+          nome: budgetData.nome,
+          client_id: budgetData.client_id,
+          localizacao: budgetData.localizacao || "",
+          tipo_obra: budgetData.tipo_obra || "Nova construção",
+          data_orcamento: budgetData.data_orcamento ? format(parseISO(budgetData.data_orcamento), "yyyy-MM-dd") : format(new Date(), "yyyy-MM-dd"),
+          observacoes_gerais: budgetData.observacoes_gerais || "",
+          estado: budgetData.estado,
+          chapters: (budgetData.budget_chapters || []).map((chapter: any) => ({
             id: chapter.id,
             codigo: chapter.code || "",
             nome: chapter.title || "",
             observacoes: chapter.notes || "",
-            items: (chapter.budget_items || []).map(item => ({
+            items: (chapter.budget_items || []).map((item: any) => ({
               id: item.id,
               capitulo_id: chapter.id,
               capitulo: item.capitulo,
