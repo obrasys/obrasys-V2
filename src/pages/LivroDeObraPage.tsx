@@ -138,6 +138,46 @@ const LivroDeObraPage = () => {
     setIsLoading(false);
   }, [userCompanyId, preselectedProjectId, selectedLivroObra, form]); // Add form to dependencies
 
+  // Define fetchRdoEntries as a useCallback
+  const fetchRdoEntries = React.useCallback(async () => {
+    if (!selectedLivroObra?.project_id || !userCompanyId) {
+      setRdoEntries([]);
+      setProjectUsers([]);
+      return;
+    }
+
+    // Fetch RDO entries for the selected project and within the Livro de Obra's period
+    const { data: rdoData, error: rdoError } = await supabase
+      .from('rdo_entries')
+      .select('*, responsible_user:profiles(id, first_name, last_name, avatar_url)')
+      .eq('project_id', selectedLivroObra.project_id)
+      .eq('company_id', userCompanyId)
+      .gte('date', selectedLivroObra.periodo_inicio)
+      .lte('date', selectedLivroObra.periodo_fim)
+      .order('date', { ascending: false })
+      .order('created_at', { ascending: false }); // Order by creation time for events on the same day
+
+    if (rdoError) {
+      toast.error(`Erro ao carregar RDOs: ${rdoError.message}`);
+      console.error("Erro ao carregar RDOs:", rdoError);
+      setRdoEntries([]);
+      setProjectUsers([]);
+    } else {
+      const formattedRdos: RdoEntry[] = (rdoData || []).map((rdo: any) => ({
+        ...rdo,
+        responsible_user_id: rdo.responsible_user?.id || null, // Ensure responsible_user_id is set
+      }));
+      setRdoEntries(formattedRdos);
+
+      // Extract unique users from RDO entries
+      const uniqueUserIds = new Set(formattedRdos.map(rdo => rdo.responsible_user_id).filter(Boolean));
+      const usersDetails = (rdoData || []).map((rdo: any) => rdo.responsible_user).filter(Boolean);
+      const uniqueUsers = Array.from(new Map(usersDetails.map((user: any) => [user.id, user])).values());
+      setProjectUsers(uniqueUsers);
+    }
+  }, [selectedLivroObra, userCompanyId]);
+
+
   React.useEffect(() => {
     fetchUserCompanyId();
   }, [fetchUserCompanyId]);
