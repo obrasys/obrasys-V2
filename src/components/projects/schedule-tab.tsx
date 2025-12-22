@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { CalendarDays, Play, CheckCircle, AlertTriangle, RefreshCw, PlusCircle } from "lucide-react";
 import EmptyState from "@/components/EmptyState";
-import { Schedule, SchedulePhase } from "@/schemas/project-schema";
+import { Schedule, ScheduleTask } from "@/schemas/project-schema"; // Alterado para ScheduleTask
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { format, differenceInDays, parseISO } from "date-fns";
@@ -27,11 +27,11 @@ interface ScheduleTabProps {
 
 const ScheduleTab: React.FC<ScheduleTabProps> = ({ projectId, budgetId, onScheduleRefetch, userCompanyId }) => {
   const [schedule, setSchedule] = React.useState<Schedule | null>(null);
-  const [phases, setPhases] = React.useState<SchedulePhase[]>([]);
+  const [tasks, setTasks] = React.useState<ScheduleTask[]>([]); // Alterado para tasks
   const [loading, setLoading] = React.useState(true);
-  const [isCreatingSchedule, setIsCreatingSchedule] = React.useState(false); // Novo estado para o botão de criação
-  const [isEditingPhase, setIsEditingPhase] = React.useState<string | null>(null);
-  const [editedPhase, setEditedPhase] = React.useState<Partial<SchedulePhase> | null>(null);
+  const [isCreatingSchedule, setIsCreatingSchedule] = React.useState(false);
+  const [isEditingTask, setIsEditingTask] = React.useState<string | null>(null); // Alterado para isEditingTask
+  const [editedTask, setEditedTask] = React.useState<Partial<ScheduleTask> | null>(null); // Alterado para editedTask
 
   const fetchScheduleData = React.useCallback(async () => {
     setLoading(true);
@@ -50,20 +50,20 @@ const ScheduleTab: React.FC<ScheduleTabProps> = ({ projectId, budgetId, onSchedu
 
     if (existingSchedule) {
       setSchedule(existingSchedule);
-      const { data: fetchedPhases, error: phasesError } = await supabase
-        .from("schedule_phases")
+      const { data: fetchedTasks, error: tasksError } = await supabase // Alterado para fetchedTasks
+        .from("schedule_tasks") // CORRIGIDO: Tabela correta
         .select("*")
         .eq("schedule_id", existingSchedule.id)
-        .order("order", { ascending: true });
+        .order("ordem", { ascending: true }); // Alterado para 'ordem'
 
-      if (phasesError) {
-        toast.error(`Erro ao carregar fases do cronograma: ${phasesError.message}`);
+      if (tasksError) {
+        toast.error(`Erro ao carregar fases do cronograma: ${tasksError.message}`);
       } else {
-        setPhases(fetchedPhases || []);
+        setTasks(fetchedTasks || []); // Alterado para setTasks
       }
     } else {
       setSchedule(null);
-      setPhases([]);
+      setTasks([]); // Alterado para setTasks
     }
     setLoading(false);
   }, [projectId, budgetId]);
@@ -72,48 +72,56 @@ const ScheduleTab: React.FC<ScheduleTabProps> = ({ projectId, budgetId, onSchedu
     fetchScheduleData();
   }, [fetchScheduleData]);
 
-  const handleEditPhase = (phase: SchedulePhase) => {
-    setIsEditingPhase(phase.id || null);
-    setEditedPhase({ ...phase });
+  const handleEditTask = (task: ScheduleTask) => { // Alterado para handleEditTask
+    setIsEditingTask(task.id || null); // Alterado para isEditingTask
+    setEditedTask({ ...task }); // Alterado para setEditedTask
   };
 
-  const handleSavePhase = async () => {
-    if (!editedPhase || !editedPhase.id) return;
+  const handleSaveTask = async () => { // Alterado para handleSaveTask
+    if (!editedTask || !editedTask.id) return;
 
     try {
-      let updatedPhase = { ...editedPhase };
+      let updatedTask = { ...editedTask }; // Alterado para updatedTask
 
       // Calculate duration if both dates are present
-      if (updatedPhase.start_date && updatedPhase.end_date) {
-        const startDate = parseISO(updatedPhase.start_date as string);
-        const endDate = parseISO(updatedPhase.end_date as string);
-        updatedPhase.duration_days = differenceInDays(endDate, startDate) + 1;
+      if (updatedTask.data_inicio && updatedTask.data_fim) { // Alterado para data_inicio e data_fim
+        const startDate = parseISO(updatedTask.data_inicio as string);
+        const endDate = parseISO(updatedTask.data_fim as string);
+        updatedTask.duracao_dias = differenceInDays(endDate, startDate) + 1; // Alterado para duracao_dias
       } else {
-        updatedPhase.duration_days = null;
+        updatedTask.duracao_dias = null; // Alterado para duracao_dias
       }
 
       const { error } = await supabase
-        .from("schedule_tasks") // Corrigido para schedule_tasks
-        .update(updatedPhase)
-        .eq("id", editedPhase.id);
+        .from("schedule_tasks")
+        .update({
+          capitulo: updatedTask.capitulo, // Mapear para capitulo
+          data_inicio: updatedTask.data_inicio, // Mapear para data_inicio
+          data_fim: updatedTask.data_fim, // Mapear para data_fim
+          duracao_dias: updatedTask.duracao_dias, // Mapear para duracao_dias
+          estado: updatedTask.estado, // Mapear para estado
+          progresso: updatedTask.progresso, // Mapear para progresso
+          updated_at: new Date().toISOString(), // Adicionar updated_at
+        })
+        .eq("id", editedTask.id);
 
       if (error) {
         throw new Error(`Erro ao guardar fase: ${error.message}`);
       }
 
       toast.success("Fase do cronograma atualizada com sucesso!");
-      setIsEditingPhase(null);
-      setEditedPhase(null);
+      setIsEditingTask(null); // Alterado para isEditingTask
+      setEditedTask(null); // Alterado para setEditedTask
       fetchScheduleData(); // Refresh data
-      onScheduleRefetch(); // ADICIONADO: Notificar o pai para refetch do projeto APÓS a fase ser salva
+      onScheduleRefetch(); // Notificar o pai para refetch do projeto APÓS a fase ser salva
     } catch (error: any) {
       toast.error(`Falha ao guardar fase: ${error.message}`);
     }
   };
 
   const handleCancelEdit = () => {
-    setIsEditingPhase(null);
-    setEditedPhase(null);
+    setIsEditingTask(null); // Alterado para isEditingTask
+    setEditedTask(null); // Alterado para setEditedTask
   };
 
   const handleCreateSchedule = async () => {
@@ -153,7 +161,7 @@ const ScheduleTab: React.FC<ScheduleTabProps> = ({ projectId, budgetId, onSchedu
     );
   }
 
-  if (!schedule || phases.length === 0) {
+  if (!schedule || tasks.length === 0) { // Alterado para tasks.length
     return (
       <EmptyState
         icon={CalendarDays}
@@ -187,13 +195,13 @@ const ScheduleTab: React.FC<ScheduleTabProps> = ({ projectId, budgetId, onSchedu
             <span className="text-lg font-bold">{schedule.overall_progress}%</span>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {phases.map((phase) => (
-              <Card key={phase.id} className="p-4">
-                {isEditingPhase === phase.id ? (
+            {tasks.map((task) => ( // Alterado para task
+              <Card key={task.id} className="p-4">
+                {isEditingTask === task.id ? ( // Alterado para isEditingTask
                   <div className="space-y-2">
                     <Input
-                      value={editedPhase?.chapter_name || ""}
-                      onChange={(e) => setEditedPhase({ ...editedPhase, chapter_name: e.target.value })}
+                      value={editedTask?.capitulo || ""} // Alterado para capitulo
+                      onChange={(e) => setEditedTask({ ...editedTask, capitulo: e.target.value })} // Alterado para capitulo
                       placeholder="Nome da Fase"
                     />
                     <Popover>
@@ -202,18 +210,18 @@ const ScheduleTab: React.FC<ScheduleTabProps> = ({ projectId, budgetId, onSchedu
                           variant={"outline"}
                           className={cn(
                             "w-full justify-start text-left font-normal",
-                            !editedPhase?.start_date && "text-muted-foreground"
+                            !editedTask?.data_inicio && "text-muted-foreground" // Alterado para data_inicio
                           )}
                         >
                           <CalendarDays className="mr-2 h-4 w-4" />
-                          {editedPhase?.start_date ? format(parseISO(editedPhase.start_date as string), "PPP", { locale: pt }) : "Data de Início"}
+                          {editedTask?.data_inicio ? format(parseISO(editedTask.data_inicio as string), "PPP", { locale: pt }) : "Data de Início"} {/* Alterado para data_inicio */}
                         </Button>
                       </PopoverTrigger>
                       <PopoverContent className="w-auto p-0">
                         <Calendar
                           mode="single"
-                          selected={editedPhase?.start_date ? parseISO(editedPhase.start_date as string) : undefined}
-                          onSelect={(date) => setEditedPhase({ ...editedPhase, start_date: date ? format(date, "yyyy-MM-dd") : null })}
+                          selected={editedTask?.data_inicio ? parseISO(editedTask.data_inicio as string) : undefined} // Alterado para data_inicio
+                          onSelect={(date) => setEditedTask({ ...editedTask, data_inicio: date ? format(date, "yyyy-MM-dd") : null })} // Alterado para data_inicio
                           initialFocus
                           locale={pt}
                         />
@@ -225,18 +233,18 @@ const ScheduleTab: React.FC<ScheduleTabProps> = ({ projectId, budgetId, onSchedu
                           variant={"outline"}
                           className={cn(
                             "w-full justify-start text-left font-normal",
-                            !editedPhase?.end_date && "text-muted-foreground"
+                            !editedTask?.data_fim && "text-muted-foreground" // Alterado para data_fim
                           )}
                         >
                           <CalendarDays className="mr-2 h-4 w-4" />
-                          {editedPhase?.end_date ? format(parseISO(editedPhase.end_date as string), "PPP", { locale: pt }) : "Data de Fim"}
+                          {editedTask?.data_fim ? format(parseISO(editedTask.data_fim as string), "PPP", { locale: pt }) : "Data de Fim"} {/* Alterado para data_fim */}
                         </Button>
                       </PopoverTrigger>
                       <PopoverContent className="w-auto p-0">
                         <Calendar
                           mode="single"
-                          selected={editedPhase?.end_date ? parseISO(editedPhase.end_date as string) : undefined}
-                          onSelect={(date) => setEditedPhase({ ...editedPhase, end_date: date ? format(date, "yyyy-MM-dd") : null })}
+                          selected={editedTask?.data_fim ? parseISO(editedTask.data_fim as string) : undefined} // Alterado para data_fim
+                          onSelect={(date) => setEditedTask({ ...editedTask, data_fim: date ? format(date, "yyyy-MM-dd") : null })} // Alterado para data_fim
                           initialFocus
                           locale={pt}
                         />
@@ -244,8 +252,8 @@ const ScheduleTab: React.FC<ScheduleTabProps> = ({ projectId, budgetId, onSchedu
                     </Popover>
                     <FormControl>
                       <Select
-                        value={editedPhase?.status || "Planeado"}
-                        onValueChange={(value) => setEditedPhase({ ...editedPhase, status: value as SchedulePhase["status"] })}
+                        value={editedTask?.estado || "Planeado"} // Alterado para estado
+                        onValueChange={(value) => setEditedTask({ ...editedTask, estado: value as ScheduleTask["estado"] })} // Alterado para estado
                       >
                         <SelectTrigger className="w-full">
                           <SelectValue placeholder="Estado" />
@@ -260,45 +268,45 @@ const ScheduleTab: React.FC<ScheduleTabProps> = ({ projectId, budgetId, onSchedu
                     </FormControl>
                     <Input
                       type="number"
-                      value={editedPhase?.progress || 0}
-                      onChange={(e) => setEditedPhase({ ...editedPhase, progress: parseFloat(e.target.value) })}
+                      value={editedTask?.progresso || 0} // Alterado para progresso
+                      onChange={(e) => setEditedTask({ ...editedTask, progresso: parseFloat(e.target.value) })} // Alterado para progresso
                       placeholder="Progresso (%)"
                     />
                     <div className="flex gap-2">
-                      <Button size="sm" onClick={handleSavePhase}>Guardar</Button>
+                      <Button size="sm" onClick={handleSaveTask}>Guardar</Button> {/* Alterado para handleSaveTask */}
                       <Button size="sm" variant="outline" onClick={handleCancelEdit}>Cancelar</Button>
                     </div>
                   </div>
                 ) : (
                   <>
-                    <CardTitle className="text-lg font-semibold mb-2">{phase.chapter_name}</CardTitle>
+                    <CardTitle className="text-lg font-semibold mb-2">{task.capitulo}</CardTitle> {/* Alterado para capitulo */}
                     <p className="text-sm text-muted-foreground">
-                      Início: {phase.start_date ? format(parseISO(phase.start_date), "PPP", { locale: pt }) : "N/A"}
+                      Início: {task.data_inicio ? format(parseISO(task.data_inicio), "PPP", { locale: pt }) : "N/A"} {/* Alterado para data_inicio */}
                     </p>
                     <p className="text-sm text-muted-foreground">
-                      Fim: {phase.end_date ? format(parseISO(phase.end_date), "PPP", { locale: pt }) : "N/A"}
+                      Fim: {task.data_fim ? format(parseISO(task.data_fim), "PPP", { locale: pt }) : "N/A"} {/* Alterado para data_fim */}
                     </p>
                     <p className="text-sm text-muted-foreground">
-                      Duração: {phase.duration_days !== null ? `${phase.duration_days} dias` : "N/A"}
+                      Duração: {task.duracao_dias !== null ? `${task.duracao_dias} dias` : "N/A"} {/* Alterado para duracao_dias */}
                     </p>
                     <p className="text-sm text-muted-foreground flex items-center gap-1">
                       Estado:
-                      {phase.status === "Concluído" && <CheckCircle className="h-4 w-4 text-green-500" />}
-                      {phase.status === "Em execução" && <Play className="h-4 w-4 text-blue-500" />}
-                      {phase.status === "Atrasado" && <AlertTriangle className="h-4 w-4 text-orange-500" />}
+                      {task.estado === "Concluído" && <CheckCircle className="h-4 w-4 text-green-500" />} {/* Alterado para estado */}
+                      {task.estado === "Em execução" && <Play className="h-4 w-4 text-blue-500" />} {/* Alterado para estado */}
+                      {task.estado === "Atrasado" && <AlertTriangle className="h-4 w-4 text-orange-500" />} {/* Alterado para estado */}
                       <span className={cn(
-                        phase.status === "Concluído" && "text-green-500",
-                        phase.status === "Em execução" && "text-blue-500",
-                        phase.status === "Atrasado" && "text-orange-500",
+                        task.estado === "Concluído" && "text-green-500", // Alterado para estado
+                        task.estado === "Em execução" && "text-blue-500", // Alterado para estado
+                        task.estado === "Atrasado" && "text-orange-500", // Alterado para estado
                       )}>
-                        {phase.status}
+                        {task.estado} {/* Alterado para estado */}
                       </span>
                     </p>
                     <div className="flex items-center gap-2 mt-2">
-                      <Progress value={phase.progress} className="flex-1 h-2" />
-                      <span className="text-sm font-medium">{phase.progress}%</span>
+                      <Progress value={task.progresso} className="flex-1 h-2" /> {/* Alterado para progresso */}
+                      <span className="text-sm font-medium">{task.progresso}%</span> {/* Alterado para progresso */}
                     </div>
-                    <Button variant="ghost" size="sm" className="mt-2 w-full" onClick={() => handleEditPhase(phase)}>
+                    <Button variant="ghost" size="sm" className="mt-2 w-full" onClick={() => handleEditTask(task)}> {/* Alterado para handleEditTask */}
                       Editar Fase
                     </Button>
                   </>
