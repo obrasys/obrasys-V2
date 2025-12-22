@@ -4,9 +4,9 @@ import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { CalendarDays, Play, CheckCircle, AlertTriangle, RefreshCw, PlusCircle } from "lucide-react";
+import { CalendarDays, Play, CheckCircle, AlertTriangle, RefreshCw } from "lucide-react";
 import EmptyState from "@/components/EmptyState";
-import { Schedule, ScheduleTask } from "@/schemas/project-schema"; // Alterado para ScheduleTask
+import { Schedule, ScheduleTask } from "@/schemas/project-schema";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { format, differenceInDays, parseISO } from "date-fns";
@@ -16,24 +16,24 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { FormControl, FormField, FormItem, FormLabel, FormMessage, Form } from "@/components/ui/form"; // Importar Form
-import { useForm } from "react-hook-form"; // Importar useForm para criar um formulário temporário para edição
+import { FormControl, FormField, FormItem, FormLabel, FormMessage, Form } from "@/components/ui/form";
+import { useForm } from "react-hook-form";
 
 interface ScheduleTabProps {
   projectId: string;
   budgetId: string;
-  onScheduleRefetch: () => void; // Novo prop para notificar o pai para refetch do projeto
-  userCompanyId: string | null; // Novo prop para o ID da empresa
+  onScheduleRefetch: () => void;
+  userCompanyId: string | null;
 }
 
 const ScheduleTab: React.FC<ScheduleTabProps> = ({ projectId, budgetId, onScheduleRefetch, userCompanyId }) => {
   const [schedule, setSchedule] = React.useState<Schedule | null>(null);
-  const [tasks, setTasks] = React.useState<ScheduleTask[]>([]); // Alterado para tasks
+  const [tasks, setTasks] = React.useState<ScheduleTask[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [isCreatingSchedule, setIsCreatingSchedule] = React.useState(false);
-  const [isEditingTask, setIsEditingTask] = React.useState<string | null>(null); // Alterado para isEditingTask
+  const [isEditingTask, setIsEditingTask] = React.useState<string | null>(null);
+  // Removido: const [editedTask, setEditedTask] = React.useState<Partial<ScheduleTask> | null>(null);
   
-  // Usar useForm para gerir o estado do formulário de edição de uma única tarefa
   const editForm = useForm<ScheduleTask>();
 
   const fetchScheduleData = React.useCallback(async () => {
@@ -45,7 +45,7 @@ const ScheduleTab: React.FC<ScheduleTabProps> = ({ projectId, budgetId, onSchedu
       .eq("budget_id", budgetId)
       .single();
 
-    if (scheduleError && scheduleError.code !== 'PGRST116') { // PGRST116 means no rows found
+    if (scheduleError && scheduleError.code !== 'PGRST116') {
       toast.error(`Erro ao carregar cronograma: ${scheduleError.message}`);
       setLoading(false);
       return;
@@ -53,20 +53,20 @@ const ScheduleTab: React.FC<ScheduleTabProps> = ({ projectId, budgetId, onSchedu
 
     if (existingSchedule) {
       setSchedule(existingSchedule);
-      const { data: fetchedTasks, error: tasksError } = await supabase // Alterado para fetchedTasks
-        .from("schedule_tasks") // CORRIGIDO: Tabela correta
+      const { data: fetchedTasks, error: tasksError } = await supabase
+        .from("schedule_tasks")
         .select("*")
         .eq("schedule_id", existingSchedule.id)
-        .order("ordem", { ascending: true }); // Alterado para 'ordem'
+        .order("ordem", { ascending: true });
 
       if (tasksError) {
         toast.error(`Erro ao carregar fases do cronograma: ${tasksError.message}`);
       } else {
-        setTasks(fetchedTasks || []); // Alterado para setTasks
+        setTasks(fetchedTasks || []);
       }
     } else {
       setSchedule(null);
-      setTasks([]); // Alterado para setTasks
+      setTasks([]);
     }
     setLoading(false);
   }, [projectId, budgetId]);
@@ -75,56 +75,55 @@ const ScheduleTab: React.FC<ScheduleTabProps> = ({ projectId, budgetId, onSchedu
     fetchScheduleData();
   }, [fetchScheduleData]);
 
-  const handleEditTask = (task: ScheduleTask) => { // Alterado para handleEditTask
-    setIsEditingTask(task.id || null); // Alterado para isEditingTask
-    editForm.reset(task); // Resetar o formulário de edição com os dados da tarefa
+  const handleEditTask = (task: ScheduleTask) => {
+    setIsEditingTask(task.id || null);
+    editForm.reset(task);
   };
 
-  const handleSaveTask = editForm.handleSubmit(async (data: ScheduleTask) => { // Alterado para handleSaveTask
+  const handleSaveTask = editForm.handleSubmit(async (data: ScheduleTask) => {
     if (!data || !data.id) return;
 
     try {
-      let updatedTask = { ...data }; // Alterado para updatedTask
+      let updatedTask = { ...data };
 
-      // Calculate duration if both dates are present
-      if (updatedTask.data_inicio && updatedTask.data_fim) { // Alterado para data_inicio e data_fim
+      if (updatedTask.data_inicio && updatedTask.data_fim) {
         const startDate = parseISO(updatedTask.data_inicio as string);
         const endDate = parseISO(updatedTask.data_fim as string);
-        updatedTask.duracao_dias = differenceInDays(endDate, startDate) + 1; // Alterado para duracao_dias
+        updatedTask.duracao_dias = differenceInDays(endDate, startDate) + 1;
       } else {
-        updatedTask.duracao_dias = null; // Alterado para duracao_dias
+        updatedTask.duracao_dias = null;
       }
 
       const { error } = await supabase
         .from("schedule_tasks")
         .update({
-          capitulo: updatedTask.capitulo, // Mapear para capitulo
-          data_inicio: updatedTask.data_inicio, // Mapear para data_inicio
-          data_fim: updatedTask.data_fim, // Mapear para data_fim
-          duracao_dias: updatedTask.duracao_dias, // Mapear para duracao_dias
-          estado: updatedTask.estado, // Mapear para estado
-          progresso: updatedTask.progresso, // Mapear para progresso
-          updated_at: new Date().toISOString(), // Adicionar updated_at
+          capitulo: updatedTask.capitulo,
+          data_inicio: updatedTask.data_inicio,
+          data_fim: updatedTask.data_fim,
+          duracao_dias: updatedTask.duracao_dias,
+          estado: updatedTask.estado,
+          progresso: updatedTask.progresso,
+          updated_at: new Date().toISOString(),
         })
-        .eq("id", data.id); // Usar data.id
+        .eq("id", data.id);
 
       if (error) {
         throw new Error(`Erro ao guardar fase: ${error.message}`);
       }
 
       toast.success("Fase do cronograma atualizada com sucesso!");
-      setIsEditingTask(null); // Alterado para isEditingTask
-      editForm.reset(); // Limpar o formulário de edição
-      fetchScheduleData(); // Refresh data
-      onScheduleRefetch(); // Notificar o pai para refetch do projeto APÓS a fase ser salva
+      setIsEditingTask(null);
+      editForm.reset();
+      fetchScheduleData();
+      onScheduleRefetch();
     } catch (error: any) {
       toast.error(`Falha ao guardar fase: ${error.message}`);
     }
   });
 
   const handleCancelEdit = () => {
-    setIsEditingTask(null); // Alterado para isEditingTask
-    editForm.reset(); // Limpar o formulário de edição
+    setIsEditingTask(null);
+    editForm.reset();
   };
 
   const handleCreateSchedule = async () => {
@@ -146,8 +145,8 @@ const ScheduleTab: React.FC<ScheduleTabProps> = ({ projectId, budgetId, onSchedu
       }
 
       toast.success("Cronograma criado com sucesso!");
-      fetchScheduleData(); // Refresh data to show the new schedule
-      onScheduleRefetch(); // Notify parent to refetch project data (e.g., status)
+      fetchScheduleData();
+      onScheduleRefetch();
     } catch (error: any) {
       toast.error(`Falha ao criar cronograma: ${error.message}`);
       console.error("Erro ao criar cronograma:", error);
@@ -164,7 +163,7 @@ const ScheduleTab: React.FC<ScheduleTabProps> = ({ projectId, budgetId, onSchedu
     );
   }
 
-  if (!schedule || tasks.length === 0) { // Alterado para tasks.length
+  if (!schedule || tasks.length === 0) {
     return (
       <EmptyState
         icon={CalendarDays}
@@ -172,8 +171,7 @@ const ScheduleTab: React.FC<ScheduleTabProps> = ({ projectId, budgetId, onSchedu
         description="O cronograma será gerado automaticamente após a aprovação do orçamento e a criação da obra. Se não apareceu, pode gerá-lo manualmente."
         buttonText="Gerar Cronograma Agora"
         onButtonClick={handleCreateSchedule}
-        // Desabilitar o botão se já estiver a criar ou se não houver budgetId
-        disabled={isCreatingSchedule || !budgetId}
+        buttonDisabled={isCreatingSchedule || !budgetId} // Usar buttonDisabled
       />
     );
   }
@@ -198,11 +196,11 @@ const ScheduleTab: React.FC<ScheduleTabProps> = ({ projectId, budgetId, onSchedu
             <span className="text-lg font-bold">{schedule.overall_progress}%</span>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {tasks.map((task) => ( // Alterado para task
+            {tasks.map((task) => (
               <Card key={task.id} className="p-4">
-                {isEditingTask === task.id ? ( // Alterado para isEditingTask
-                  <Form {...editForm}> {/* ENVOLVIDO COM FORM */}
-                    <form onSubmit={handleSaveTask} className="space-y-2"> {/* Adicionado form e onSubmit */}
+                {isEditingTask === task.id ? (
+                  <Form {...editForm}>
+                    <form onSubmit={handleSaveTask} className="space-y-2">
                       <FormField
                         control={editForm.control}
                         name="capitulo"
@@ -334,41 +332,41 @@ const ScheduleTab: React.FC<ScheduleTabProps> = ({ projectId, budgetId, onSchedu
                         )}
                       />
                       <div className="flex gap-2">
-                        <Button type="submit" size="sm">Guardar</Button> {/* Alterado para type="submit" */}
-                        <Button type="button" size="sm" variant="outline" onClick={handleCancelEdit}>Cancelar</Button> {/* Alterado para type="button" */}
+                        <Button type="submit" size="sm">Guardar</Button>
+                        <Button type="button" size="sm" variant="outline" onClick={handleCancelEdit}>Cancelar</Button>
                       </div>
                     </form>
-                  </Form> {/* FECHAMENTO DO FORM */}
+                  </Form>
                 ) : (
                   <>
-                    <CardTitle className="text-lg font-semibold mb-2">{task.capitulo}</CardTitle> {/* Alterado para capitulo */}
+                    <CardTitle className="text-lg font-semibold mb-2">{task.capitulo}</CardTitle>
                     <p className="text-sm text-muted-foreground">
-                      Início: {task.data_inicio ? format(parseISO(task.data_inicio), "PPP", { locale: pt }) : "N/A"} {/* Alterado para data_inicio */}
+                      Início: {task.data_inicio ? format(parseISO(task.data_inicio), "PPP", { locale: pt }) : "N/A"}
                     </p>
                     <p className="text-sm text-muted-foreground">
-                      Fim: {task.data_fim ? format(parseISO(task.data_fim), "PPP", { locale: pt }) : "N/A"} {/* Alterado para data_fim */}
+                      Fim: {task.data_fim ? format(parseISO(task.data_fim), "PPP", { locale: pt }) : "N/A"}
                     </p>
                     <p className="text-sm text-muted-foreground">
-                      Duração: {task.duracao_dias !== null ? `${task.duracao_dias} dias` : "N/A"} {/* Alterado para duracao_dias */}
+                      Duração: {task.duracao_dias !== null ? `${task.duracao_dias} dias` : "N/A"}
                     </p>
                     <p className="text-sm text-muted-foreground flex items-center gap-1">
                       Estado:
-                      {task.estado === "Concluído" && <CheckCircle className="h-4 w-4 text-green-500" />} {/* Alterado para estado */}
-                      {task.estado === "Em execução" && <Play className="h-4 w-4 text-blue-500" />} {/* Alterado para estado */}
-                      {task.estado === "Atrasado" && <AlertTriangle className="h-4 w-4 text-orange-500" />} {/* Alterado para estado */}
+                      {task.estado === "Concluído" && <CheckCircle className="h-4 w-4 text-green-500" />}
+                      {task.estado === "Em execução" && <Play className="h-4 w-4 text-blue-500" />}
+                      {task.estado === "Atrasado" && <AlertTriangle className="h-4 w-4 text-orange-500" />}
                       <span className={cn(
-                        task.estado === "Concluído" && "text-green-500", // Alterado para estado
-                        task.estado === "Em execução" && "text-blue-500", // Alterado para estado
-                        task.estado === "Atrasado" && "text-orange-500", // Alterado para estado
+                        task.estado === "Concluído" && "text-green-500",
+                        task.estado === "Em execução" && "text-blue-500",
+                        task.estado === "Atrasado" && "text-orange-500",
                       )}>
-                        {task.estado} {/* Alterado para estado */}
+                        {task.estado}
                       </span>
                     </p>
                     <div className="flex items-center gap-2 mt-2">
-                      <Progress value={task.progresso} className="flex-1 h-2" /> {/* Alterado para progresso */}
-                      <span className="text-sm font-medium">{task.progresso}%</span> {/* Alterado para progresso */}
+                      <Progress value={task.progresso} className="flex-1 h-2" />
+                      <span className="text-sm font-medium">{task.progresso}%</span>
                     </div>
-                    <Button variant="ghost" size="sm" className="mt-2 w-full" onClick={() => handleEditTask(task)}> {/* Alterado para handleEditTask */}
+                    <Button variant="ghost" size="sm" className="mt-2 w-full" onClick={() => handleEditTask(task)}>
                       Editar Fase
                     </Button>
                   </>

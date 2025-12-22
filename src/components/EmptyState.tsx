@@ -10,6 +10,7 @@ interface EmptyStateProps {
   description: string;
   buttonText?: string;
   onButtonClick?: () => void;
+  buttonDisabled?: boolean; // Adicionada esta prop
 }
 
 const EmptyState: React.FC<EmptyStateProps> = ({
@@ -18,6 +19,7 @@ const EmptyState: React.FC<EmptyStateProps> = ({
   description,
   buttonText,
   onButtonClick,
+  buttonDisabled = false, // Valor padrão
 }) => {
   return (
     <div className="flex flex-col items-center justify-center p-8 text-center text-muted-foreground">
@@ -25,7 +27,7 @@ const EmptyState: React.FC<EmptyStateProps> = ({
       <h3 className="text-lg font-semibold mb-2 text-foreground">{title}</h3>
       <p className="text-sm mb-6">{description}</p>
       {buttonText && onButtonClick && (
-        <Button onClick={onButtonClick} variant="outline">
+        <Button onClick={onButtonClick} variant="outline" disabled={buttonDisabled}> {/* Usar buttonDisabled aqui */}
           {buttonText}
         </Button>
       )}
