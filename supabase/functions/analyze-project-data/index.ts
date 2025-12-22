@@ -67,6 +67,7 @@ serve(async (req) => {
     }
 
     const projectName = project.nome;
+    const projectCompanyId = project.company_id; // Get company_id from project
     const projectClientName = project.clients?.nome || 'N/A';
 
     // --- Fetch Budget Data ---
@@ -325,6 +326,7 @@ serve(async (req) => {
     // --- Persist Alerts to Database ---
     if (generatedAlerts.length > 0) {
       const alertsToInsert = generatedAlerts.map(alert => ({
+        company_id: projectCompanyId, // Include company_id here
         project_id: alert.project_id,
         type: alert.type,
         severity: alert.severity,
