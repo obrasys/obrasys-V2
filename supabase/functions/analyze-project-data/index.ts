@@ -16,6 +16,7 @@ serve(async (req) => {
   // Extract JWT from Authorization header
   const authHeader = req.headers.get('Authorization');
   if (!authHeader) {
+    console.error('Edge Function: Unauthorized - Missing Authorization header');
     return new Response(JSON.stringify({ error: 'Unauthorized: Missing Authorization header' }), {
       status: 401,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -35,8 +36,10 @@ serve(async (req) => {
 
   try {
     const { project_id } = await req.json();
+    console.log('Edge Function: Received project_id:', project_id);
 
     if (!project_id) {
+      console.error('Edge Function: Bad Request - project_id is required.');
       return new Response(JSON.stringify({ error: 'project_id é obrigatório.' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -46,6 +49,7 @@ serve(async (req) => {
     const generatedAlerts: any[] = [];
 
     // --- Fetch Project Data ---
+    console.log('Edge Function: Fetching project data for project_id:', project_id);
     const { data: project, error: projectError } = await supabase
       .from('projects')
       .select('*, clients(nome)')
@@ -53,28 +57,31 @@ serve(async (req) => {
       .single();
 
     if (projectError) {
-      console.error('Error fetching project:', projectError);
+      console.error('Edge Function: Error fetching project:', projectError);
       return new Response(JSON.stringify({ error: `Erro ao carregar dados do projeto: ${projectError.message}` }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
     if (!project) {
+      console.error('Edge Function: Project not found for project_id:', project_id);
       return new Response(JSON.stringify({ error: 'Projeto não encontrado.' }), {
         status: 404,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
+    console.log('Edge Function: Project data fetched successfully:', project.nome);
 
     const projectName = project.nome;
-    const projectCompanyId = project.company_id; // Get company_id from project
+    const projectCompanyId = project.company_id;
     const projectClientName = project.clients?.nome || 'N/A';
 
     // --- Fetch Budget Data ---
+    console.log('Edge Function: Fetching budget data for project.budget_id:', project.budget_id);
     let budget: any = null;
     let budgetItems: any[] = [];
     if (project.budget_id) {
-      const { data: fetchedBudget, error: budgetError } = await supabase
+      const { data: fetchedBudget, error: budgetFetchError } = await supabase // Renamed error variable
         .from('budgets')
         .select(`
           *,
@@ -85,88 +92,104 @@ serve(async (req) => {
         .eq('id', project.budget_id)
         .single();
 
-      if (budgetError && budgetError.code !== 'PGRST116') { // PGRST116 means no rows found
-        console.warn('Error fetching budget for project:', projectError);
+      if (budgetFetchError && budgetFetchError.code !== 'PGRST116') {
+        console.warn('Edge Function: Error fetching budget for project:', budgetFetchError);
         generatedAlerts.push({
           project_id: project.id,
           project_name: projectName,
           type: "Data Inconsistency",
           severity: "warning",
           title: "Erro ao carregar orçamento",
-          message: `Não foi possível carregar o orçamento associado ao projeto: ${budgetError.message}.`,
+          message: `Não foi possível carregar o orçamento associado ao projeto: ${budgetFetchError.message}.`,
         });
       } else if (fetchedBudget) {
         budget = fetchedBudget;
         budgetItems = budget.budget_chapters.flatMap((chapter: any) => chapter.budget_items);
+        console.log('Edge Function: Budget data fetched successfully for budget_id:', project.budget_id);
+      } else {
+        console.log('Edge Function: No budget found for project.budget_id:', project.budget_id);
       }
+    } else {
+      console.log('Edge Function: Project has no budget_id.');
     }
 
     // --- Fetch Schedule Data ---
+    console.log('Edge Function: Fetching schedule data for project_id:', project.id);
     let schedule: any = null;
     let scheduleTasks: any[] = [];
-    const { data: fetchedSchedule, error: scheduleError } = await supabase
+    const { data: fetchedSchedule, error: scheduleFetchError } = await supabase // Renamed error variable
       .from('schedules')
       .select('*')
       .eq('project_id', project.id)
       .single();
 
-    if (scheduleError && scheduleError.code !== 'PGRST116') {
-      console.warn('Error fetching schedule for project:', scheduleError);
+    if (scheduleFetchError && scheduleFetchError.code !== 'PGRST116') {
+      console.warn('Edge Function: Error fetching schedule for project:', scheduleFetchError);
       generatedAlerts.push({
         project_id: project.id,
         project_name: projectName,
         type: "Data Inconsistency",
         severity: "warning",
         title: "Erro ao carregar cronograma",
-        message: `Não foi possível carregar o cronograma associado ao projeto: ${scheduleError.message}.`,
+        message: `Não foi possível carregar o cronograma associado ao projeto: ${scheduleFetchError.message}.`,
       });
     } else if (fetchedSchedule) {
       schedule = fetchedSchedule;
-      const { data: fetchedTasks, error: tasksError } = await supabase
+      console.log('Edge Function: Schedule data fetched successfully for project_id:', project.id);
+      console.log('Edge Function: Fetching schedule tasks for schedule_id:', schedule.id);
+      const { data: fetchedTasks, error: tasksFetchError } = await supabase // Renamed error variable
         .from('schedule_tasks')
         .select('*')
         .eq('schedule_id', schedule.id);
-      if (tasksError) {
-        console.warn('Error fetching schedule tasks:', tasksError);
+      if (tasksFetchError) {
+        console.warn('Edge Function: Error fetching schedule tasks:', tasksFetchError);
         generatedAlerts.push({
           project_id: project.id,
           project_name: projectName,
           type: "Data Inconsistency",
           severity: "warning",
           title: "Erro ao carregar tarefas do cronograma",
-          message: `Não foi possível carregar as tarefas do cronograma: ${tasksError.message}.`,
+          message: `Não foi possível carregar as tarefas do cronograma: ${tasksFetchError.message}.`,
         });
       } else {
         scheduleTasks = fetchedTasks;
+        console.log('Edge Function: Schedule tasks fetched successfully. Count:', scheduleTasks.length);
       }
+    } else {
+      console.log('Edge Function: No schedule found for project_id:', project.id);
     }
 
     // --- Fetch RDO Entries ---
-    const { data: rdoEntries, error: rdoError } = await supabase
+    console.log('Edge Function: Fetching RDO entries for project_id:', project.id);
+    const { data: rdoEntries, error: rdoFetchError } = await supabase // Renamed error variable
       .from('rdo_entries')
       .select('*, responsible_user:profiles(id, first_name, last_name, avatar_url)')
       .eq('project_id', project.id)
       .order('date', { ascending: false });
 
-    if (rdoError) {
-      console.warn('Error fetching RDO entries:', rdoError);
+    if (rdoFetchError) {
+      console.warn('Edge Function: Error fetching RDO entries:', rdoFetchError);
       generatedAlerts.push({
         project_id: project.id,
         project_name: projectName,
         type: "Data Inconsistency",
         severity: "warning",
         title: "Erro ao carregar RDOs",
-        message: `Não foi possível carregar os registos diários de obra: ${rdoError.message}.`,
+        message: `Não foi possível carregar os registos diários de obra: ${rdoFetchError.message}.`,
       });
+    } else {
+      console.log('Edge Function: RDO entries fetched successfully. Count:', rdoEntries?.length);
     }
 
     // --- Analysis and Alert Generation ---
+    console.log('Edge Function: Starting analysis and alert generation...');
 
     // 1. Cost Deviation (Project Level)
     const projectCostDeviation = project.custo_real - project.custo_planeado;
     const projectCostDeviationPercentage = project.custo_planeado > 0 ? (projectCostDeviation / project.custo_planeado) * 100 : 0;
     if (projectCostDeviationPercentage > 20) {
       generatedAlerts.push({
+        company_id: projectCompanyId, // Added company_id
         project_id: project.id,
         project_name: projectName,
         type: "Cost Deviation",
@@ -176,6 +199,7 @@ serve(async (req) => {
       });
     } else if (projectCostDeviationPercentage > 5) {
       generatedAlerts.push({
+        company_id: projectCompanyId, // Added company_id
         project_id: project.id,
         project_name: projectName,
         type: "Cost Deviation",
@@ -185,6 +209,7 @@ serve(async (req) => {
       });
     } else if (projectCostDeviationPercentage < -5) {
       generatedAlerts.push({
+        company_id: projectCompanyId, // Added company_id
         project_id: project.id,
         project_name: projectName,
         type: "Cost Deviation",
@@ -200,6 +225,7 @@ serve(async (req) => {
       const itemDeviationPercentage = item.custo_planeado > 0 ? (itemDeviation / item.custo_planeado) * 100 : 0;
       if (itemDeviationPercentage > 20) {
         generatedAlerts.push({
+          company_id: projectCompanyId, // Added company_id
           project_id: project.id,
           project_name: projectName,
           type: "Cost Deviation",
@@ -209,6 +235,7 @@ serve(async (req) => {
         });
       } else if (itemDeviationPercentage > 5) {
         generatedAlerts.push({
+          company_id: projectCompanyId, // Added company_id
           project_id: project.id,
           project_name: projectName,
           type: "Cost Deviation",
@@ -224,6 +251,7 @@ serve(async (req) => {
     scheduleTasks.forEach(task => {
       if (task.estado === "Atrasado") {
         generatedAlerts.push({
+          company_id: projectCompanyId, // Added company_id
           project_id: project.id,
           project_name: projectName,
           type: "Schedule Deviation",
@@ -234,6 +262,7 @@ serve(async (req) => {
       } else if (task.estado !== "Concluído" && task.data_fim && parseISO(task.data_fim) < today) {
         const daysLate = differenceInDays(today, parseISO(task.data_fim));
         generatedAlerts.push({
+          company_id: projectCompanyId, // Added company_id
           project_id: project.id,
           project_name: projectName,
           type: "Schedule Deviation",
@@ -247,6 +276,7 @@ serve(async (req) => {
     // 4. Missing RDOs (Simplified: check for recent activity if Livro de Obra exists)
     if (rdoEntries && rdoEntries.length === 0) {
       generatedAlerts.push({
+        company_id: projectCompanyId, // Added company_id
         project_id: project.id,
         project_name: projectName,
         type: "Missing RDOs",
@@ -260,6 +290,7 @@ serve(async (req) => {
       const daysSinceLastRDO = differenceInDays(today, lastRdoDate);
       if (daysSinceLastRDO > 3) { // Assuming 3 days is a reasonable threshold for "recent"
         generatedAlerts.push({
+          company_id: projectCompanyId, // Added company_id
           project_id: project.id,
           project_name: projectName,
           type: "Missing RDOs",
@@ -280,6 +311,7 @@ serve(async (req) => {
 
       if (relatedRdoProgress && relatedRdoProgress.details.new_progress !== task.progresso) {
         generatedAlerts.push({
+          company_id: projectCompanyId, // Added company_id
           project_id: project.id,
           project_name: projectName,
           type: "Inconsistent Execution vs Planning",
@@ -295,6 +327,7 @@ serve(async (req) => {
       const budgetMargin = budget.total_planeado > 0 ? ((budget.total_planeado - budget.total_executado) / budget.total_planeado) * 100 : 0;
       if (budgetMargin < 5) {
         generatedAlerts.push({
+          company_id: projectCompanyId, // Added company_id
           project_id: project.id,
           project_name: projectName,
           type: "Margin Risk",
@@ -304,6 +337,7 @@ serve(async (req) => {
         });
       } else if (budgetMargin < 10) {
         generatedAlerts.push({
+          company_id: projectCompanyId, // Added company_id
           project_id: project.id,
           project_name: projectName,
           type: "Margin Risk",
@@ -314,6 +348,7 @@ serve(async (req) => {
       }
     } else {
       generatedAlerts.push({
+        company_id: projectCompanyId, // Added company_id
         project_id: project.id,
         project_name: projectName,
         type: "Margin Risk",
@@ -326,23 +361,24 @@ serve(async (req) => {
     // --- Persist Alerts to Database ---
     if (generatedAlerts.length > 0) {
       const alertsToInsert = generatedAlerts.map(alert => ({
-        company_id: projectCompanyId, // Include company_id here
+        company_id: alert.company_id, // Use company_id from the alert object
         project_id: alert.project_id,
         type: alert.type,
         severity: alert.severity,
         title: alert.title,
         message: alert.message,
-        resolved: false, // New alerts are unresolved by default
+        resolved: false,
       }));
 
+      console.log('Edge Function: Attempting to insert alerts:', alertsToInsert);
       const { error: insertError } = await supabase
         .from('ai_alerts')
         .insert(alertsToInsert);
 
       if (insertError) {
-        console.error('Error inserting AI alerts into database:', insertError);
-        // Optionally, add an alert about the failure to persist alerts
+        console.error('Edge Function: Error inserting AI alerts into database:', insertError);
         generatedAlerts.push({
+          company_id: projectCompanyId, // Added company_id
           project_id: project.id,
           project_name: projectName,
           type: "Persistence Error",
@@ -350,16 +386,21 @@ serve(async (req) => {
           title: "Erro ao guardar alertas",
           message: `Não foi possível guardar os alertas gerados na base de dados: ${insertError.message}.`,
         });
+      } else {
+        console.log('Edge Function: Alerts inserted successfully.');
       }
+    } else {
+      console.log('Edge Function: No alerts generated to insert.');
     }
 
+    console.log('Edge Function: Analysis complete. Returning generated alerts.');
     return new Response(JSON.stringify(generatedAlerts), {
       status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
 
   } catch (error) {
-    console.error('Edge Function Error:', error);
+    console.error('Edge Function: Unhandled error in serve block:', error);
     return new Response(JSON.stringify({ error: error.message }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
