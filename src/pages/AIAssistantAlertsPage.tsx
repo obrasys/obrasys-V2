@@ -21,6 +21,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { MoreHorizontal } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton"; // Importado Skeleton
 
 const AIAssistantAlertsPage = () => {
   const { user, isLoading: isSessionLoading } = useSession();
@@ -156,8 +157,8 @@ const AIAssistantAlertsPage = () => {
       <div className="space-y-6">
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between pb-4 md:pb-6 border-b border-border mb-4 md:mb-6">
           <div>
-            <div className="h-8 w-64 bg-gray-200 rounded mb-2"></div>
-            <div className="h-4 w-48 bg-gray-200 rounded"></div>
+            <Skeleton className="h-8 w-64 bg-gray-200 rounded mb-2" />
+            <Skeleton className="h-4 w-48 bg-gray-200 rounded" />
           </div>
           <Skeleton className="h-10 w-40 mt-2 md:mt-0" />
         </div>

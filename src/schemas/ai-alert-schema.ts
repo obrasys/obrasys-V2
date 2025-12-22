@@ -3,6 +3,7 @@ import { z } from "zod";
 export const aiAlertSchema = z.object({
   id: z.string().uuid().optional(),
   project_id: z.string().uuid().nullable(),
+  project_name: z.string().optional(), // Adicionado: Nome do projeto para exibição
   type: z.string().nullable(),
   severity: z.enum(["info", "warning", "critical"]).nullable(),
   title: z.string().nullable(),
