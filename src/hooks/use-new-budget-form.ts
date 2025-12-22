@@ -105,7 +105,8 @@ export function useNewBudgetForm({
       const { data: budgetData, error: budgetError } = await supabase
         .from('budgets')
         .select(`
-          id, company_id, project_id, nome, total_planeado, total_executado, estado, created_at, updated_at, client_id, localizacao, data_orcamento, observacoes_gerais, tipo_obra,
+          id, company_id, project_id, nome, client_id, localizacao, tipo_obra, data_orcamento, observacoes_gerais, total_planeado, total_executado, estado, created_at, updated_at,
+          clients(nome),
           budget_chapters (
             id,
             title,
@@ -120,8 +121,8 @@ export function useNewBudgetForm({
               preco_unitario,
               custo_planeado,
               custo_executado,
-              custo_real_material, -- NOVO
-              custo_real_mao_obra, -- NOVO
+              custo_real_material,
+              custo_real_mao_obra,
               estado,
               article_id
             )

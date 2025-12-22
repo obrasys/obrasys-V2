@@ -96,7 +96,7 @@ const Budgeting = () => {
     const { data: budgetsData, error: budgetsError } = await supabase
       .from('budgets')
       .select(`
-        *,
+        id, company_id, project_id, nome, client_id, localizacao, tipo_obra, data_orcamento, observacoes_gerais, total_planeado, total_executado, estado, created_at, updated_at,
         clients(nome),
         budget_chapters (
           id,
@@ -324,6 +324,11 @@ const Budgeting = () => {
   const budgetDeviationPercentage = totalBudget > 0 ? (budgetDeviation / totalBudget) * 100 : 0;
   const predictedFinalCost = totalBudget + budgetDeviation; // Simplificado
   const currentMargin = totalBudget > 0 ? ((totalBudget - executedCost) / totalBudget) * 100 : 0; // Simplificado
+
+  const formatCurrency = (value: number) => new Intl.NumberFormat("pt-PT", {
+    style: "currency",
+    currency: "EUR",
+  }).format(value);
 
   if (isLoading) {
     return (
