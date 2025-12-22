@@ -10,7 +10,7 @@ import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/components/SessionContextProvider";
-import { NewBudgetFormValues, newBudgetFormSchema, BudgetItem } from "@/schemas/budget-schema";
+import { NewBudgetFormValues, newBudgetFormSchema, BudgetItem, BudgetWithRelations } from "@/schemas/budget-schema"; // Import BudgetWithRelations
 import { Client } from "@/schemas/client-schema";
 import { Project } from "@/schemas/project-schema";
 
@@ -141,16 +141,17 @@ export function useNewBudgetForm({
 
       if (budgetData) {
         console.log("[useNewBudgetForm] Loaded budget data from DB:", budgetData);
+        // Cast budgetData to BudgetWithRelations
         const transformedBudget: NewBudgetFormValues = {
-          id: budgetData.id,
-          nome: budgetData.nome,
-          client_id: budgetData.client_id,
-          localizacao: budgetData.localizacao || "",
-          tipo_obra: budgetData.tipo_obra || "Nova construção", // Mapear tipo_obra
-          data_orcamento: budgetData.data_orcamento ? format(parseISO(budgetData.data_orcamento), "yyyy-MM-dd") : format(new Date(), "yyyy-MM-dd"), // Mapear data_orcamento
-          observacoes_gerais: budgetData.observacoes_gerais || "", // Mapear observacoes_gerais
-          estado: budgetData.estado,
-          chapters: (budgetData.budget_chapters || []).map(chapter => ({
+          id: (budgetData as BudgetWithRelations).id,
+          nome: (budgetData as BudgetWithRelations).nome,
+          client_id: (budgetData as BudgetWithRelations).client_id,
+          localizacao: (budgetData as BudgetWithRelations).localizacao || "",
+          tipo_obra: (budgetData as BudgetWithRelations).tipo_obra || "Nova construção", // Mapear tipo_obra
+          data_orcamento: (budgetData as BudgetWithRelations).data_orcamento ? format(parseISO((budgetData as BudgetWithRelations).data_orcamento), "yyyy-MM-dd") : format(new Date(), "yyyy-MM-dd"), // Mapear data_orcamento
+          observacoes_gerais: (budgetData as BudgetWithRelations).observacoes_gerais || "", // Mapear observacoes_gerais
+          estado: (budgetData as BudgetWithRelations).estado,
+          chapters: ((budgetData as BudgetWithRelations).budget_chapters || []).map(chapter => ({
             id: chapter.id,
             codigo: chapter.code || "",
             nome: chapter.title || "",
@@ -192,7 +193,7 @@ export function useNewBudgetForm({
     currentChapters.forEach((chapter, chapterIndex) => {
       chapter.items.forEach((item, itemIndex) => {
         const plannedCost = item.quantidade * item.preco_unitario;
-        const executedCostItem = item.custo_real_material + item.custo_real_mao_obra; // NOVO: Soma dos custos reais
+        const executedCostItem = (item.custo_real_material || 0) + (item.custo_real_mao_obra || 0); // NOVO: Soma dos custos reais, com fallback para 0
         const deviation = executedCostItem - plannedCost; // NOVO: Desvio por item
 
         // Atualiza os valores no formulário se houver alteração
@@ -247,7 +248,7 @@ export function useNewBudgetForm({
       const initialTotalPlanned = calculateCosts(); 
       // Recalcular o total executado para o orçamento principal
       const totalExecutedForBudget = data.chapters.reduce((acc, chapter) => 
-        acc + chapter.items.reduce((itemAcc, item) => itemAcc + (item.custo_real_material + item.custo_real_mao_obra), 0)
+        acc + chapter.items.reduce((itemAcc, item) => itemAcc + ((item.custo_real_material || 0) + (item.custo_real_mao_obra || 0)), 0) // Ensure null/undefined handling
       , 0);
       console.log("onSubmit: Calculated total executed cost for budget:", totalExecutedForBudget);
 
@@ -500,7 +501,7 @@ export function useNewBudgetForm({
       
       // Recalcular o total executado para o orçamento principal antes de aprovar
       const totalExecutedForBudget = currentBudgetValues.chapters.reduce((acc, chapter) => 
-        acc + chapter.items.reduce((itemAcc, item) => itemAcc + (item.custo_real_material + item.custo_real_mao_obra), 0)
+        acc + chapter.items.reduce((itemAcc, item) => itemAcc + ((item.custo_real_material || 0) + (item.custo_real_mao_obra || 0)), 0) // Ensure null/undefined handling
       , 0);
 
       const { data: updatedBudget, error: updateError } = await supabase

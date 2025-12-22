@@ -9,7 +9,7 @@ import KPICard from "@/components/KPICard";
 import EmptyState from "@/components/EmptyState";
 import { DataTable } from "@/components/work-items/data-table"; // Reusing generic DataTable
 import { createBudgetColumns } from "@/components/budgeting/columns";
-import { BudgetItem } from "@/schemas/budget-schema";
+import { BudgetItem, BudgetWithRelations, BudgetChapterWithItems } from "@/schemas/budget-schema"; // Import the new types
 import { v4 as uuidv4 } from "uuid";
 import { toast } from "sonner";
 import CreateEditClientDialog from "@/components/budgeting/create-edit-client-dialog"; // Import the new dialog
@@ -28,32 +28,33 @@ import { useNavigate } from "react-router-dom"; // Importar useNavigate
 import { useSession } from "@/components/SessionContextProvider"; // Importar useSession
 
 // Definir a interface para o orçamento completo, incluindo capítulos e itens
-interface Budget {
-  id: string;
-  nome: string;
-  client_id: string | null;
-  clients: { nome: string } | null; // Para o join do nome do cliente
-  project_id: string | null;
-  estado: "Rascunho" | "Aprovado" | "Rejeitado";
-  total_planeado: number;
-  total_executado: number;
-  budget_chapters: BudgetChapter[];
-  created_at: string;
-  updated_at: string;
-}
+// This interface is now replaced by BudgetWithRelations from budget-schema.ts
+// interface Budget {
+//   id: string;
+//   nome: string;
+//   client_id: string | null;
+//   clients: { nome: string } | null; // Para o join do nome do cliente
+//   project_id: string | null;
+//   estado: "Rascunho" | "Aprovado" | "Rejeitado";
+//   total_planeado: number;
+//   total_executado: number;
+//   budget_chapters: BudgetChapter[];
+//   created_at: string;
+//   updated_at: string;
+// }
 
-interface BudgetChapter {
-  id: string;
-  title: string;
-  code: string;
-  sort_order: number;
-  notes: string | null;
-  subtotal: number;
-  budget_items: BudgetItem[];
-}
+// interface BudgetChapter {
+//   id: string;
+//   title: string;
+//   code: string;
+//   sort_order: number;
+//   notes: string | null;
+//   subtotal: number;
+//   budget_items: BudgetItem[];
+// }
 
 const Budgeting = () => {
-  const [budgets, setBudgets] = React.useState<Budget[]>([]);
+  const [budgets, setBudgets] = React.useState<BudgetWithRelations[]>([]); // Use BudgetWithRelations
   const [selectedBudgetId, setSelectedBudgetId] = React.useState<string | null>(null); // Armazena apenas o ID
   const selectedBudget = React.useMemo(() => budgets.find(b => b.id === selectedBudgetId), [budgets, selectedBudgetId]); // Deriva o objeto
   
@@ -145,14 +146,15 @@ const Budgeting = () => {
       console.error("Erro ao carregar orçamentos:", budgetsError);
       setBudgets([]);
     } else {
-      const fetchedBudgets: Budget[] = (budgetsData || []).map(budget => ({
+      // Cast budgetsData to BudgetWithRelations[]
+      const fetchedBudgets: BudgetWithRelations[] = (budgetsData as BudgetWithRelations[] || []).map(budget => ({
         ...budget,
         budget_chapters: (budget.budget_chapters || []).map(chapter => ({
           ...chapter,
           budget_items: (chapter.budget_items || []).map(item => ({
             ...item,
             // Recalcular desvio no frontend, pois custo_executado pode ser atualizado
-            desvio: (item.custo_real_material + item.custo_real_mao_obra) - item.custo_planeado,
+            desvio: ((item.custo_real_material || 0) + (item.custo_real_mao_obra || 0)) - item.custo_planeado, // Ensure null/undefined handling
           }))
         }))
       }));
@@ -278,7 +280,7 @@ const Budgeting = () => {
         return;
       }
       const totalExecutedForBudget = budgetToApprove.budget_chapters.reduce((acc, chapter) => 
-        acc + chapter.budget_items.reduce((itemAcc, item) => itemAcc + (item.custo_real_material + item.custo_real_mao_obra), 0)
+        acc + chapter.budget_items.reduce((itemAcc, item) => itemAcc + ((item.custo_real_material || 0) + (item.custo_real_mao_obra || 0)), 0) // Ensure null/undefined handling
       , 0);
 
       const { error } = await supabase

@@ -11,8 +11,8 @@ export const budgetItemSchema = z.object({
   preco_unitario: z.coerce.number().min(0.01, "O preço unitário deve ser um valor positivo."), // Alterado para min(0.01)
   custo_planeado: z.coerce.number().min(0).default(0), // Calculated field, default to 0
   custo_executado: z.coerce.number().min(0).default(0), // Default to 0 for new items
-  custo_real_material: z.coerce.number().min(0).default(0), // NOVO: Custo real de material
-  custo_real_mao_obra: z.coerce.number().min(0).default(0), // NOVO: Custo real de mão de obra
+  custo_real_material: z.coerce.number().min(0).default(0).optional().nullable(), // NOVO: Custo real de material, made optional and nullable
+  custo_real_mao_obra: z.coerce.number().min(0).default(0).optional().nullable(), // NOVO: Custo real de mão de obra, made optional and nullable
   desvio: z.coerce.number().default(0), // Calculated field, default to 0
   estado: z.enum(["Em andamento", "Concluído", "Atrasado", "Planeado"], {
     required_error: "O estado é obrigatório.",
@@ -69,3 +69,50 @@ export const budgetDBSchema = z.object({
 });
 
 export type BudgetDB = z.infer<typeof budgetDBSchema>;
+
+// Define BudgetChapterDB to match the DB structure for chapters
+export const budgetChapterDBSchema = z.object({
+  id: z.string().uuid(),
+  budget_id: z.string().uuid(),
+  company_id: z.string().uuid(),
+  title: z.string(),
+  code: z.string().optional().nullable(),
+  sort_order: z.number().int(),
+  notes: z.string().optional().nullable(),
+  subtotal: z.number(),
+  created_at: z.string().optional(),
+  updated_at: z.string().optional(),
+});
+export type BudgetChapterDB = z.infer<typeof budgetChapterDBSchema>;
+
+// Define BudgetItemDB to match the DB structure for items
+export const budgetItemDBSchema = z.object({
+  id: z.string().uuid(),
+  company_id: z.string().uuid(),
+  budget_id: z.string().uuid(),
+  chapter_id: z.string().uuid().optional().nullable(),
+  capitulo: z.string(),
+  servico: z.string(),
+  quantidade: z.number(),
+  unidade: z.string(),
+  preco_unitario: z.number(),
+  custo_planeado: z.number(),
+  custo_executado: z.number(),
+  custo_real_material: z.number().optional().nullable(),
+  custo_real_mao_obra: z.number().optional().nullable(),
+  estado: z.enum(["Em andamento", "Concluído", "Atrasado", "Planeado"]),
+  article_id: z.string().uuid().optional().nullable(),
+});
+export type BudgetItemDB = z.infer<typeof budgetItemDBSchema>;
+
+
+// Type for a chapter with its items (for fetching)
+export type BudgetChapterWithItems = BudgetChapterDB & {
+  budget_items: BudgetItemDB[];
+};
+
+// Type for a budget with its chapters and items, and client name (for fetching)
+export type BudgetWithRelations = BudgetDB & {
+  clients: { nome: string } | null;
+  budget_chapters: BudgetChapterWithItems[];
+};
