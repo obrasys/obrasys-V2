@@ -58,7 +58,7 @@ serve(async (req) => {
 
     if (projectError) {
       console.error('Edge Function: Error fetching project:', projectError);
-      return new Response(JSON.stringify({ error: `Erro ao carregar dados do projeto: ${projectError.message}` }), {
+      return new Response(JSON.stringify({ error: `Erro ao carregar dados do projeto: ${projectError.message}`, details: projectError }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -399,9 +399,10 @@ serve(async (req) => {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('Edge Function: Unhandled error in serve block:', error);
-    return new Response(JSON.stringify({ error: error.message }), {
+    // Return the full error object in the response for better debugging
+    return new Response(JSON.stringify({ error: error.message, details: error }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
