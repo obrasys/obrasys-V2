@@ -4,7 +4,7 @@ import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { CalendarDays, Play, CheckCircle, AlertTriangle, RefreshCw } from "lucide-react";
+import { CalendarDays, Play, CheckCircle, AlertTriangle, RefreshCw, PlusCircle } from "lucide-react";
 import EmptyState from "@/components/EmptyState";
 import { Schedule, SchedulePhase } from "@/schemas/project-schema";
 import { supabase } from "@/integrations/supabase/client";
@@ -22,12 +22,14 @@ interface ScheduleTabProps {
   projectId: string;
   budgetId: string;
   onScheduleRefetch: () => void; // Novo prop para notificar o pai para refetch do projeto
+  userCompanyId: string | null; // Novo prop para o ID da empresa
 }
 
-const ScheduleTab: React.FC<ScheduleTabProps> = ({ projectId, budgetId, onScheduleRefetch }) => {
+const ScheduleTab: React.FC<ScheduleTabProps> = ({ projectId, budgetId, onScheduleRefetch, userCompanyId }) => {
   const [schedule, setSchedule] = React.useState<Schedule | null>(null);
   const [phases, setPhases] = React.useState<SchedulePhase[]>([]);
   const [loading, setLoading] = React.useState(true);
+  const [isCreatingSchedule, setIsCreatingSchedule] = React.useState(false); // Novo estado para o botão de criação
   const [isEditingPhase, setIsEditingPhase] = React.useState<string | null>(null);
   const [editedPhase, setEditedPhase] = React.useState<Partial<SchedulePhase> | null>(null);
 
@@ -64,8 +66,7 @@ const ScheduleTab: React.FC<ScheduleTabProps> = ({ projectId, budgetId, onSchedu
       setPhases([]);
     }
     setLoading(false);
-    // REMOVIDO: onScheduleRefetch() daqui para evitar o loop
-  }, [projectId, budgetId]); // Removido onScheduleRefetch das dependências
+  }, [projectId, budgetId]);
 
   React.useEffect(() => {
     fetchScheduleData();
@@ -115,6 +116,35 @@ const ScheduleTab: React.FC<ScheduleTabProps> = ({ projectId, budgetId, onSchedu
     setEditedPhase(null);
   };
 
+  const handleCreateSchedule = async () => {
+    if (!budgetId || !projectId || !userCompanyId) {
+      toast.error("Dados insuficientes para criar o cronograma.");
+      return;
+    }
+
+    setIsCreatingSchedule(true);
+    try {
+      const { error } = await supabase.rpc('create_schedule_from_budget', {
+        p_budget_id: budgetId,
+        p_project_id: projectId,
+        p_company_id: userCompanyId,
+      });
+
+      if (error) {
+        throw new Error(`Erro ao criar cronograma: ${error.message}`);
+      }
+
+      toast.success("Cronograma criado com sucesso!");
+      fetchScheduleData(); // Refresh data to show the new schedule
+      onScheduleRefetch(); // Notify parent to refetch project data (e.g., status)
+    } catch (error: any) {
+      toast.error(`Falha ao criar cronograma: ${error.message}`);
+      console.error("Erro ao criar cronograma:", error);
+    } finally {
+      setIsCreatingSchedule(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -128,7 +158,11 @@ const ScheduleTab: React.FC<ScheduleTabProps> = ({ projectId, budgetId, onSchedu
       <EmptyState
         icon={CalendarDays}
         title="Cronograma não gerado"
-        description="O cronograma será gerado automaticamente após a aprovação do orçamento e a criação da obra."
+        description="O cronograma será gerado automaticamente após a aprovação do orçamento e a criação da obra. Se não apareceu, pode gerá-lo manualmente."
+        buttonText="Gerar Cronograma Agora"
+        onButtonClick={handleCreateSchedule}
+        // Desabilitar o botão se já estiver a criar ou se não houver budgetId
+        disabled={isCreatingSchedule || !budgetId}
       />
     );
   }

@@ -19,12 +19,42 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Link, useNavigate } from "react-router-dom";
 import { formatCurrency } from "@/utils/formatters"; // Importar formatCurrency
 import NavButton from "@/components/NavButton"; // Importar NavButton
+import { useSession } from "@/components/SessionContextProvider"; // Importar useSession
 
 const ProjectsPage = () => {
   const [projects, setProjects] = React.useState<Project[]>([]);
   const [selectedProject, setSelectedProject] = React.useState<Project | null>(null);
   const [isProjectDialogOpen, setIsProjectDialogOpen] = React.useState(false);
   const navigate = useNavigate();
+  const { user, isLoading: isSessionLoading } = useSession(); // Obter user e isLoading da sessão
+  const [userCompanyId, setUserCompanyId] = React.useState<string | null>(null);
+
+  // Fetch user's company ID
+  const fetchUserCompanyId = React.useCallback(async () => {
+    if (!user) {
+      setUserCompanyId(null);
+      return;
+    }
+    const { data: profileData, error: profileError } = await supabase
+      .from('profiles')
+      .select('company_id')
+      .eq('id', user.id)
+      .single();
+
+    if (profileError) {
+      console.error("Erro ao carregar company_id do perfil:", profileError);
+      setUserCompanyId(null);
+    } else if (profileData) {
+      setUserCompanyId(profileData.company_id);
+    }
+  }, [user]);
+
+  React.useEffect(() => {
+    if (!isSessionLoading) {
+      fetchUserCompanyId();
+    }
+  }, [isSessionLoading, fetchUserCompanyId]);
+
 
   const fetchProjects = React.useCallback(async () => {
     const { data, error } = await supabase
@@ -56,17 +86,13 @@ const ProjectsPage = () => {
 
   const handleSaveProject = async (newProject: Project) => {
     try {
-      const user = (await supabase.auth.getUser()).data.user;
-      if (!user) throw new Error("Utilizador não autenticado.");
-
-      const companyId = user.user_metadata.company_id;
-      if (!companyId) throw new Error("ID da empresa não encontrado no perfil do utilizador.");
+      if (!user || !userCompanyId) throw new Error("Utilizador não autenticado ou ID da empresa não encontrado.");
 
       const { data, error } = await supabase
         .from('projects')
         .upsert({
           ...newProject,
-          company_id: companyId,
+          company_id: userCompanyId,
           // client_id já está em newProject do formulário
         })
         .select('*, clients(nome)') // Seleciona com join para obter client_name de volta
@@ -207,6 +233,7 @@ const ProjectsPage = () => {
                 projectId={selectedProject.id}
                 budgetId={selectedProject.budget_id}
                 onScheduleRefetch={fetchProjects} // Passar fetchProjects para atualizar o projeto pai
+                userCompanyId={userCompanyId} // Passar userCompanyId
               />
             ) : (
               <EmptyState
