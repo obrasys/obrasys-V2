@@ -16,7 +16,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"; // Importar FormField, FormItem, FormLabel, FormMessage
+import { FormControl, FormField, FormItem, FormLabel, FormMessage, Form } from "@/components/ui/form"; // Importar Form
 import { useForm } from "react-hook-form"; // Importar useForm para criar um formulário temporário para edição
 
 interface ScheduleTabProps {
@@ -201,142 +201,144 @@ const ScheduleTab: React.FC<ScheduleTabProps> = ({ projectId, budgetId, onSchedu
             {tasks.map((task) => ( // Alterado para task
               <Card key={task.id} className="p-4">
                 {isEditingTask === task.id ? ( // Alterado para isEditingTask
-                  <form onSubmit={handleSaveTask} className="space-y-2"> {/* Adicionado form e onSubmit */}
-                    <FormField
-                      control={editForm.control}
-                      name="capitulo"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="sr-only">Nome da Fase</FormLabel>
-                          <FormControl>
-                            <Input
-                              {...field}
-                              placeholder="Nome da Fase"
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={editForm.control}
-                      name="data_inicio"
-                      render={({ field }) => (
-                        <FormItem className="flex flex-col">
-                          <FormLabel className="sr-only">Data de Início</FormLabel>
-                          <Popover>
-                            <PopoverTrigger asChild>
-                              <FormControl>
-                                <Button
-                                  variant={"outline"}
-                                  className={cn(
-                                    "w-full justify-start text-left font-normal",
-                                    !field.value && "text-muted-foreground"
-                                  )}
-                                >
-                                  <CalendarDays className="mr-2 h-4 w-4" />
-                                  {field.value ? format(parseISO(field.value as string), "PPP", { locale: pt }) : "Data de Início"}
-                                </Button>
-                              </FormControl>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0">
-                              <Calendar
-                                mode="single"
-                                selected={field.value ? parseISO(field.value as string) : undefined}
-                                onSelect={(date) => field.onChange(date ? format(date, "yyyy-MM-dd") : null)}
-                                initialFocus
-                                locale={pt}
-                              />
-                            </PopoverContent>
-                          </Popover>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={editForm.control}
-                      name="data_fim"
-                      render={({ field }) => (
-                        <FormItem className="flex flex-col">
-                          <FormLabel className="sr-only">Data de Fim</FormLabel>
-                          <Popover>
-                            <PopoverTrigger asChild>
-                              <FormControl>
-                                <Button
-                                  variant={"outline"}
-                                  className={cn(
-                                    "w-full justify-start text-left font-normal",
-                                    !field.value && "text-muted-foreground"
-                                  )}
-                                >
-                                  <CalendarDays className="mr-2 h-4 w-4" />
-                                  {field.value ? format(parseISO(field.value as string), "PPP", { locale: pt }) : "Data de Fim"}
-                                </Button>
-                              </FormControl>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0">
-                              <Calendar
-                                mode="single"
-                                selected={field.value ? parseISO(field.value as string) : undefined}
-                                onSelect={(date) => field.onChange(date ? format(date, "yyyy-MM-dd") : null)}
-                                initialFocus
-                                locale={pt}
-                              />
-                            </PopoverContent>
-                          </Popover>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={editForm.control}
-                      name="estado"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="sr-only">Estado</FormLabel>
-                          <Select
-                            onValueChange={field.onChange}
-                            value={field.value || "Planeado"}
-                          >
+                  <Form {...editForm}> {/* ENVOLVIDO COM FORM */}
+                    <form onSubmit={handleSaveTask} className="space-y-2"> {/* Adicionado form e onSubmit */}
+                      <FormField
+                        control={editForm.control}
+                        name="capitulo"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="sr-only">Nome da Fase</FormLabel>
                             <FormControl>
-                              <SelectTrigger className="w-full">
-                                <SelectValue placeholder="Estado" />
-                              </SelectTrigger>
+                              <Input
+                                {...field}
+                                placeholder="Nome da Fase"
+                              />
                             </FormControl>
-                            <SelectContent>
-                              <SelectItem value="Planeado">Planeado</SelectItem>
-                              <SelectItem value="Em execução">Em execução</SelectItem>
-                              <SelectItem value="Concluído">Concluído</SelectItem>
-                              <SelectItem value="Atrasado">Atrasado</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={editForm.control}
-                      name="progresso"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="sr-only">Progresso (%)</FormLabel>
-                          <FormControl>
-                            <Input
-                              type="number"
-                              {...field}
-                              onChange={(e) => field.onChange(parseFloat(e.target.value))}
-                              placeholder="Progresso (%)"
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <div className="flex gap-2">
-                      <Button type="submit" size="sm">Guardar</Button> {/* Alterado para type="submit" */}
-                      <Button type="button" size="sm" variant="outline" onClick={handleCancelEdit}>Cancelar</Button> {/* Alterado para type="button" */}
-                    </div>
-                  </form>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={editForm.control}
+                        name="data_inicio"
+                        render={({ field }) => (
+                          <FormItem className="flex flex-col">
+                            <FormLabel className="sr-only">Data de Início</FormLabel>
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <FormControl>
+                                  <Button
+                                    variant={"outline"}
+                                    className={cn(
+                                      "w-full justify-start text-left font-normal",
+                                      !field.value && "text-muted-foreground"
+                                    )}
+                                  >
+                                    <CalendarDays className="mr-2 h-4 w-4" />
+                                    {field.value ? format(parseISO(field.value as string), "PPP", { locale: pt }) : "Data de Início"}
+                                  </Button>
+                                </FormControl>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-auto p-0">
+                                <Calendar
+                                  mode="single"
+                                  selected={field.value ? parseISO(field.value as string) : undefined}
+                                  onSelect={(date) => field.onChange(date ? format(date, "yyyy-MM-dd") : null)}
+                                  initialFocus
+                                  locale={pt}
+                                />
+                              </PopoverContent>
+                            </Popover>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={editForm.control}
+                        name="data_fim"
+                        render={({ field }) => (
+                          <FormItem className="flex flex-col">
+                            <FormLabel className="sr-only">Data de Fim</FormLabel>
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <FormControl>
+                                  <Button
+                                    variant={"outline"}
+                                    className={cn(
+                                      "w-full justify-start text-left font-normal",
+                                      !field.value && "text-muted-foreground"
+                                    )}
+                                  >
+                                    <CalendarDays className="mr-2 h-4 w-4" />
+                                    {field.value ? format(parseISO(field.value as string), "PPP", { locale: pt }) : "Data de Fim"}
+                                  </Button>
+                                </FormControl>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-auto p-0">
+                                <Calendar
+                                  mode="single"
+                                  selected={field.value ? parseISO(field.value as string) : undefined}
+                                  onSelect={(date) => field.onChange(date ? format(date, "yyyy-MM-dd") : null)}
+                                  initialFocus
+                                  locale={pt}
+                                />
+                              </PopoverContent>
+                            </Popover>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={editForm.control}
+                        name="estado"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="sr-only">Estado</FormLabel>
+                            <Select
+                              onValueChange={field.onChange}
+                              value={field.value || "Planeado"}
+                            >
+                              <FormControl>
+                                <SelectTrigger className="w-full">
+                                  <SelectValue placeholder="Estado" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value="Planeado">Planeado</SelectItem>
+                                <SelectItem value="Em execução">Em execução</SelectItem>
+                                <SelectItem value="Concluído">Concluído</SelectItem>
+                                <SelectItem value="Atrasado">Atrasado</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={editForm.control}
+                        name="progresso"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="sr-only">Progresso (%)</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="number"
+                                {...field}
+                                onChange={(e) => field.onChange(parseFloat(e.target.value))}
+                                placeholder="Progresso (%)"
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <div className="flex gap-2">
+                        <Button type="submit" size="sm">Guardar</Button> {/* Alterado para type="submit" */}
+                        <Button type="button" size="sm" variant="outline" onClick={handleCancelEdit}>Cancelar</Button> {/* Alterado para type="button" */}
+                      </div>
+                    </form>
+                  </Form> {/* FECHAMENTO DO FORM */}
                 ) : (
                   <>
                     <CardTitle className="text-lg font-semibold mb-2">{task.capitulo}</CardTitle> {/* Alterado para capitulo */}
