@@ -171,6 +171,9 @@ const BudgetChapterForm: React.FC<BudgetChapterFormProps> = ({
                     <TableHead className="w-[80px]">Un. *</TableHead>
                     <TableHead className="w-[120px] text-right">Preço Unit. *</TableHead>
                     <TableHead className="w-[120px] text-right">Custo Planeado</TableHead>
+                    <TableHead className="w-[120px] text-right">Custo Real Material</TableHead> {/* NOVO */}
+                    <TableHead className="w-[120px] text-right">Custo Real Mão de Obra</TableHead> {/* NOVO */}
+                    <TableHead className="w-[100px] text-right">Custo Executado</TableHead> {/* Atualizado */}
                     <TableHead className="w-[100px]">Estado</TableHead>
                     <TableHead className="w-[100px] text-right">Ações</TableHead>
                   </TableRow>

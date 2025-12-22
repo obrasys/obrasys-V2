@@ -9,17 +9,19 @@ import { formatCurrency } from "@/utils/formatters";
 
 interface BudgetFinancialSummaryProps {
   currentBudgetTotal: number;
+  totalExecuted: number; // NOVO: Receber o total executado
 }
 
 const BudgetFinancialSummary: React.FC<BudgetFinancialSummaryProps> = ({
   currentBudgetTotal,
+  totalExecuted, // NOVO
 }) => {
   // Para um novo orçamento, custo executado e desvio são 0, margem é 100%
-  const executedCost = 0;
-  const budgetDeviation = 0;
-  const budgetDeviationPercentage = 0;
-  const predictedFinalCost = currentBudgetTotal;
-  const currentMargin = currentBudgetTotal > 0 ? 100 : 0;
+  const executedCost = totalExecuted; // Usar o totalExecuted passado
+  const budgetDeviation = executedCost - currentBudgetTotal;
+  const budgetDeviationPercentage = currentBudgetTotal > 0 ? (budgetDeviation / currentBudgetTotal) * 100 : 0;
+  const predictedFinalCost = currentBudgetTotal + budgetDeviation; // Estimativa de custo total
+  const currentMargin = currentBudgetTotal > 0 ? ((currentBudgetTotal - executedCost) / currentBudgetTotal) * 100 : 0; // Margem de lucro atual
 
   return (
     <Card className="bg-card text-card-foreground border border-border">
@@ -47,7 +49,7 @@ const BudgetFinancialSummary: React.FC<BudgetFinancialSummaryProps> = ({
             value={`${formatCurrency(budgetDeviation)} (${budgetDeviationPercentage.toFixed(1)}%)`}
             description="Diferença entre planeado e executado"
             icon={TrendingUp}
-            iconColorClass="text-green-500"
+            iconColorClass={budgetDeviation >= 0 ? "text-red-500" : "text-green-500"}
           />
           <KPICard
             title="Custo Previsto Final (€)"
@@ -61,7 +63,7 @@ const BudgetFinancialSummary: React.FC<BudgetFinancialSummaryProps> = ({
             value={`${currentMargin.toFixed(1)}%`}
             description="Margem de lucro atual"
             icon={DollarSign}
-            iconColorClass="text-green-500"
+            iconColorClass={currentMargin >= 0 ? "text-green-500" : "text-red-500"}
           />
         </div>
       </CardContent>

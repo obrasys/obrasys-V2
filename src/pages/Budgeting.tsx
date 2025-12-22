@@ -130,6 +130,8 @@ const Budgeting = () => {
             preco_unitario,
             custo_planeado,
             custo_executado,
+            custo_real_material, -- NOVO
+            custo_real_mao_obra, -- NOVO
             estado,
             article_id
           )
@@ -149,7 +151,8 @@ const Budgeting = () => {
           ...chapter,
           budget_items: (chapter.budget_items || []).map(item => ({
             ...item,
-            desvio: item.custo_executado - item.custo_planeado, // Calculate desvio in frontend
+            // Recalcular desvio no frontend, pois custo_executado pode ser atualizado
+            desvio: (item.custo_real_material + item.custo_real_mao_obra) - item.custo_planeado,
           }))
         }))
       }));
@@ -268,9 +271,23 @@ const Budgeting = () => {
 
   const handleApproveBudget = async (budgetId: string) => {
     try {
+      // Recalcular o total executado para o orçamento principal antes de aprovar
+      const budgetToApprove = budgets.find(b => b.id === budgetId);
+      if (!budgetToApprove) {
+        toast.error("Orçamento não encontrado para aprovação.");
+        return;
+      }
+      const totalExecutedForBudget = budgetToApprove.budget_chapters.reduce((acc, chapter) => 
+        acc + chapter.budget_items.reduce((itemAcc, item) => itemAcc + (item.custo_real_material + item.custo_real_mao_obra), 0)
+      , 0);
+
       const { error } = await supabase
         .from('budgets')
-        .update({ estado: "Aprovado", updated_at: new Date().toISOString() })
+        .update({ 
+          estado: "Aprovado", 
+          total_executado: totalExecutedForBudget, // NOVO: Atualizar total_executado ao aprovar
+          updated_at: new Date().toISOString() 
+        })
         .eq('id', budgetId);
 
       if (error) throw error;
@@ -317,11 +334,11 @@ const Budgeting = () => {
 
   // Calculate KPIs from selected budget
   const totalBudget = selectedBudget ? selectedBudget.total_planeado : 0;
-  const executedCost = selectedBudget ? selectedBudget.total_executado : 0;
+  const executedCost = selectedBudget ? selectedBudget.total_executado : 0; // Já vem do DB
   const budgetDeviation = executedCost - totalBudget;
   const budgetDeviationPercentage = totalBudget > 0 ? (budgetDeviation / totalBudget) * 100 : 0;
-  const predictedFinalCost = totalBudget + budgetDeviation; // Simplified prediction
-  const currentMargin = totalBudget > 0 ? ((totalBudget - executedCost) / totalBudget) * 100 : 0; // Simplified margin
+  const predictedFinalCost = totalBudget + budgetDeviation; // Simplificado
+  const currentMargin = totalBudget > 0 ? ((totalBudget - executedCost) / totalBudget) * 100 : 0; // Simplificado
 
   const formatCurrency = (value: number) => new Intl.NumberFormat("pt-PT", {
     style: "currency",
@@ -395,8 +412,8 @@ const Budgeting = () => {
           <CardTitle className="text-xl font-semibold">Gerir Orçamentos</CardTitle>
           <div className="flex flex-wrap gap-2">
             <Select
-              value={selectedBudgetId || ""} // Usa selectedBudgetId
-              onValueChange={(budgetId) => setSelectedBudgetId(budgetId)} // Atualiza selectedBudgetId
+              value={selectedBudgetId || ""}
+              onValueChange={(budgetId) => setSelectedBudgetId(budgetId)}
             >
               <SelectTrigger className="w-full sm:w-[200px]">
                 <SelectValue placeholder="Selecione um Orçamento">

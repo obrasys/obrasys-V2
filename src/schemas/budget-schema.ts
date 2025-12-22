@@ -11,6 +11,8 @@ export const budgetItemSchema = z.object({
   preco_unitario: z.coerce.number().min(0.01, "O preço unitário deve ser um valor positivo."), // Alterado para min(0.01)
   custo_planeado: z.coerce.number().min(0).default(0), // Calculated field, default to 0
   custo_executado: z.coerce.number().min(0).default(0), // Default to 0 for new items
+  custo_real_material: z.coerce.number().min(0).default(0), // NOVO: Custo real de material
+  custo_real_mao_obra: z.coerce.number().min(0).default(0), // NOVO: Custo real de mão de obra
   desvio: z.coerce.number().default(0), // Calculated field, default to 0
   estado: z.enum(["Em andamento", "Concluído", "Atrasado", "Planeado"], {
     required_error: "O estado é obrigatório.",

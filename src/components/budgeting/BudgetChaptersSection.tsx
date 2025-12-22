@@ -47,9 +47,11 @@ const BudgetChaptersSection: React.FC<BudgetChaptersSectionProps> = ({
           servico: "Novo Serviço",
           quantidade: 1,
           unidade: "un",
-          preco_unitario: 0,
+          preco_unitario: 0.01, // Default para 0.01 para passar validação
           custo_planeado: 0,
           custo_executado: 0,
+          custo_real_material: 0, // NOVO
+          custo_real_mao_obra: 0, // NOVO
           desvio: 0,
           estado: "Planeado",
           article_id: null, // NOVO: Default para null
@@ -68,9 +70,11 @@ const BudgetChaptersSection: React.FC<BudgetChaptersSectionProps> = ({
       servico: "Novo Serviço",
       quantidade: 1,
       unidade: "un",
-      preco_unitario: 0,
+      preco_unitario: 0.01, // Default para 0.01 para passar validação
       custo_planeado: 0,
       custo_executado: 0,
+      custo_real_material: 0, // NOVO
+      custo_real_mao_obra: 0, // NOVO
       desvio: 0,
       estado: "Planeado",
       article_id: null, // NOVO: Default para null

@@ -61,6 +61,11 @@ const NewBudgetPage: React.FC = () => {
     budgetIdToEdit: budgetId, // Passar o budgetId para o hook
   });
 
+  // Calcular o total executado a partir dos valores do formulário
+  const totalExecuted = form.watch("chapters").reduce((acc, chapter) => 
+    acc + chapter.items.reduce((itemAcc, item) => itemAcc + (item.custo_real_material + item.custo_real_mao_obra), 0)
+  , 0);
+
   if (isLoadingData) {
     // Poderíamos adicionar um skeleton loader aqui se a carga inicial for demorada
     return (
@@ -133,6 +138,7 @@ const NewBudgetPage: React.FC = () => {
           {/* SEÇÃO C — Resumo Financeiro (auto) */}
           <BudgetFinancialSummary
             currentBudgetTotal={currentBudgetTotal}
+            totalExecuted={totalExecuted} // NOVO: Passar o total executado
           />
 
           {/* SEÇÃO D — Validações Inteligentes (IA) */}

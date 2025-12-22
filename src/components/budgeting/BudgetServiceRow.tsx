@@ -105,7 +105,7 @@ const BudgetServiceRow: React.FC<BudgetServiceRowProps> = ({
     return (
       <Tooltip>
         <TooltipTrigger asChild>
-          <Badge className={cn("w-fit", colorClass)} variant={variant}> {/* Usar Badge diretamente aqui */}
+          <Badge className={cn("w-fit", colorClass)} variant={variant}>
             {icon} {status}
           </Badge>
         </TooltipTrigger>
@@ -249,6 +249,53 @@ const BudgetServiceRow: React.FC<BudgetServiceRowProps> = ({
       <TableCell className="w-[120px] text-right font-medium py-2">
         {formatCurrency(item.custo_planeado)}
       </TableCell>
+      {/* NOVOS CAMPOS PARA CUSTO REAL */}
+      <TableCell className="w-[120px] text-right py-2">
+        <FormField
+          control={form.control}
+          name={`chapters.${chapterIndex}.items.${itemIndex}.custo_real_material`}
+          render={({ field }) => (
+            <FormItem className="mb-0">
+              <FormControl>
+                <Input
+                  type="number"
+                  step="0.01"
+                  {...field}
+                  disabled={isApproved}
+                  placeholder="Material (€)"
+                  className="h-10 px-3 py-2"
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+      </TableCell>
+      <TableCell className="w-[120px] text-right py-2">
+        <FormField
+          control={form.control}
+          name={`chapters.${chapterIndex}.items.${itemIndex}.custo_real_mao_obra`}
+          render={({ field }) => (
+            <FormItem className="mb-0">
+              <FormControl>
+                <Input
+                  type="number"
+                  step="0.01"
+                  {...field}
+                  disabled={isApproved}
+                  placeholder="Mão de Obra (€)"
+                  className="h-10 px-3 py-2"
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+      </TableCell>
+      <TableCell className="w-[100px] text-right font-medium py-2">
+        {formatCurrency(item.custo_executado)}
+      </TableCell>
+      {/* FIM DOS NOVOS CAMPOS */}
       <TableCell className="w-[100px] py-2">
         {getStatusBadge(item.estado)}
       </TableCell>

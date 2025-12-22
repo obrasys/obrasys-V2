@@ -79,6 +79,8 @@ export function useNewBudgetForm({
               preco_unitario: 0.01,
               custo_planeado: 0,
               custo_executado: 0,
+              custo_real_material: 0, // NOVO
+              custo_real_mao_obra: 0, // NOVO
               desvio: 0,
               estado: "Planeado",
               article_id: null,
@@ -118,6 +120,8 @@ export function useNewBudgetForm({
               preco_unitario,
               custo_planeado,
               custo_executado,
+              custo_real_material, -- NOVO
+              custo_real_mao_obra, -- NOVO
               estado,
               article_id
             )
@@ -161,6 +165,8 @@ export function useNewBudgetForm({
               preco_unitario: item.preco_unitario,
               custo_planeado: item.custo_planeado,
               custo_executado: item.custo_executado,
+              custo_real_material: item.custo_real_material || 0, // NOVO
+              custo_real_mao_obra: item.custo_real_mao_obra || 0, // NOVO
               desvio: item.custo_executado - item.custo_planeado,
               estado: item.estado,
               article_id: item.article_id,
@@ -181,16 +187,30 @@ export function useNewBudgetForm({
   const calculateCosts = React.useCallback(() => {
     const currentChapters = form.getValues("chapters");
     let totalPlanned = 0;
+    let totalExecuted = 0; // NOVO: Para o total executado do orçamento
 
     currentChapters.forEach((chapter, chapterIndex) => {
       chapter.items.forEach((item, itemIndex) => {
         const plannedCost = item.quantidade * item.preco_unitario;
+        const executedCostItem = item.custo_real_material + item.custo_real_mao_obra; // NOVO: Soma dos custos reais
+        const deviation = executedCostItem - plannedCost; // NOVO: Desvio por item
+
+        // Atualiza os valores no formulário se houver alteração
         if (form.getValues(`chapters.${chapterIndex}.items.${itemIndex}.custo_planeado`) !== plannedCost) {
           form.setValue(`chapters.${chapterIndex}.items.${itemIndex}.custo_planeado`, plannedCost);
         }
+        if (form.getValues(`chapters.${chapterIndex}.items.${itemIndex}.custo_executado`) !== executedCostItem) {
+          form.setValue(`chapters.${chapterIndex}.items.${itemIndex}.custo_executado`, executedCostItem);
+        }
+        if (form.getValues(`chapters.${chapterIndex}.items.${itemIndex}.desvio`) !== deviation) {
+          form.setValue(`chapters.${chapterIndex}.items.${itemIndex}.desvio`, deviation);
+        }
+        
         totalPlanned += plannedCost;
+        totalExecuted += executedCostItem; // NOVO: Acumula o custo executado total
       });
     });
+    // Retorna o total planeado, o total executado será usado no BudgetFinancialSummary
     return totalPlanned;
   }, [form]);
 
@@ -200,7 +220,7 @@ export function useNewBudgetForm({
 
   React.useEffect(() => {
     const subscription = form.watch((value, { name, type }) => {
-      if (name?.includes("quantidade") || name?.includes("preco_unitario")) {
+      if (name?.includes("quantidade") || name?.includes("preco_unitario") || name?.includes("custo_real_material") || name?.includes("custo_real_mao_obra")) {
         calculateCosts();
       }
     });
@@ -225,7 +245,12 @@ export function useNewBudgetForm({
       console.log("onSubmit: Using companyId:", companyId);
 
       const initialTotalPlanned = calculateCosts(); 
-      console.log("onSubmit: Calculated initial total planned cost:", initialTotalPlanned);
+      // Recalcular o total executado para o orçamento principal
+      const totalExecutedForBudget = data.chapters.reduce((acc, chapter) => 
+        acc + chapter.items.reduce((itemAcc, item) => itemAcc + (item.custo_real_material + item.custo_real_mao_obra), 0)
+      , 0);
+      console.log("onSubmit: Calculated total executed cost for budget:", totalExecutedForBudget);
+
 
       let currentBudgetId = data.id;
 
@@ -240,6 +265,7 @@ export function useNewBudgetForm({
           data_orcamento: data.data_orcamento, // Incluir data_orcamento
           observacoes_gerais: data.observacoes_gerais, // Incluir observacoes_gerais
           total_planeado: initialTotalPlanned,
+          total_executado: totalExecutedForBudget, // NOVO: Atualizar total_executado
           estado: data.estado,
           updated_at: new Date().toISOString(),
         };
@@ -291,7 +317,7 @@ export function useNewBudgetForm({
           observacoes_gerais: data.observacoes_gerais, // Incluir observacoes_gerais
           project_id: null,
           total_planeado: initialTotalPlanned,
-          total_executado: 0,
+          total_executado: totalExecutedForBudget, // NOVO: Incluir total_executado
           estado: data.estado,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
@@ -350,7 +376,9 @@ export function useNewBudgetForm({
           unidade: item.unidade,
           preco_unitario: item.preco_unitario,
           custo_planeado: item.custo_planeado,
-          custo_executado: 0,
+          custo_executado: item.custo_executado, // NOVO: Incluir custo_executado
+          custo_real_material: item.custo_real_material, // NOVO
+          custo_real_mao_obra: item.custo_real_mao_obra, // NOVO
           estado: item.estado,
           observacoes: "", // Add observacoes if needed in schema
           article_id: item.article_id,
@@ -470,10 +498,16 @@ export function useNewBudgetForm({
 
       const currentBudgetValues = form.getValues();
       
+      // Recalcular o total executado para o orçamento principal antes de aprovar
+      const totalExecutedForBudget = currentBudgetValues.chapters.reduce((acc, chapter) => 
+        acc + chapter.items.reduce((itemAcc, item) => itemAcc + (item.custo_real_material + item.custo_real_mao_obra), 0)
+      , 0);
+
       const { data: updatedBudget, error: updateError } = await supabase
         .from('budgets')
         .update({
           estado: "Aprovado",
+          total_executado: totalExecutedForBudget, // NOVO: Atualizar total_executado ao aprovar
           updated_at: new Date().toISOString(),
         })
         .eq('id', currentBudgetValues.id)
