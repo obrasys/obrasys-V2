@@ -16,7 +16,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { FormControl } from "@/components/ui/form";
+import { FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"; // Importar FormField, FormItem, FormLabel, FormMessage
+import { useForm } from "react-hook-form"; // Importar useForm para criar um formulário temporário para edição
 
 interface ScheduleTabProps {
   projectId: string;
@@ -31,7 +32,9 @@ const ScheduleTab: React.FC<ScheduleTabProps> = ({ projectId, budgetId, onSchedu
   const [loading, setLoading] = React.useState(true);
   const [isCreatingSchedule, setIsCreatingSchedule] = React.useState(false);
   const [isEditingTask, setIsEditingTask] = React.useState<string | null>(null); // Alterado para isEditingTask
-  const [editedTask, setEditedTask] = React.useState<Partial<ScheduleTask> | null>(null); // Alterado para editedTask
+  
+  // Usar useForm para gerir o estado do formulário de edição de uma única tarefa
+  const editForm = useForm<ScheduleTask>();
 
   const fetchScheduleData = React.useCallback(async () => {
     setLoading(true);
@@ -74,14 +77,14 @@ const ScheduleTab: React.FC<ScheduleTabProps> = ({ projectId, budgetId, onSchedu
 
   const handleEditTask = (task: ScheduleTask) => { // Alterado para handleEditTask
     setIsEditingTask(task.id || null); // Alterado para isEditingTask
-    setEditedTask({ ...task }); // Alterado para setEditedTask
+    editForm.reset(task); // Resetar o formulário de edição com os dados da tarefa
   };
 
-  const handleSaveTask = async () => { // Alterado para handleSaveTask
-    if (!editedTask || !editedTask.id) return;
+  const handleSaveTask = editForm.handleSubmit(async (data: ScheduleTask) => { // Alterado para handleSaveTask
+    if (!data || !data.id) return;
 
     try {
-      let updatedTask = { ...editedTask }; // Alterado para updatedTask
+      let updatedTask = { ...data }; // Alterado para updatedTask
 
       // Calculate duration if both dates are present
       if (updatedTask.data_inicio && updatedTask.data_fim) { // Alterado para data_inicio e data_fim
@@ -103,7 +106,7 @@ const ScheduleTab: React.FC<ScheduleTabProps> = ({ projectId, budgetId, onSchedu
           progresso: updatedTask.progresso, // Mapear para progresso
           updated_at: new Date().toISOString(), // Adicionar updated_at
         })
-        .eq("id", editedTask.id);
+        .eq("id", data.id); // Usar data.id
 
       if (error) {
         throw new Error(`Erro ao guardar fase: ${error.message}`);
@@ -111,17 +114,17 @@ const ScheduleTab: React.FC<ScheduleTabProps> = ({ projectId, budgetId, onSchedu
 
       toast.success("Fase do cronograma atualizada com sucesso!");
       setIsEditingTask(null); // Alterado para isEditingTask
-      setEditedTask(null); // Alterado para setEditedTask
+      editForm.reset(); // Limpar o formulário de edição
       fetchScheduleData(); // Refresh data
       onScheduleRefetch(); // Notificar o pai para refetch do projeto APÓS a fase ser salva
     } catch (error: any) {
       toast.error(`Falha ao guardar fase: ${error.message}`);
     }
-  };
+  });
 
   const handleCancelEdit = () => {
     setIsEditingTask(null); // Alterado para isEditingTask
-    setEditedTask(null); // Alterado para setEditedTask
+    editForm.reset(); // Limpar o formulário de edição
   };
 
   const handleCreateSchedule = async () => {
@@ -198,85 +201,142 @@ const ScheduleTab: React.FC<ScheduleTabProps> = ({ projectId, budgetId, onSchedu
             {tasks.map((task) => ( // Alterado para task
               <Card key={task.id} className="p-4">
                 {isEditingTask === task.id ? ( // Alterado para isEditingTask
-                  <div className="space-y-2">
-                    <Input
-                      value={editedTask?.capitulo || ""} // Alterado para capitulo
-                      onChange={(e) => setEditedTask({ ...editedTask, capitulo: e.target.value })} // Alterado para capitulo
-                      placeholder="Nome da Fase"
+                  <form onSubmit={handleSaveTask} className="space-y-2"> {/* Adicionado form e onSubmit */}
+                    <FormField
+                      control={editForm.control}
+                      name="capitulo"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="sr-only">Nome da Fase</FormLabel>
+                          <FormControl>
+                            <Input
+                              {...field}
+                              placeholder="Nome da Fase"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
                     />
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button
-                          variant={"outline"}
-                          className={cn(
-                            "w-full justify-start text-left font-normal",
-                            !editedTask?.data_inicio && "text-muted-foreground" // Alterado para data_inicio
-                          )}
-                        >
-                          <CalendarDays className="mr-2 h-4 w-4" />
-                          {editedTask?.data_inicio ? format(parseISO(editedTask.data_inicio as string), "PPP", { locale: pt }) : "Data de Início"} {/* Alterado para data_inicio */}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0">
-                        <Calendar
-                          mode="single"
-                          selected={editedTask?.data_inicio ? parseISO(editedTask.data_inicio as string) : undefined} // Alterado para data_inicio
-                          onSelect={(date) => setEditedTask({ ...editedTask, data_inicio: date ? format(date, "yyyy-MM-dd") : null })} // Alterado para data_inicio
-                          initialFocus
-                          locale={pt}
-                        />
-                      </PopoverContent>
-                    </Popover>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button
-                          variant={"outline"}
-                          className={cn(
-                            "w-full justify-start text-left font-normal",
-                            !editedTask?.data_fim && "text-muted-foreground" // Alterado para data_fim
-                          )}
-                        >
-                          <CalendarDays className="mr-2 h-4 w-4" />
-                          {editedTask?.data_fim ? format(parseISO(editedTask.data_fim as string), "PPP", { locale: pt }) : "Data de Fim"} {/* Alterado para data_fim */}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0">
-                        <Calendar
-                          mode="single"
-                          selected={editedTask?.data_fim ? parseISO(editedTask.data_fim as string) : undefined} // Alterado para data_fim
-                          onSelect={(date) => setEditedTask({ ...editedTask, data_fim: date ? format(date, "yyyy-MM-dd") : null })} // Alterado para data_fim
-                          initialFocus
-                          locale={pt}
-                        />
-                      </PopoverContent>
-                    </Popover>
-                    <FormControl>
-                      <Select
-                        value={editedTask?.estado || "Planeado"} // Alterado para estado
-                        onValueChange={(value) => setEditedTask({ ...editedTask, estado: value as ScheduleTask["estado"] })} // Alterado para estado
-                      >
-                        <SelectTrigger className="w-full">
-                          <SelectValue placeholder="Estado" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Planeado">Planeado</SelectItem>
-                          <SelectItem value="Em execução">Em execução</SelectItem>
-                          <SelectItem value="Concluído">Concluído</SelectItem>
-                          <SelectItem value="Atrasado">Atrasado</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </FormControl>
-                    <Input
-                      type="number"
-                      value={editedTask?.progresso || 0} // Alterado para progresso
-                      onChange={(e) => setEditedTask({ ...editedTask, progresso: parseFloat(e.target.value) })} // Alterado para progresso
-                      placeholder="Progresso (%)"
+                    <FormField
+                      control={editForm.control}
+                      name="data_inicio"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-col">
+                          <FormLabel className="sr-only">Data de Início</FormLabel>
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <FormControl>
+                                <Button
+                                  variant={"outline"}
+                                  className={cn(
+                                    "w-full justify-start text-left font-normal",
+                                    !field.value && "text-muted-foreground"
+                                  )}
+                                >
+                                  <CalendarDays className="mr-2 h-4 w-4" />
+                                  {field.value ? format(parseISO(field.value as string), "PPP", { locale: pt }) : "Data de Início"}
+                                </Button>
+                              </FormControl>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0">
+                              <Calendar
+                                mode="single"
+                                selected={field.value ? parseISO(field.value as string) : undefined}
+                                onSelect={(date) => field.onChange(date ? format(date, "yyyy-MM-dd") : null)}
+                                initialFocus
+                                locale={pt}
+                              />
+                            </PopoverContent>
+                          </Popover>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={editForm.control}
+                      name="data_fim"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-col">
+                          <FormLabel className="sr-only">Data de Fim</FormLabel>
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <FormControl>
+                                <Button
+                                  variant={"outline"}
+                                  className={cn(
+                                    "w-full justify-start text-left font-normal",
+                                    !field.value && "text-muted-foreground"
+                                  )}
+                                >
+                                  <CalendarDays className="mr-2 h-4 w-4" />
+                                  {field.value ? format(parseISO(field.value as string), "PPP", { locale: pt }) : "Data de Fim"}
+                                </Button>
+                              </FormControl>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0">
+                              <Calendar
+                                mode="single"
+                                selected={field.value ? parseISO(field.value as string) : undefined}
+                                onSelect={(date) => field.onChange(date ? format(date, "yyyy-MM-dd") : null)}
+                                initialFocus
+                                locale={pt}
+                              />
+                            </PopoverContent>
+                          </Popover>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={editForm.control}
+                      name="estado"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="sr-only">Estado</FormLabel>
+                          <Select
+                            onValueChange={field.onChange}
+                            value={field.value || "Planeado"}
+                          >
+                            <FormControl>
+                              <SelectTrigger className="w-full">
+                                <SelectValue placeholder="Estado" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="Planeado">Planeado</SelectItem>
+                              <SelectItem value="Em execução">Em execução</SelectItem>
+                              <SelectItem value="Concluído">Concluído</SelectItem>
+                              <SelectItem value="Atrasado">Atrasado</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={editForm.control}
+                      name="progresso"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="sr-only">Progresso (%)</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              {...field}
+                              onChange={(e) => field.onChange(parseFloat(e.target.value))}
+                              placeholder="Progresso (%)"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
                     />
                     <div className="flex gap-2">
-                      <Button size="sm" onClick={handleSaveTask}>Guardar</Button> {/* Alterado para handleSaveTask */}
-                      <Button size="sm" variant="outline" onClick={handleCancelEdit}>Cancelar</Button>
+                      <Button type="submit" size="sm">Guardar</Button> {/* Alterado para type="submit" */}
+                      <Button type="button" size="sm" variant="outline" onClick={handleCancelEdit}>Cancelar</Button> {/* Alterado para type="button" */}
                     </div>
-                  </div>
+                  </form>
                 ) : (
                   <>
                     <CardTitle className="text-lg font-semibold mb-2">{task.capitulo}</CardTitle> {/* Alterado para capitulo */}
