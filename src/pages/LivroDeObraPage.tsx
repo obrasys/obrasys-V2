@@ -433,7 +433,7 @@ const LivroDeObraPage = () => {
 
           <RdoTimeline rdos={rdoEntries} projectUsers={projectUsers} />
 
-          <LivroDeObraAICompliance />
+          <LivroDeObraAICompliance projectId={selectedLivroObra.project_id} />
         </>
       ) : (
         <div className="mt-8">
