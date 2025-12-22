@@ -24,7 +24,7 @@ import RdoTimeline from "@/components/compliance/RdoTimeline"; // Import the new
 import ManualRdoEntryDialog from "@/components/compliance/ManualRdoEntryDialog"; // Import the new ManualRdoEntryDialog
 
 import { Skeleton } from "@/components/ui/skeleton";
-import EmptyState from "@/components/ui/EmptyState"; // Corrected import path
+import EmptyState from "@/components/EmptyState"; // Corrected import path
 import { FileText, PlusCircle, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
