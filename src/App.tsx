@@ -42,6 +42,9 @@ import ProfilePage from "./pages/ProfilePage";
 // New page for Budgeting
 import NewBudgetPage from "./pages/NewBudgetPage";
 
+// New page for Approvals
+import ApprovalsPage from "./pages/ApprovalsPage";
+
 
 const queryClient = new QueryClient();
 
@@ -101,6 +104,9 @@ const AppContent = () => (
       <Route path="/budgeting/new" element={<NewBudgetPage />} />
       {/* New route for editing a budget */}
       <Route path="/budgeting/edit/:budgetId" element={<NewBudgetPage />} />
+
+      {/* New route for Approvals */}
+      <Route path="/approvals" element={<ApprovalsPage />} />
     </Route>
 
     {/* Routes that do NOT use the MainLayout (e.g., landing pages, 404) */}

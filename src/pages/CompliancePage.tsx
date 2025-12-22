@@ -83,9 +83,12 @@ const CompliancePage = () => {
               <li>Consultar histórico de aprovações</li>
               <li>Registar data, responsável e estado</li>
             </ul>
-            <Button className="mt-6 w-full" disabled>
+            <NavButton
+              className="mt-6 w-full"
+              to="/approvals" // Updated to new approvals page
+            >
               Ver Aprovações
-            </Button>
+            </NavButton>
           </CardContent>
         </Card>
 

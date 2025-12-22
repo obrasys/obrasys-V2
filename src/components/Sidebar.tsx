@@ -20,6 +20,7 @@ import {
   Settings,
   ChevronLeft,
   ChevronRight,
+  CheckSquare, // Import CheckSquare for Approvals
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -69,6 +70,11 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, toggleSidebar, profile }
       name: "Conformidade",
       icon: ShieldCheck,
       href: "/compliance",
+    },
+    {
+      name: "Gestão de Aprovações", // New item
+      icon: CheckSquare, // Using CheckSquare icon
+      href: "/approvals", // New route
     },
     {
       name: "Financeiro",
