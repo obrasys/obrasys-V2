@@ -6,49 +6,40 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { v4 as uuidv4 } from "uuid";
 import { format, parseISO } from "date-fns";
 import { pt } from "date-fns/locale";
-import { useNavigate } from "react-router-dom"; // Importar useNavigate
+import { useNavigate } from "react-router-dom";
 
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Project } from "@/schemas/project-schema";
-import { LivroObra, LivroObraRdo, livroObraSchema } from "@/schemas/compliance-schema";
+import { LivroObra, RdoEntry, livroObraSchema, rdoEntrySchema } from "@/schemas/compliance-schema"; // Import RdoEntry and rdoEntrySchema
 import { formatCurrency, formatDate } from "@/utils/formatters";
+import { useSession } from "@/components/SessionContextProvider"; // Import useSession
 
 // Importar os novos componentes
-// import LivroDeObraHeader from "@/components/compliance/LivroDeObraHeader"; // Removido
 import LivroDeObraList from "@/components/compliance/LivroDeObraList";
 import LivroDeObraDetailsCard from "@/components/compliance/LivroDeObraDetailsCard";
-import LivroDeObraRdosTable from "@/components/compliance/LivroDeObraRdosTable";
 import LivroDeObraAICompliance from "@/components/compliance/LivroDeObraAICompliance";
 import CreateLivroDeObraDialog from "@/components/compliance/CreateLivroDeObraDialog";
-import { Skeleton } from "@/components/ui/skeleton"; // Importar Skeleton
-import EmptyState from "@/components/EmptyState"; // Adicionada esta linha
-import { FileText, PlusCircle, ArrowLeft } from "lucide-react"; // Importar FileText, PlusCircle e ArrowLeft
-import { Button } from "@/components/ui/button"; // Importar Button
+import RdoTimeline from "@/components/compliance/RdoTimeline"; // Import the new RdoTimeline
+import ManualRdoEntryDialog from "@/components/compliance/ManualRdoEntryDialog"; // Import the new ManualRdoEntryDialog
 
-// Mock de RDOs para demonstração (ajustado para incluir project_id e datas variadas)
-// Estes RDOs serão filtrados pelo período e project_id do Livro de Obra selecionado.
-const allMockRdos: LivroObraRdo[] = [
-  { id: uuidv4(), livro_obra_id: "placeholder-id-1", rdo_id: uuidv4(), data: "2024-07-01", resumo: "Início da escavação para fundações. Equipa de 5 trabalhadores.", custos_diarios: 350.00 },
-  { id: uuidv4(), livro_obra_id: "placeholder-id-1", rdo_id: uuidv4(), data: "2024-07-02", resumo: "Continuação da escavação. Entrega de 10m³ de betão.", custos_diarios: 800.00 },
-  { id: uuidv4(), livro_obra_id: "placeholder-id-1", rdo_id: uuidv4(), data: "2024-07-03", resumo: "Montagem de cofragem para sapatas. 3 trabalhadores.", custos_diarios: 210.00 },
-  { id: uuidv4(), livro_obra_id: "placeholder-id-1", rdo_id: uuidv4(), data: "2024-07-04", resumo: "Vazamento de betão nas sapatas. 4 trabalhadores.", custos_diarios: 600.00 },
-  { id: uuidv4(), livro_obra_id: "placeholder-id-1", rdo_id: uuidv4(), data: "2024-07-05", resumo: "Cura do betão e desmame de cofragem. 2 trabalhadores.", custos_diarios: 140.00 },
-  { id: uuidv4(), livro_obra_id: "placeholder-id-2", rdo_id: uuidv4(), data: "2024-07-10", resumo: "Início da alvenaria do piso 1.", custos_diarios: 400.00 },
-  { id: uuidv4(), livro_obra_id: "placeholder-id-2", rdo_id: uuidv4(), data: "2024-07-11", resumo: "Entrega de tijolos e argamassa.", custos_diarios: 700.00 },
-  { id: uuidv4(), livro_obra_id: "placeholder-id-2", rdo_id: uuidv4(), data: "2024-07-12", resumo: "Continuação da alvenaria.", custos_diarios: 450.00 },
-  { id: uuidv4(), livro_obra_id: "placeholder-id-3", rdo_id: uuidv4(), data: "2024-08-01", resumo: "Instalação de sistemas elétricos.", custos_diarios: 900.00 },
-  { id: uuidv4(), livro_obra_id: "placeholder-id-3", rdo_id: uuidv4(), data: "2024-08-02", resumo: "Testes de iluminação.", custos_diarios: 200.00 },
-];
+import { Skeleton } from "@/components/ui/skeleton";
+import EmptyState from "@/components/EmptyState";
+import { FileText, PlusCircle, ArrowLeft } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 const LivroDeObraPage = () => {
   const [projects, setProjects] = React.useState<Project[]>([]);
   const [livrosObra, setLivrosObra] = React.useState<LivroObra[]>([]);
   const [selectedLivroObra, setSelectedLivroObra] = React.useState<LivroObra | null>(null);
-  const [livrosObraRdos, setLivrosObraRdos] = React.useState<LivroObraRdo[]>([]); // Estado para RDOs filtrados
+  const [rdoEntries, setRdoEntries] = React.useState<RdoEntry[]>([]); // State for RDO entries
+  const [projectUsers, setProjectUsers] = React.useState<{ id: string; first_name: string; last_name: string; avatar_url: string | null; }[]>([]); // State for users involved in project
   const [isLoading, setIsLoading] = React.useState(true);
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
-  const navigate = useNavigate(); // Inicializar useNavigate
+  const [isManualRdoDialogOpen, setIsManualRdoDialogOpen] = React.useState(false);
+  const navigate = useNavigate();
+  const { user } = useSession();
+  const [userCompanyId, setUserCompanyId] = React.useState<string | null>(null);
 
   const form = useForm<LivroObra>({
     resolver: zodResolver(livroObraSchema),
@@ -61,11 +52,37 @@ const LivroDeObraPage = () => {
     },
   });
 
+  // Fetch user's company ID
+  const fetchUserCompanyId = React.useCallback(async () => {
+    if (!user) {
+      setUserCompanyId(null);
+      return;
+    }
+    const { data: profileData, error: profileError } = await supabase
+      .from('profiles')
+      .select('company_id')
+      .eq('id', user.id)
+      .single();
+
+    if (profileError) {
+      console.error("Erro ao carregar company_id do perfil:", profileError);
+      setUserCompanyId(null);
+    } else if (profileData) {
+      setUserCompanyId(profileData.company_id);
+    }
+  }, [user]);
+
   const fetchProjectsAndLivrosObra = React.useCallback(async () => {
     setIsLoading(true);
+    if (!userCompanyId) {
+      setIsLoading(false);
+      return;
+    }
+
     const { data: projectsData, error: projectsError } = await supabase
       .from('projects')
-      .select('id, nome, localizacao, client_id, clients(nome)'); // Seleciona client_id e faz join com clients para obter o nome
+      .select('id, nome, localizacao, client_id, clients(nome)')
+      .eq('company_id', userCompanyId);
 
     if (projectsError) {
       toast.error(`Erro ao carregar obras: ${projectsError.message}`);
@@ -73,7 +90,7 @@ const LivroDeObraPage = () => {
     } else {
       const formattedProjects: Project[] = (projectsData || []).map((project: any) => ({
         ...project,
-        client_name: project.clients?.nome || "Cliente Desconhecido", // Extrai o nome do cliente
+        client_name: project.clients?.nome || "Cliente Desconhecido",
       }));
       setProjects(formattedProjects);
     }
@@ -81,6 +98,7 @@ const LivroDeObraPage = () => {
     const { data: livrosObraData, error: livrosObraError } = await supabase
       .from('livros_obra')
       .select('*')
+      .eq('company_id', userCompanyId)
       .order('created_at', { ascending: false });
 
     if (livrosObraError) {
@@ -88,61 +106,78 @@ const LivroDeObraPage = () => {
       console.error("Erro ao carregar livros de obra:", livrosObraError);
     } else {
       setLivrosObra(livrosObraData || []);
-      // Se houver livros, seleciona o primeiro por padrão para melhor UX
-      if (livrosObraData && livrosObraData.length > 0) {
+      if (livrosObraData && livrosObraData.length > 0 && !selectedLivroObra) {
         setSelectedLivroObra(livrosObraData[0]);
       }
     }
     setIsLoading(false);
-  }, []);
+  }, [userCompanyId, selectedLivroObra]);
 
-  // Função para filtrar RDOs com base no Livro de Obra selecionado
-  const filterRdosForSelectedLivro = React.useCallback(() => {
-    if (!selectedLivroObra) {
-      setLivrosObraRdos([]);
+  const fetchRdoEntries = React.useCallback(async () => {
+    if (!selectedLivroObra || !userCompanyId) {
+      setRdoEntries([]);
+      setProjectUsers([]);
       return;
     }
 
-    const startDate = parseISO(selectedLivroObra.periodo_inicio);
-    const endDate = parseISO(selectedLivroObra.periodo_fim);
+    const { data: rdosData, error: rdosError } = await supabase
+      .from('rdo_entries')
+      .select(`
+        *,
+        responsible_user:profiles(id, first_name, last_name, avatar_url)
+      `)
+      .eq('company_id', userCompanyId)
+      .eq('project_id', selectedLivroObra.project_id)
+      .gte('date', selectedLivroObra.periodo_inicio)
+      .lte('date', selectedLivroObra.periodo_fim)
+      .order('date', { ascending: false })
+      .order('created_at', { ascending: false });
 
-    // Para fins de demonstração, filtramos os mockRdos pelo período e um ID de livro
-    // Numa aplicação real, os RDOs seriam provavelmente buscados do DB com base no livro_obra_id
-    const filtered = allMockRdos.filter(rdo => {
-      const rdoDate = parseISO(rdo.data);
-      // Assumimos que os mockRdos têm um 'livro_obra_id' que pode ser mapeado
-      // ou que filtramos apenas por data e project_id (se RDOs tivessem project_id)
-      return (
-        rdoDate >= startDate &&
-        rdoDate <= endDate &&
-        rdo.livro_obra_id === selectedLivroObra.id // Simula a ligação
-      );
-    });
-    setLivrosObraRdos(filtered);
-  }, [selectedLivroObra]);
+    if (rdosError) {
+      toast.error(`Erro ao carregar RDOs: ${rdosError.message}`);
+      console.error("Erro ao carregar RDOs:", rdosError);
+      setRdoEntries([]);
+      setProjectUsers([]);
+    } else {
+      const formattedRdos: RdoEntry[] = (rdosData || []).map((rdo: any) => ({
+        ...rdo,
+        responsible_user_id: rdo.responsible_user?.id || null, // Ensure correct ID is used
+      }));
+      setRdoEntries(formattedRdos);
+
+      // Extract unique users from RDOs
+      const uniqueUsers = Array.from(new Map(
+        (rdosData || [])
+          .filter((rdo: any) => rdo.responsible_user)
+          .map((rdo: any) => [rdo.responsible_user.id, rdo.responsible_user])
+      ).values());
+      setProjectUsers(uniqueUsers);
+    }
+  }, [selectedLivroObra, userCompanyId]);
 
   React.useEffect(() => {
-    fetchProjectsAndLivrosObra();
-  }, [fetchProjectsAndLivrosObra]);
+    fetchUserCompanyId();
+  }, [fetchUserCompanyId]);
 
   React.useEffect(() => {
-    filterRdosForSelectedLivro(); // Chama o filtro sempre que o livro selecionado muda
-  }, [selectedLivroObra, filterRdosForSelectedLivro]);
+    if (userCompanyId) {
+      fetchProjectsAndLivrosObra();
+    }
+  }, [userCompanyId, fetchProjectsAndLivrosObra]);
+
+  React.useEffect(() => {
+    fetchRdoEntries();
+  }, [selectedLivroObra, fetchRdoEntries]);
 
   const handleCreateLivroObra = async (data: LivroObra) => {
     try {
-      const user = (await supabase.auth.getUser()).data.user;
-      if (!user) throw new Error("Utilizador não autenticado.");
-
-      const companyId = user.user_metadata.company_id;
-      if (!companyId) throw new Error("ID da empresa não encontrado no perfil do utilizador.");
+      if (!user || !userCompanyId) throw new Error("Utilizador não autenticado ou ID da empresa não encontrado.");
 
       const { data: newLivro, error } = await supabase
         .from('livros_obra')
         .insert({
           ...data,
-          company_id: companyId,
-          id: uuidv4(), // Garante que um ID é gerado para o mock de RDOs
+          company_id: userCompanyId,
         })
         .select()
         .single();
@@ -152,25 +187,77 @@ const LivroDeObraPage = () => {
       toast.success("Livro de Obra criado com sucesso!");
       form.reset();
       setIsDialogOpen(false);
-      fetchProjectsAndLivrosObra();
-      setSelectedLivroObra(newLivro); // Seleciona o livro recém-criado
+      setSelectedLivroObra(newLivro); // Select the newly created book
+      fetchProjectsAndLivrosObra(); // Refresh list
     } catch (error: any) {
       toast.error(`Erro ao criar Livro de Obra: ${error.message}`);
       console.error("Erro ao criar Livro de Obra:", error);
     }
   };
 
-  const generatePdfContent = (livro: LivroObra, project: Project | undefined, rdos: LivroObraRdo[]) => {
-    const totalDias = rdos.length;
-    const custoTotal = rdos.reduce((sum, rdo) => sum + rdo.custos_diarios, 0);
+  const handleSaveManualRdoEntry = async (rdo: RdoEntry) => {
+    try {
+      if (!user || !userCompanyId || !selectedLivroObra) {
+        throw new Error("Dados insuficientes para guardar o RDO manual.");
+      }
 
-    const rdoRows = rdos.map(rdo => `
-      <tr>
-        <td style="border: 1px solid #ccc; padding: 8px;">${formatDate(rdo.data)}</td>
-        <td style="border: 1px solid #ccc; padding: 8px;">${rdo.resumo || ''}</td>
-        <td style="border: 1px solid #ccc; padding: 8px; text-align: right;">${formatCurrency(rdo.custos_diarios)}</td>
-      </tr>
-    `).join('');
+      const { error } = await supabase
+        .from('rdo_entries')
+        .insert({
+          ...rdo,
+          company_id: userCompanyId,
+          project_id: selectedLivroObra.project_id,
+          budget_id: selectedLivroObra.budget_id, // Link to the budget of the selected LivroObra
+          responsible_user_id: user.id,
+          event_type: 'manual_entry',
+          status: 'pending',
+        });
+
+      if (error) throw error;
+
+      toast.success("Registo manual adicionado com sucesso!");
+      setIsManualRdoDialogOpen(false);
+      fetchRdoEntries(); // Refresh RDOs
+    } catch (error: any) {
+      toast.error(`Erro ao guardar RDO manual: ${error.message}`);
+      console.error("Erro ao guardar RDO manual:", error);
+    }
+  };
+
+  const generatePdfContent = (livro: LivroObra, project: Project | undefined, rdos: RdoEntry[], users: { id: string; first_name: string; last_name: string; }[]) => {
+    const totalDias = rdos.length;
+    const custoTotal = rdos.reduce((sum, rdo) => {
+      // Attempt to parse cost from details if available, otherwise default to 0
+      const costFromDetails = rdo.details?.new_executed_cost || rdo.details?.total_planeado || 0;
+      return sum + costFromDetails;
+    }, 0);
+
+    const getEventTypeText = (eventType: string) => {
+      switch (eventType) {
+        case 'manual_entry': return "Registo Manual";
+        case 'budget_approved': return "Orçamento Aprovado";
+        case 'budget_item_update': return "Atualização de Serviço";
+        case 'task_progress_update': return "Atualização de Fase";
+        default: return "Evento Desconhecido";
+      }
+    };
+
+    const rdoRows = rdos.map(rdo => {
+      const responsibleUser = users.find(u => u.id === rdo.responsible_user_id);
+      const userName = responsibleUser ? `${responsibleUser.first_name} ${responsibleUser.last_name}` : 'N/A';
+      const eventTypeText = getEventTypeText(rdo.event_type);
+      const costImpact = rdo.details?.new_executed_cost || rdo.details?.total_planeado || 0;
+
+      return `
+        <tr>
+          <td style="border: 1px solid #ccc; padding: 8px;">${formatDate(rdo.date)}</td>
+          <td style="border: 1px solid #ccc; padding: 8px;">${eventTypeText}</td>
+          <td style="border: 1px solid #ccc; padding: 8px;">${rdo.description || ''}</td>
+          <td style="border: 1px solid #ccc; padding: 8px;">${userName}</td>
+          <td style="border: 1px solid #ccc; padding: 8px; text-align: right;">${formatCurrency(costImpact)}</td>
+        </tr>
+      `;
+    }).join('');
 
     return `
       <!DOCTYPE html>
@@ -211,7 +298,7 @@ const LivroDeObraPage = () => {
           <div class="header-info">
               <p><strong>Obra:</strong> ${project?.nome || 'N/A'}</p>
               <p><strong>Localização:</strong> ${project?.localizacao || 'N/A'}</p>
-              <p><strong>Cliente:</strong> ${project?.client_name || 'N/A'}</p> {/* Usando client_name */}
+              <p><strong>Cliente:</strong> ${project?.client_name || 'N/A'}</p>
               <p><strong>Empresa Responsável:</strong> Obra Sys</p>
               <p><strong>Período:</strong> ${formatDate(livro.periodo_inicio)} a ${formatDate(livro.periodo_fim)}</p>
               <p><strong>Estado do Livro:</strong> <span style="text-transform: capitalize;">${livro.estado.replace('_', ' ')}</span></p>
@@ -224,8 +311,10 @@ const LivroDeObraPage = () => {
               <thead>
                   <tr>
                       <th style="width: 15%;">Data</th>
-                      <th style="width: 65%;">Descrição dos Trabalhos</th>
-                      <th style="width: 20%; text-align: right;">Custos Diários (€)</th>
+                      <th style="width: 15%;">Tipo de Evento</th>
+                      <th style="width: 40%;">Descrição</th>
+                      <th style="width: 15%;">Responsável</th>
+                      <th style="width: 15%; text-align: right;">Impacto Custo (€)</th>
                   </tr>
               </thead>
               <tbody>
@@ -235,13 +324,13 @@ const LivroDeObraPage = () => {
           ` : `<p style="text-align: center; margin-top: 20px; color: #777;">Nenhum RDO disponível para este período.</p>`}
 
           <div class="summary">
-              <p><strong>Total de dias registados:</strong> ${totalDias}</p>
-              <p><strong>Custo total do período:</strong> ${formatCurrency(custoTotal)}</p>
+              <p><strong>Total de registos no período:</strong> ${totalDias}</p>
+              <p><strong>Custo total registado no período:</strong> ${formatCurrency(custoTotal)}</p>
           </div>
 
           <p class="declaration">
-              Declara-se que os registos acima refletem os trabalhos realizados no período indicado,
-              com base nos Relatórios Diários de Obra (RDO).
+              Declara-se que os registos acima refletem os trabalhos e eventos ocorridos no período indicado,
+              com base nos Registos Diários de Obra (RDOs) automáticos e manuais.
           </p>
 
           <div class="signatures">
@@ -272,8 +361,7 @@ const LivroDeObraPage = () => {
       return;
     }
     const project = projects.find(p => p.id === selectedLivroObra.project_id);
-    // Usa os RDOs filtrados para o PDF
-    const content = generatePdfContent(selectedLivroObra, project, livrosObraRdos);
+    const content = generatePdfContent(selectedLivroObra, project, rdoEntries, projectUsers);
     const printWindow = window.open('', '_blank');
     if (printWindow) {
       printWindow.document.write(content);
@@ -287,7 +375,6 @@ const LivroDeObraPage = () => {
   if (isLoading) {
     return (
       <div className="space-y-6">
-        {/* Esqueleto para o cabeçalho */}
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between pb-4 md:pb-6 border-b border-border mb-4 md:mb-6">
           <div>
             <Skeleton className="h-8 w-64 mb-2" />
@@ -308,7 +395,6 @@ const LivroDeObraPage = () => {
 
   return (
     <div className="space-y-6">
-      {/* Cabeçalho da Página */}
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between pb-4 md:pb-6 border-b border-border mb-4 md:mb-6">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold text-primary">Livro de Obra Digital</h1>
@@ -319,6 +405,9 @@ const LivroDeObraPage = () => {
         <div className="flex flex-wrap gap-2 mt-2 md:mt-0">
           <Button variant="ghost" onClick={() => navigate("/compliance")} className="flex items-center gap-2 text-muted-foreground hover:text-foreground">
             <ArrowLeft className="h-4 w-4" /> Voltar
+          </Button>
+          <Button onClick={() => setIsManualRdoDialogOpen(true)} disabled={!selectedLivroObra} className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700">
+            <PlusCircle className="h-4 w-4" /> Registo Manual
           </Button>
           <Button onClick={() => setIsDialogOpen(true)} className="flex items-center gap-2">
             <PlusCircle className="h-4 w-4" /> Novo Livro de Obra
@@ -342,7 +431,7 @@ const LivroDeObraPage = () => {
             onGeneratePdf={handleGeneratePdf}
           />
 
-          <LivroDeObraRdosTable rdos={livrosObraRdos} /> {/* Usa RDOs filtrados */}
+          <RdoTimeline rdos={rdoEntries} projectUsers={projectUsers} />
 
           <LivroDeObraAICompliance />
         </>
@@ -365,6 +454,16 @@ const LivroDeObraPage = () => {
         projects={projects}
         form={form}
       />
+
+      {selectedLivroObra && userCompanyId && (
+        <ManualRdoEntryDialog
+          isOpen={isManualRdoDialogOpen}
+          onClose={() => setIsManualRdoDialogOpen(false)}
+          onSave={handleSaveManualRdoEntry}
+          projectId={selectedLivroObra.project_id}
+          companyId={userCompanyId}
+        />
+      )}
     </div>
   );
 };
