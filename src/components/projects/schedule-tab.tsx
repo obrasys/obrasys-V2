@@ -32,7 +32,6 @@ const ScheduleTab: React.FC<ScheduleTabProps> = ({ projectId, budgetId, onSchedu
   const [loading, setLoading] = React.useState(true);
   const [isCreatingSchedule, setIsCreatingSchedule] = React.useState(false);
   const [isEditingTask, setIsEditingTask] = React.useState<string | null>(null);
-  // Removido: const [editedTask, setEditedTask] = React.useState<Partial<ScheduleTask> | null>(null);
   
   const editForm = useForm<ScheduleTask>();
 
@@ -86,13 +85,16 @@ const ScheduleTab: React.FC<ScheduleTabProps> = ({ projectId, budgetId, onSchedu
     try {
       let updatedTask = { ...data };
 
-      if (updatedTask.data_inicio && updatedTask.data_fim) {
-        const startDate = parseISO(updatedTask.data_inicio as string);
-        const endDate = parseISO(updatedTask.data_fim as string);
-        updatedTask.duracao_dias = differenceInDays(endDate, startDate) + 1;
-      } else {
-        updatedTask.duracao_dias = null;
-      }
+      // A coluna 'duracao_dias' é gerada na base de dados, não deve ser enviada no update.
+      // A base de dados irá calculá-la automaticamente com base em data_inicio e data_fim.
+      // O cálculo no frontend é apenas para exibição, se necessário.
+      // if (updatedTask.data_inicio && updatedTask.data_fim) {
+      //   const startDate = parseISO(updatedTask.data_inicio as string);
+      //   const endDate = parseISO(updatedTask.data_fim as string);
+      //   updatedTask.duracao_dias = differenceInDays(endDate, startDate) + 1;
+      // } else {
+      //   updatedTask.duracao_dias = null;
+      // }
 
       const { error } = await supabase
         .from("schedule_tasks")
@@ -100,7 +102,7 @@ const ScheduleTab: React.FC<ScheduleTabProps> = ({ projectId, budgetId, onSchedu
           capitulo: updatedTask.capitulo,
           data_inicio: updatedTask.data_inicio,
           data_fim: updatedTask.data_fim,
-          duracao_dias: updatedTask.duracao_dias,
+          // duracao_dias: updatedTask.duracao_dias, // REMOVIDO: Esta coluna é gerada pela base de dados
           estado: updatedTask.estado,
           progresso: updatedTask.progresso,
           updated_at: new Date().toISOString(),
@@ -171,7 +173,7 @@ const ScheduleTab: React.FC<ScheduleTabProps> = ({ projectId, budgetId, onSchedu
         description="O cronograma será gerado automaticamente após a aprovação do orçamento e a criação da obra. Se não apareceu, pode gerá-lo manualmente."
         buttonText="Gerar Cronograma Agora"
         onButtonClick={handleCreateSchedule}
-        buttonDisabled={isCreatingSchedule || !budgetId} // Usar buttonDisabled
+        buttonDisabled={isCreatingSchedule || !budgetId}
       />
     );
   }
