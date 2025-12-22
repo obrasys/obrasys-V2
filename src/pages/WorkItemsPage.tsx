@@ -8,12 +8,14 @@ import { Separator } from "@/components/ui/separator";
 import { DataTable } from "@/components/work-items/data-table";
 import { createColumns } from "@/components/work-items/columns";
 import CreateEditArticleDialog from "@/components/work-items/create-edit-article-dialog";
+import CategoryManagementSection from "@/components/work-items/category-management-section"; // Import new component
 import { Article, Category, Subcategory } from "@/schemas/article-schema";
 import { toast } from "sonner";
-import { v4 as uuidv4 } from "uuid"; // Still useful for new client-side IDs before DB assignment
-import { supabase } from "@/integrations/supabase/client"; // Import supabase
-import { useSession } from "@/components/SessionContextProvider"; // Import useSession
-import { Skeleton } from "@/components/ui/skeleton"; // Import Skeleton for loading state
+import { v4 as uuidv4 } from "uuid";
+import { supabase } from "@/integrations/supabase/client";
+import { useSession } from "@/components/SessionContextProvider";
+import { Skeleton } from "@/components/ui/skeleton";
+import { ensureDefaultCategories } from "@/utils/initial-data"; // Import new utility
 
 const WorkItemsPage = () => {
   const { user, isLoading: isSessionLoading } = useSession();
@@ -24,7 +26,7 @@ const WorkItemsPage = () => {
   const [subcategories, setSubcategories] = React.useState<Subcategory[]>([]);
   const [isLoadingData, setIsLoadingData] = React.useState(true);
 
-  const [isDialogOpen, setIsDialogOpen] = React.useState(false);
+  const [isArticleDialogOpen, setIsArticleDialogOpen] = React.useState(false); // Renamed for clarity
   const [articleToEdit, setArticleToEdit] = React.useState<Article | null>(null);
 
   // Fetch user's company ID
@@ -110,7 +112,7 @@ const WorkItemsPage = () => {
     }
   }, [userCompanyId]);
 
-  // Initial data load
+  // Initial data load and ensure default categories
   React.useEffect(() => {
     if (!isSessionLoading) {
       fetchUserCompanyId();
@@ -121,6 +123,7 @@ const WorkItemsPage = () => {
     const loadAllData = async () => {
       if (userCompanyId) {
         setIsLoadingData(true);
+        await ensureDefaultCategories(userCompanyId); // Ensure default categories exist
         await Promise.all([
           fetchArticles(),
           fetchCategories(),
@@ -152,7 +155,7 @@ const WorkItemsPage = () => {
 
       toast.success(`Artigo ${article.id ? "atualizado" : "criado"} com sucesso!`);
       fetchArticles(); // Refresh the list
-      setIsDialogOpen(false);
+      setIsArticleDialogOpen(false);
     } catch (error: any) {
       toast.error(`Erro ao guardar artigo: ${error.message}`);
       console.error("Erro ao guardar artigo:", error);
@@ -161,7 +164,7 @@ const WorkItemsPage = () => {
 
   const handleEditArticle = (article: Article) => {
     setArticleToEdit(article);
-    setIsDialogOpen(true);
+    setIsArticleDialogOpen(true);
   };
 
   const handleDeleteArticle = async (id: string) => {
@@ -229,11 +232,20 @@ const WorkItemsPage = () => {
 
       <Separator className="my-8 bg-gray-300 dark:bg-gray-700" />
 
+      {/* Nova Secção de Gestão de Capítulos */}
+      <CategoryManagementSection
+        categories={categories}
+        userCompanyId={userCompanyId}
+        onCategoriesUpdated={fetchCategories} // Pass callback to refresh categories
+      />
+
+      <Separator className="my-8 bg-gray-300 dark:bg-gray-700" />
+
       <Card className="bg-card text-card-foreground border border-border">
         <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between space-y-2 sm:space-y-0 pb-2">
           <CardTitle className="text-2xl font-semibold">Catálogo Central de Artigos</CardTitle>
           <div className="flex flex-wrap gap-2">
-            <Button onClick={() => { setArticleToEdit(null); setIsDialogOpen(true); }} className="flex items-center gap-2">
+            <Button onClick={() => { setArticleToEdit(null); setIsArticleDialogOpen(true); }} className="flex items-center gap-2">
               <PlusCircle className="h-4 w-4" /> Novo Artigo
             </Button>
             <Button variant="outline" className="flex items-center gap-2" disabled>
@@ -258,8 +270,8 @@ const WorkItemsPage = () => {
       </Card>
 
       <CreateEditArticleDialog
-        isOpen={isDialogOpen}
-        onClose={() => setIsDialogOpen(false)}
+        isOpen={isArticleDialogOpen}
+        onClose={() => setIsArticleDialogOpen(false)}
         onSave={handleSaveArticle}
         articleToEdit={articleToEdit}
         categories={categories}
