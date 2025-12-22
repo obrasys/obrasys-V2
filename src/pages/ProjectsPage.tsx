@@ -2,7 +2,7 @@
 
 import React from "react";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, Filter, Download, HardHat, CheckCircle, AlertTriangle, TrendingUp, DollarSign, BarChart3, CalendarDays, FileText, ArrowLeft } from "lucide-react";
+import { PlusCircle, Filter, Download, HardHat, CheckCircle, AlertTriangle, TrendingUp, DollarSign, BarChart3, CalendarDays, FileText, ArrowLeft, Loader2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import KPICard from "@/components/KPICard";
@@ -17,9 +17,11 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Link, useNavigate } from "react-router-dom";
-import { formatCurrency } from "@/utils/formatters"; // Importar formatCurrency
+import { formatCurrency, formatDate } from "@/utils/formatters"; // Importar formatCurrency e formatDate
 import NavButton from "@/components/NavButton"; // Importar NavButton
 import { useSession } from "@/components/SessionContextProvider"; // Importar useSession
+import { LivroObra } from "@/schemas/compliance-schema"; // Importar LivroObra
+import { format, parseISO } from "date-fns"; // Importar format e parseISO
 
 const ProjectsPage = () => {
   const [projects, setProjects] = React.useState<Project[]>([]);
@@ -28,6 +30,10 @@ const ProjectsPage = () => {
   const navigate = useNavigate();
   const { user, isLoading: isSessionLoading } = useSession(); // Obter user e isLoading da sessão
   const [userCompanyId, setUserCompanyId] = React.useState<string | null>(null);
+
+  const [livrosObraForProject, setLivrosObraForProject] = React.useState<LivroObra[]>([]);
+  const [isLoadingLivrosObraForProject, setIsLoadingLivrosObraForProject] = React.useState(false);
+  const [isCreatingLivroObra, setIsCreatingLivroObra] = React.useState(false);
 
   // Fetch user's company ID
   const fetchUserCompanyId = React.useCallback(async () => {
@@ -83,6 +89,75 @@ const ProjectsPage = () => {
   React.useEffect(() => {
     fetchProjects();
   }, [fetchProjects]);
+
+  const fetchLivrosObraForProject = React.useCallback(async () => {
+    if (!selectedProject?.id || !userCompanyId) {
+      setLivrosObraForProject([]);
+      return;
+    }
+    setIsLoadingLivrosObraForProject(true);
+    const { data, error } = await supabase
+      .from('livros_obra')
+      .select('*')
+      .eq('project_id', selectedProject.id)
+      .eq('company_id', userCompanyId)
+      .order('periodo_inicio', { ascending: false });
+
+    if (error) {
+      toast.error(`Erro ao carregar Livros de Obra para o projeto: ${error.message}`);
+      console.error("Erro ao carregar Livros de Obra:", error);
+      setLivrosObraForProject([]);
+    } else {
+      setLivrosObraForProject(data || []);
+    }
+    setIsLoadingLivrosObraForProject(false);
+  }, [selectedProject?.id, userCompanyId]);
+
+  React.useEffect(() => {
+    if (selectedProject?.id) {
+      fetchLivrosObraForProject();
+    }
+  }, [selectedProject?.id, fetchLivrosObraForProject]);
+
+  const handleCreateLivroObraForProject = async () => {
+    if (!selectedProject || !userCompanyId) {
+      toast.error("Selecione um projeto e certifique-se de que a empresa está associada.");
+      return;
+    }
+
+    setIsCreatingLivroObra(true);
+    try {
+      const today = new Date();
+      const defaultEndDate = selectedProject.prazo && !isNaN(new Date(selectedProject.prazo).getTime())
+        ? format(parseISO(selectedProject.prazo), "yyyy-MM-dd")
+        : format(new Date(today.setFullYear(today.getFullYear() + 1)), "yyyy-MM-dd"); // 1 year from now
+
+      const newLivro: LivroObra = {
+        id: uuidv4(),
+        company_id: userCompanyId,
+        project_id: selectedProject.id,
+        budget_id: selectedProject.budget_id,
+        periodo_inicio: format(new Date(), "yyyy-MM-dd"),
+        periodo_fim: defaultEndDate,
+        estado: "em_preparacao",
+        observacoes: `Livro de Obra inicial para o projeto ${selectedProject.nome}`,
+      };
+
+      const { error } = await supabase
+        .from('livros_obra')
+        .insert(newLivro);
+
+      if (error) throw error;
+
+      toast.success("Livro de Obra criado com sucesso!");
+      fetchLivrosObraForProject(); // Refresh the list
+    } catch (error: any) {
+      toast.error(`Erro ao criar Livro de Obra: ${error.message}`);
+      console.error("Erro ao criar Livro de Obra:", error);
+    } finally {
+      setIsCreatingLivroObra(false);
+    }
+  };
 
   const handleSaveProject = async (newProject: Project) => {
     try {
@@ -247,11 +322,39 @@ const ProjectsPage = () => {
             <Card>
               <CardHeader><CardTitle>Diários de Obra (RDO)</CardTitle></CardHeader>
               <CardContent>
-                <EmptyState
-                  icon={FileText}
-                  title="Diários de Obra (Em breve)"
-                  description="Aqui serão geridos os diários de obra para esta obra."
-                />
+                {isLoadingLivrosObraForProject ? (
+                  <div className="flex justify-center items-center h-32">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                  </div>
+                ) : (
+                  livrosObraForProject.length > 0 ? (
+                    <div className="space-y-4">
+                      <p className="text-sm text-muted-foreground">
+                        Existem {livrosObraForProject.length} Livro(s) de Obra associado(s) a este projeto.
+                      </p>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {livrosObraForProject.slice(0, 2).map(livro => ( // Show up to 2 recent ones
+                          <Card key={livro.id} className="p-4">
+                            <h4 className="font-semibold">Livro de Obra: {formatDate(livro.periodo_inicio)} - {formatDate(livro.periodo_fim)}</h4>
+                            <p className="text-sm text-muted-foreground">Estado: {livro.estado}</p>
+                          </Card>
+                        ))}
+                      </div>
+                      <Button onClick={() => navigate(`/compliance/livro-de-obra?projectId=${selectedProject.id}`)} className="w-full mt-4">
+                        <FileText className="h-4 w-4 mr-2" /> Ver Todos os Livros de Obra
+                      </Button>
+                    </div>
+                  ) : (
+                    <EmptyState
+                      icon={FileText}
+                      title="Nenhum Livro de Obra encontrado"
+                      description="Crie o primeiro Livro de Obra para este projeto para começar a gerir os registos diários."
+                      buttonText="Criar Livro de Obra"
+                      onButtonClick={handleCreateLivroObraForProject}
+                      buttonDisabled={isCreatingLivroObra}
+                    />
+                  )
+                )}
               </CardContent>
             </Card>
           </TabsContent>

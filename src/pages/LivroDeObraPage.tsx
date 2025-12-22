@@ -6,7 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { v4 as uuidv4 } from "uuid";
 import { format, parseISO } from "date-fns";
 import { pt } from "date-fns/locale";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom"; // Importar useSearchParams
 
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -40,6 +40,10 @@ const LivroDeObraPage = () => {
   const navigate = useNavigate();
   const { user } = useSession();
   const [userCompanyId, setUserCompanyId] = React.useState<string | null>(null);
+
+  const [searchParams] = useSearchParams();
+  const initialProjectIdFromUrl = searchParams.get("projectId");
+  const [preselectedProjectId, setPreselectedProjectId] = React.useState<string | null>(initialProjectIdFromUrl);
 
   const form = useForm<LivroObra>({
     resolver: zodResolver(livroObraSchema),
@@ -81,7 +85,7 @@ const LivroDeObraPage = () => {
 
     const { data: projectsData, error: projectsError } = await supabase
       .from('projects')
-      .select('id, nome, localizacao, client_id, clients(nome)')
+      .select('id, nome, localizacao, client_id, budget_id, prazo, created_at, clients(nome)') // Adicionado budget_id, prazo, created_at
       .eq('company_id', userCompanyId);
 
     if (projectsError) {
@@ -95,65 +99,44 @@ const LivroDeObraPage = () => {
       setProjects(formattedProjects);
     }
 
-    const { data: livrosObraData, error: livrosObraError } = await supabase
+    let query = supabase
       .from('livros_obra')
       .select('*')
       .eq('company_id', userCompanyId)
       .order('created_at', { ascending: false });
+
+    if (preselectedProjectId) {
+      query = query.eq('project_id', preselectedProjectId);
+    }
+
+    const { data: livrosObraData, error: livrosObraError } = await query;
 
     if (livrosObraError) {
       toast.error(`Erro ao carregar livros de obra: ${livrosObraError.message}`);
       console.error("Erro ao carregar livros de obra:", livrosObraError);
     } else {
       setLivrosObra(livrosObraData || []);
-      if (livrosObraData && livrosObraData.length > 0 && !selectedLivroObra) {
+      // If a project was preselected and no books found, open dialog
+      if (preselectedProjectId && (livrosObraData === null || livrosObraData.length === 0)) {
+        setIsDialogOpen(true); // Open dialog to create new book for this project
+        form.setValue('project_id', preselectedProjectId); // Pre-fill project ID
+        // Also pre-fill dates if project data is available
+        const projectForDialog = projectsData?.find(p => p.id === preselectedProjectId);
+        if (projectForDialog) {
+          const today = new Date();
+          const defaultEndDate = projectForDialog.prazo && !isNaN(new Date(projectForDialog.prazo).getTime())
+            ? format(parseISO(projectForDialog.prazo), "yyyy-MM-dd")
+            : format(new Date(today.setFullYear(today.getFullYear() + 1)), "yyyy-MM-dd");
+          form.setValue('periodo_inicio', format(new Date(), "yyyy-MM-dd"));
+          form.setValue('periodo_fim', defaultEndDate);
+          form.setValue('budget_id', projectForDialog.budget_id); // Pre-fill budget_id
+        }
+      } else if (livrosObraData && livrosObraData.length > 0 && !selectedLivroObra) {
         setSelectedLivroObra(livrosObraData[0]);
       }
     }
     setIsLoading(false);
-  }, [userCompanyId, selectedLivroObra]);
-
-  const fetchRdoEntries = React.useCallback(async () => {
-    if (!selectedLivroObra || !userCompanyId) {
-      setRdoEntries([]);
-      setProjectUsers([]);
-      return;
-    }
-
-    const { data: rdosData, error: rdosError } = await supabase
-      .from('rdo_entries')
-      .select(`
-        *,
-        responsible_user:profiles(id, first_name, last_name, avatar_url)
-      `)
-      .eq('company_id', userCompanyId)
-      .eq('project_id', selectedLivroObra.project_id)
-      .gte('date', selectedLivroObra.periodo_inicio)
-      .lte('date', selectedLivroObra.periodo_fim)
-      .order('date', { ascending: false })
-      .order('created_at', { ascending: false });
-
-    if (rdosError) {
-      toast.error(`Erro ao carregar RDOs: ${rdosError.message}`);
-      console.error("Erro ao carregar RDOs:", rdosError);
-      setRdoEntries([]);
-      setProjectUsers([]);
-    } else {
-      const formattedRdos: RdoEntry[] = (rdosData || []).map((rdo: any) => ({
-        ...rdo,
-        responsible_user_id: rdo.responsible_user?.id || null, // Ensure correct ID is used
-      }));
-      setRdoEntries(formattedRdos);
-
-      // Extract unique users from RDOs
-      const uniqueUsers = Array.from(new Map(
-        (rdosData || [])
-          .filter((rdo: any) => rdo.responsible_user)
-          .map((rdo: any) => [rdo.responsible_user.id, rdo.responsible_user])
-      ).values());
-      setProjectUsers(uniqueUsers);
-    }
-  }, [selectedLivroObra, userCompanyId]);
+  }, [userCompanyId, preselectedProjectId, selectedLivroObra, form]); // Add form to dependencies
 
   React.useEffect(() => {
     fetchUserCompanyId();
