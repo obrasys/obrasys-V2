@@ -46,7 +46,17 @@ const LivroDeObraAICompliance: React.FC<LivroDeObraAIComplianceProps> = ({ proje
       });
 
       if (error) {
-        throw error;
+        console.error("Erro ao invocar função Edge:", error);
+        // Attempt to parse the detailed error from the Edge Function's response
+        if (error.context?.error) {
+          const edgeFunctionError = error.context.error;
+          const errorMessage = edgeFunctionError.details || edgeFunctionError.message || 'Erro desconhecido';
+          toast.error(`Erro da IA: ${errorMessage}`);
+          console.error("Detalhes do erro da Edge Function:", edgeFunctionError);
+        } else {
+          toast.error(`Erro ao obter análise da IA: ${error.message}`);
+        }
+        throw error; // Re-throw to stop execution
       }
 
       if (data && data.length > 0) {
@@ -57,8 +67,12 @@ const LivroDeObraAICompliance: React.FC<LivroDeObraAIComplianceProps> = ({ proje
         toast.success("Nenhum risco ou anomalia detetada pelo AI Assistant.");
       }
     } catch (error: any) {
-      console.error("Erro ao invocar função Edge:", error);
-      toast.error(`Erro ao obter análise da IA: ${error.message}`);
+      // This catch block is for the re-thrown error or other client-side errors
+      console.error("Erro geral no cliente ao analisar com IA:", error);
+      // Fallback toast if the error wasn't handled more specifically above
+      if (!error.context?.error) { // Only show generic if not already shown specific
+        toast.error(`Ocorreu um erro inesperado: ${error.message}`);
+      }
     } finally {
       setIsLoadingAlerts(false);
     }

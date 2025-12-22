@@ -8,33 +8,33 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
-  // Handle CORS OPTIONS request
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
-  }
-
-  // Extract JWT from Authorization header
-  const authHeader = req.headers.get('Authorization');
-  if (!authHeader) {
-    console.error('Edge Function: Unauthorized - Missing Authorization header');
-    return new Response(JSON.stringify({ error: 'Unauthorized: Missing Authorization header' }), {
-      status: 401,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
-  }
-
-  // Create Supabase client with the user's JWT
-  const supabase = createClient(
-    Deno.env.get('SUPABASE_URL') ?? '',
-    Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-    {
-      global: {
-        headers: { Authorization: authHeader },
-      },
-    }
-  );
-
   try {
+    // Handle CORS OPTIONS request
+    if (req.method === 'OPTIONS') {
+      return new Response(null, { headers: corsHeaders });
+    }
+
+    // Extract JWT from Authorization header
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      console.error('Edge Function: Unauthorized - Missing Authorization header');
+      return new Response(JSON.stringify({ error: 'Unauthorized: Missing Authorization header' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Create Supabase client with the user's JWT
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      {
+        global: {
+          headers: { Authorization: authHeader },
+        },
+      }
+    );
+
     const { project_id } = await req.json();
     console.log('Edge Function: Received project_id:', project_id);
 
@@ -58,7 +58,18 @@ serve(async (req) => {
 
     if (projectError) {
       console.error('Edge Function: Error fetching project:', projectError);
-      return new Response(JSON.stringify({ error: `Erro ao carregar dados do projeto: ${projectError.message}`, details: projectError }), {
+      // Do not return here, instead add an alert and continue if possible
+      generatedAlerts.push({
+        project_id: project_id,
+        project_name: "Projeto Desconhecido", // Fallback name
+        type: "Data Fetch Error",
+        severity: "critical",
+        title: "Erro ao carregar dados do projeto",
+        message: `Não foi possível carregar o projeto: ${projectError.message}.`,
+      });
+      // If project data is critical for further analysis, we might need to stop.
+      // For now, let's assume it's critical and return.
+      return new Response(JSON.stringify({ error: `Erro ao carregar dados do projeto: ${projectError.message}` }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -95,6 +106,7 @@ serve(async (req) => {
       if (budgetFetchError && budgetFetchError.code !== 'PGRST116') {
         console.warn('Edge Function: Error fetching budget for project:', budgetFetchError);
         generatedAlerts.push({
+          company_id: projectCompanyId,
           project_id: project.id,
           project_name: projectName,
           type: "Data Inconsistency",
@@ -126,6 +138,7 @@ serve(async (req) => {
     if (scheduleFetchError && scheduleFetchError.code !== 'PGRST116') {
       console.warn('Edge Function: Error fetching schedule for project:', scheduleFetchError);
       generatedAlerts.push({
+        company_id: projectCompanyId,
         project_id: project.id,
         project_name: projectName,
         type: "Data Inconsistency",
@@ -170,6 +183,7 @@ serve(async (req) => {
     if (rdoFetchError) {
       console.warn('Edge Function: Error fetching RDO entries:', rdoFetchError);
       generatedAlerts.push({
+        company_id: projectCompanyId,
         project_id: project.id,
         project_name: projectName,
         type: "Data Inconsistency",
@@ -400,9 +414,13 @@ serve(async (req) => {
     });
 
   } catch (error: any) {
-    console.error('Edge Function: Unhandled error in serve block:', error);
-    // Return the full error object in the response for better debugging
-    return new Response(JSON.stringify({ error: error.message, details: error }), {
+    // Catch any unhandled errors and return a generic 500 response with details
+    console.error('Edge Function: Unhandled error:', error);
+    return new Response(JSON.stringify({
+      error: 'Ocorreu um erro interno na função Edge.',
+      details: error.message || 'Detalhes do erro não disponíveis.',
+      stack: error.stack || 'Stack trace não disponível.',
+    }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
