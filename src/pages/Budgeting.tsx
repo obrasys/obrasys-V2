@@ -27,31 +27,14 @@ import {
 import { useNavigate } from "react-router-dom"; // Importar useNavigate
 import { useSession } from "@/components/SessionContextProvider"; // Importar useSession
 
-// Definir a interface para o orçamento completo, incluindo capítulos e itens
-// This interface is now replaced by BudgetWithRelations from budget-schema.ts
-// interface Budget {
-//   id: string;
-//   nome: string;
-//   client_id: string | null;
-//   clients: { nome: string } | null; // Para o join do nome do cliente
-//   project_id: string | null;
-//   estado: "Rascunho" | "Aprovado" | "Rejeitado";
-//   total_planeado: number;
-//   total_executado: number;
-//   budget_chapters: BudgetChapter[];
-//   created_at: string;
-//   updated_at: string;
-// }
+// Import new modular components
+import BudgetingHeader from "@/components/budgeting/BudgetingHeader";
+import BudgetSelectionAndActions from "@/components/budgeting/BudgetSelectionAndActions";
+import BudgetFinancialKPIs from "@/components/budgeting/BudgetFinancialKPIs";
+import BudgetDetailTable from "@/components/budgeting/BudgetDetailTable";
+import BudgetCostControlChart from "@/components/budgeting/BudgetCostControlChart";
+import BudgetIntegrations from "@/components/budgeting/BudgetIntegrations";
 
-// interface BudgetChapter {
-//   id: string;
-//   title: string;
-//   code: string;
-//   sort_order: number;
-//   notes: string | null;
-//   subtotal: number;
-//   budget_items: BudgetItem[];
-// }
 
 const Budgeting = () => {
   const [budgets, setBudgets] = React.useState<BudgetWithRelations[]>([]); // Use BudgetWithRelations
@@ -131,8 +114,8 @@ const Budgeting = () => {
             preco_unitario,
             custo_planeado,
             custo_executado,
-            custo_real_material, -- NOVO
-            custo_real_mao_obra, -- NOVO
+            custo_real_material,
+            custo_real_mao_obra,
             estado,
             article_id
           )
@@ -342,11 +325,6 @@ const Budgeting = () => {
   const predictedFinalCost = totalBudget + budgetDeviation; // Simplificado
   const currentMargin = totalBudget > 0 ? ((totalBudget - executedCost) / totalBudget) * 100 : 0; // Simplificado
 
-  const formatCurrency = (value: number) => new Intl.NumberFormat("pt-PT", {
-    style: "currency",
-    currency: "EUR",
-  }).format(value);
-
   if (isLoading) {
     return (
       <div className="space-y-6">
@@ -384,211 +362,37 @@ const Budgeting = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header da Página */}
-      <div className="flex flex-col md:flex-row items-start md:items-center justify-between pb-4 md:pb-6 border-b border-border mb-4 md:mb-6">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-primary">Orçamentação e Controlo de Custos</h1>
-          <p className="text-muted-foreground text-sm">
-            Planeamento, acompanhamento e controlo financeiro da obra
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2 mt-2 md:mt-0">
-          <Button onClick={() => setIsClientDialogOpen(true)} variant="outline" className="flex items-center gap-2">
-            <UserPlus className="h-4 w-4" /> Cadastrar Cliente
-          </Button>
-          <Button onClick={() => navigate("/budgeting/new")} className="flex items-center gap-2">
-            <PlusCircle className="h-4 w-4" /> Novo Orçamento
-          </Button>
-          <Button variant="outline" className="flex items-center gap-2" disabled>
-            <Filter className="h-4 w-4" /> Filtros
-          </Button>
-          <Button variant="outline" className="flex items-center gap-2" disabled>
-            <Download className="h-4 w-4" /> Exportar
-          </Button>
-        </div>
-      </div>
+      <BudgetingHeader
+        onRegisterClientClick={() => setIsClientDialogOpen(true)}
+        onNewBudgetClick={() => navigate("/budgeting/new")}
+      />
 
-      {/* Seleção de Orçamento e Ações */}
-      <Card className="bg-card text-card-foreground border border-border">
-        <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between space-y-2 sm:space-y-0 pb-2">
-          <CardTitle className="text-xl font-semibold">Gerir Orçamentos</CardTitle>
-          <div className="flex flex-wrap gap-2">
-            <Select
-              value={selectedBudgetId || ""}
-              onValueChange={(budgetId) => setSelectedBudgetId(budgetId)}
-            >
-              <SelectTrigger className="w-full sm:w-[200px]">
-                <SelectValue placeholder="Selecione um Orçamento">
-                  {selectedBudget ? selectedBudget.nome : "Selecione um Orçamento"}
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                {budgets.map((budget) => (
-                  <SelectItem key={budget.id} value={budget.id}>
-                    {budget.nome} ({budget.estado})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {selectedBudget && selectedBudget.estado === "Rascunho" && (
-              <>
-                <Button onClick={() => navigate(`/budgeting/edit/${selectedBudget.id}`)} variant="outline" className="flex items-center gap-2">
-                  <Edit className="h-4 w-4" /> Editar Orçamento
-                </Button>
-                <Button onClick={() => handleApproveBudget(selectedBudget.id)} className="flex items-center gap-2">
-                  <Check className="h-4 w-4" /> Aprovar Orçamento
-                </Button>
-              </>
-            )}
-            {selectedBudget && selectedBudget.estado === "Aprovado" && !selectedBudget.project_id && (
-              <Button onClick={() => setIsProjectDialogOpen(true)} className="flex items-center gap-2">
-                <HardHat className="h-4 w-4" /> Criar Obra
-              </Button>
-            )}
-            {selectedBudget && selectedBudget.project_id && (
-              <Button variant="outline" disabled className="flex items-center gap-2">
-                <HardHat className="h-4 w-4" /> Obra Associada
-              </Button>
-            )}
-            {selectedBudget && (
-              <Button variant="destructive" onClick={() => handleDeleteBudget(selectedBudget.id)} className="flex items-center gap-2">
-                <Trash2 className="h-4 w-4" /> Eliminar Orçamento
-              </Button>
-            )}
-          </div>
-        </CardHeader>
-        <CardContent>
-          {selectedBudget ? (
-            <p className="text-sm text-muted-foreground">
-              Orçamento selecionado: <span className="font-medium">{selectedBudget.nome}</span> - Estado: <span className="font-medium">{selectedBudget.estado}</span>
-            </p>
-          ) : (
-            <EmptyState
-              icon={Calculator}
-              title="Nenhum orçamento selecionado"
-              description="Selecione um orçamento para ver os detalhes ou crie um novo."
-            />
-          )}
-        </CardContent>
-      </Card>
+      <BudgetSelectionAndActions
+        budgets={budgets}
+        selectedBudgetId={selectedBudgetId}
+        setSelectedBudgetId={setSelectedBudgetId}
+        handleApproveBudget={handleApproveBudget}
+        handleDeleteBudget={handleDeleteBudget}
+        setIsProjectDialogOpen={setIsProjectDialogOpen}
+      />
 
-      {/* KPIs Financeiros */}
-      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 md:gap-6 mb-8">
-        <KPICard
-          title="Orçamento Total (€)"
-          value={formatCurrency(totalBudget)}
-          description="Valor planeado para a obra"
-          icon={Calculator}
-          iconColorClass="text-blue-500"
-        />
-        <KPICard
-          title="Custo Executado (€)"
-          value={formatCurrency(executedCost)}
-          description="Valor já gasto"
-          icon={DollarSign}
-          iconColorClass="text-green-500"
-        />
-        <KPICard
-          title="Desvio Orçamental (€ / %)"
-          value={`${formatCurrency(budgetDeviation)} (${budgetDeviationPercentage.toFixed(1)}%)`}
-          description="Diferença entre planeado e executado"
-          icon={TrendingUp}
-          iconColorClass={budgetDeviation >= 0 ? "text-red-500" : "text-green-500"}
-        />
-        <KPICard
-          title="Custo Previsto Final (€)"
-          value={formatCurrency(predictedFinalCost)}
-          description="Estimativa de custo total"
-          icon={LineChart}
-          iconColorClass="text-purple-500"
-        />
-        <KPICard
-          title="Margem Atual (%)"
-          value={`${currentMargin.toFixed(1)}%`}
-          description="Margem de lucro atual"
-          icon={DollarSign}
-          iconColorClass={currentMargin >= 0 ? "text-green-500" : "text-red-500"}
-        />
-      </section>
+      <BudgetFinancialKPIs
+        totalBudget={totalBudget}
+        executedCost={executedCost}
+        budgetDeviation={budgetDeviation}
+        budgetDeviationPercentage={budgetDeviationPercentage}
+        predictedFinalCost={predictedFinalCost}
+        currentMargin={currentMargin}
+      />
 
-      {/* Lista de Orçamentos / Capítulos */}
-      <Card className="bg-card text-card-foreground border border-border">
-        <CardHeader>
-          <CardTitle className="text-2xl font-semibold">Detalhe do Orçamento</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {allBudgetItems.length > 0 ? (
-            <DataTable
-              columns={columns}
-              data={allBudgetItems}
-              filterColumnId="servico"
-              filterPlaceholder="Filtrar por serviço..."
-            />
-          ) : (
-            <EmptyState
-              icon={FileText}
-              title="Nenhum item de orçamento"
-              description="Adicione itens para detalhar o seu orçamento."
-            />
-          )}
-        </CardContent>
-      </Card>
+      <BudgetDetailTable
+        allBudgetItems={allBudgetItems}
+        columns={columns}
+      />
 
-      {/* Controlo de Custos (Gráfico) */}
-      <Card className="bg-card text-card-foreground border border-border">
-        <CardHeader>
-          <CardTitle className="text-2xl font-semibold flex items-center gap-2">
-            <LineChart className="h-5 w-5 text-primary" /> Controlo de Custos
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <EmptyState
-            icon={LineChart}
-            title="Gráfico de Comparativo de Custos (Em breve)"
-            description="Um gráfico interativo mostrará o comparativo entre o custo planeado e o custo executado."
-          />
-        </CardContent>
-      </Card>
+      <BudgetCostControlChart />
 
-      {/* Integrações Conceituais */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
-        <Card className="bg-card text-card-foreground border border-border">
-          <CardHeader>
-            <CardTitle className="text-xl font-semibold">Ligação com Gestão de Obras</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <EmptyState
-              icon={HardHat}
-              title="Obras Integradas (Em breve)"
-              description="Acompanhe os orçamentos de cada obra diretamente aqui."
-            />
-          </CardContent>
-        </Card>
-        <Card className="bg-card text-card-foreground border border-border">
-          <CardHeader>
-            <CardTitle className="text-xl font-semibold">Ligação com Cronograma</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <EmptyState
-              icon={CalendarDays}
-              title="Cronogramas Detalhados (Em breve)"
-              description="Visualize e gere o cronograma financeiro de cada obra."
-            />
-          </CardContent>
-        </Card>
-        <Card className="bg-card text-card-foreground border border-border">
-          <CardHeader>
-            <CardTitle className="text-xl font-semibold">Ligação com RDO</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <EmptyState
-              icon={FileText}
-              title="Diários de Obra (Em breve)"
-              description="Aceda aos diários de obra e relatórios de progresso financeiro."
-            />
-          </CardContent>
-        </Card>
-      </div>
+      <BudgetIntegrations />
 
       <CreateEditClientDialog
         isOpen={isClientDialogOpen}
