@@ -335,7 +335,7 @@ const PriceDatabasePage = () => {
           title="Catálogo Padrão"
           value={`${standardCatalogCount}`}
           description="artigos padrão"
-          icon={Clock} {/* Changed from History to Clock */}
+          icon={Clock} // Changed from History to Clock
           iconColorClass="text-orange-500"
         />
         <KPICard
