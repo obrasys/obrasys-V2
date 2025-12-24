@@ -237,8 +237,10 @@ const WorkItemsPage = () => {
       {/* Use the dedicated CategoryManagementSection component */}
       <CategoryManagementSection
         categories={categories}
+        subcategories={subcategories} // Pass subcategories
         userCompanyId={userCompanyId}
-        onCategoriesUpdated={fetchCategories} // Pass the fetchCategories callback
+        onCategoriesUpdated={fetchCategories}
+        onSubcategoriesUpdated={fetchSubcategories} // Pass the new callback
       />
 
       <Separator className="my-8 bg-gray-300 dark:bg-gray-700" />
