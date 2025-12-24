@@ -55,3 +55,19 @@ export type InvoiceWithRelations = Invoice & {
   invoice_items?: InvoiceItem[];
   payments?: Payment[];
 };
+
+// NEW: Schema for Expenses
+export const expenseSchema = z.object({
+  id: z.string().uuid().optional(),
+  company_id: z.string().uuid().optional(),
+  supplier_name: z.string().min(1, "O nome do fornecedor é obrigatório."),
+  description: z.string().min(1, "A descrição da despesa é obrigatória."),
+  amount: z.coerce.number().min(0.01, "O valor da despesa deve ser positivo."),
+  due_date: z.string().min(1, "A data de vencimento é obrigatória."),
+  status: z.enum(["pending", "paid", "overdue", "cancelled"]).default("pending"),
+  notes: z.string().optional().nullable(),
+  created_at: z.string().optional(),
+  updated_at: z.string().optional(),
+});
+
+export type Expense = z.infer<typeof expenseSchema>;
