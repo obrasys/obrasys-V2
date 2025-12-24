@@ -49,9 +49,9 @@ const FinanceManagement = () => {
             <p className="text-sm text-muted-foreground mt-2">
               Gerir faturas, pedidos e pagamentos, garantindo clareza financeira e transações atempadas.
             </p>
-            <Button className="mt-6 w-full" disabled>
-              Gerir Contas (Em breve)
-            </Button>
+            <NavButton to="/accounts" className="mt-6 w-full"> {/* Changed to NavButton and route */}
+              Gerir Contas (Detalhe)
+            </NavButton>
           </CardContent>
         </Card>
 
