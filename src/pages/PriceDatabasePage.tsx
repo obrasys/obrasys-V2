@@ -2,7 +2,7 @@
 
 import React from "react";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, Upload, Download, ArrowLeft, Search } from "lucide-react";
+import { PlusCircle, Upload, Download, ArrowLeft, Search, DollarSign } from "lucide-react"; // Adicionado DollarSign
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { DataTable } from "@/components/work-items/data-table";
