@@ -320,7 +320,7 @@ const PayrollIntegrationPage = () => {
           entryToEdit={entryToEdit}
           projects={projects}
           companyMembers={companyMembers}
-          userCompanyId={userCompanyId} {/* Pass userCompanyId here */}
+          userCompanyId={userCompanyId}
         />
       </div>
     </>
