@@ -137,7 +137,7 @@ const AppContent = () => (
 );
 
 const App = () => (
-  <React.Fragment>
+  <>
     <Toaster />
     <Sonner />
     <QueryClientProvider client={queryClient}>
@@ -148,8 +148,8 @@ const App = () => (
           </SessionContextProvider>
         </BrowserRouter>
       </TooltipProvider>
-    </QueryClient.Provider>
-  </React.Fragment>
+    </QueryClientProvider>
+  </>
 );
 
 export default App;
