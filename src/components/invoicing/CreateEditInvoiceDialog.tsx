@@ -36,9 +36,10 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { cn } from "@/lib/utils"; // Corrigido: de '=>' para 'from'
+import { cn } from "@/lib/utils";
 import { CalendarDays, PlusCircle, Trash2, Loader2 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator"; // Adicionado: Importação do componente Separator
 
 import { Invoice, InvoiceItem, invoiceSchema, invoiceItemSchema } from "@/schemas/invoicing-schema";
 import { Project } from "@/schemas/project-schema";
@@ -153,8 +154,8 @@ const CreateEditInvoiceDialog: React.FC<CreateEditInvoiceDialogProps> = ({
       if (invoiceToEdit) {
         form.reset({
           ...invoiceToEdit,
-          issue_date: format(parseISO(invoiceToEdit.issue_date), "yyyy-MM-dd"),
-          due_date: format(parseISO(invoiceToEdit.due_date), "yyyy-MM-dd"),
+          issue_date: invoiceToEdit.issue_date ? format(parseISO(invoiceToEdit.issue_date), "yyyy-MM-dd") : format(new Date(), "yyyy-MM-dd"),
+          due_date: invoiceToEdit.due_date ? format(parseISO(invoiceToEdit.due_date), "yyyy-MM-dd") : format(new Date(new Date().setDate(new Date().getDate() + 30)), "yyyy-MM-dd"), // Default 30 days
         });
 
         const { data: itemsData, error: itemsError } = await supabase
