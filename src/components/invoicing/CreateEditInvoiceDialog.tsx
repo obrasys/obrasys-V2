@@ -211,11 +211,19 @@ const CreateEditInvoiceDialog: React.FC<CreateEditInvoiceDialogProps> = ({
     }
     setIsSaving(true);
     try {
+      // Explicitly pick fields for the 'invoices' table
       const invoiceDataToSave: Invoice = {
-        ...data,
-        company_id: userCompanyId,
         id: data.id || uuidv4(),
+        company_id: userCompanyId,
+        project_id: data.project_id,
+        client_id: data.client_id,
+        invoice_number: data.invoice_number,
+        issue_date: data.issue_date,
+        due_date: data.due_date,
         total_amount: data.items.reduce((sum, item) => sum + item.line_total, 0),
+        paid_amount: data.paid_amount,
+        status: data.status,
+        notes: data.notes,
       };
 
       let currentInvoiceId = invoiceDataToSave.id;
