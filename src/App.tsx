@@ -25,6 +25,7 @@ import CollaboratorsPage from "./pages/CollaboratorsPage";
 import CompliancePage from "./pages/CompliancePage";
 import ReportsPage from "./pages/ReportsPage";
 import PriceDatabasePage from "./pages/PriceDatabasePage"; // Updated import
+import WorkItemsPage from "./pages/WorkItemsPage"; // NEW: Import WorkItemsPage
 
 // New pages for Automation & Intelligence module
 import AIAssistantAlertsPage from "./pages/AIAssistantAlertsPage";
@@ -34,7 +35,7 @@ import PerformanceAnalysisPage from "./pages/PerformanceAnalysisPage";
 
 // New page for Compliance module
 import LivroDeObraPage from "./pages/LivroDeObraPage";
-import ComplianceChecklistPage from "./pages/ComplianceChecklistPage"; // NEW: Import ComplianceChecklistPage
+import ComplianceChecklistPage from "./pages/ComplianceChecklistPage";
 
 // New page for Profile/Company Management
 import ProfilePage from "./pages/ProfilePage";
@@ -95,6 +96,7 @@ const AppContent = () => (
       <Route path="/compliance" element={<CompliancePage />} />
       <Route path="/reports" element={<ReportsPage />} />
       <Route path="/price-database" element={<PriceDatabasePage />} /> {/* Updated route */}
+      <Route path="/work-items" element={<WorkItemsPage />} /> {/* NEW: Route for Work Items */}
 
       {/* New routes for Automation & Intelligence features */}
       <Route path="/automation-intelligence/ai-alerts" element={<AIAssistantAlertsPage />} />
@@ -104,7 +106,7 @@ const AppContent = () => (
 
       {/* New route for Livro de Obra Digital */}
       <Route path="/compliance/livro-de-obra" element={<LivroDeObraPage />} />
-      <Route path="/compliance/checklist" element={<ComplianceChecklistPage />} /> {/* NEW: Route for Compliance Checklist */}
+      <Route path="/compliance/checklist" element={<ComplianceChecklistPage />} />
 
       {/* New route for Profile/Company Management */}
       <Route path="/profile" element={<ProfilePage />} />
@@ -146,7 +148,7 @@ const App = () => (
           </SessionContextProvider>
         </BrowserRouter>
       </TooltipProvider>
-    </QueryClientProvider>
+    </QueryClient.Provider>
   </React.Fragment>
 );
 

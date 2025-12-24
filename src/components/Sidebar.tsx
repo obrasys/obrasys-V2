@@ -20,7 +20,8 @@ import {
   ChevronLeft,
   ChevronRight,
   CheckSquare,
-  Scale, // Import Scale icon
+  Scale,
+  Archive, // Import Archive icon for Work Items
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -77,7 +78,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, toggleSidebar, profile }
       href: "/approvals",
     },
     {
-      name: "Financeiro", // This will be the main entry for all financial modules
+      name: "Financeiro",
       icon: Banknote,
       href: "/finance-management",
     },
@@ -87,9 +88,14 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, toggleSidebar, profile }
       href: "/reports",
     },
     {
-      name: "Base de Artigos", // Renamed from "Base de Preços"
-      icon: Database, // Changed icon to Database
-      href: "/price-database", // Updated href to match the renamed page
+      name: "Base de Preços", // Renamed
+      icon: Scale, // Changed icon
+      href: "/price-database", // Updated href
+    },
+    {
+      name: "Artigos de Trabalho", // NEW: Separate item
+      icon: Archive, // NEW: Icon for work items
+      href: "/work-items", // NEW: Route for work items
     },
     {
       name: "Automação & Inteligência",
@@ -204,7 +210,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, toggleSidebar, profile }
         )}
         <Button
           variant="ghost"
-          onClick={handleLogout}
+          onClick={() => navigate('/login')} // Use navigate for logout
           className={cn(
             "w-full flex items-center gap-3 justify-start text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
             isCollapsed && "justify-center px-0",

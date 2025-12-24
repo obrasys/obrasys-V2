@@ -2,14 +2,14 @@
 
 import React from "react";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, Upload, Download, ArrowLeft, Search } from "lucide-react";
+import { PlusCircle, Upload, Download, History } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { DataTable } from "@/components/work-items/data-table";
-import { createPriceDatabaseColumns } from "@/components/price-database/columns"; // NEW: Import specific columns
+import { createColumns } from "@/components/work-items/columns";
 import CreateEditArticleDialog from "@/components/work-items/create-edit-article-dialog";
+import CategoryManagementSection from "@/components/work-items/category-management-section";
 import ImportArticlesDialog from "@/components/work-items/ImportArticlesDialog";
-import KPICard from "@/components/KPICard"; // Import KPICard
 import { Article, Category, Subcategory } from "@/schemas/article-schema";
 import { toast } from "sonner";
 import { v4 as uuidv4 } from "uuid";
@@ -17,16 +17,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/components/SessionContextProvider";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ensureDefaultCategories } from "@/utils/initial-data";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"; // Import Select components
-import { Input } from "@/components/ui/input"; // Import Input
 
-const PriceDatabasePage = () => {
+const WorkItemsPage = () => {
   const { user, isLoading: isSessionLoading } = useSession();
   const [userCompanyId, setUserCompanyId] = React.useState<string | null>(null);
 
@@ -38,10 +30,6 @@ const PriceDatabasePage = () => {
   const [isArticleDialogOpen, setIsArticleDialogOpen] = React.useState(false);
   const [articleToEdit, setArticleToEdit] = React.useState<Article | null>(null);
   const [isImportDialogOpen, setIsImportDialogOpen] = React.useState(false);
-
-  const [searchTerm, setSearchTerm] = React.useState("");
-  const [selectedCategory, setSelectedCategory] = React.useState<string | null>(null);
-  const [selectedSource, setSelectedSource] = React.useState<string | null>(null);
 
   // Fetch user's company ID
   const fetchUserCompanyId = React.useCallback(async () => {
@@ -63,7 +51,7 @@ const PriceDatabasePage = () => {
     }
   }, [user]);
 
-  // Fetch articles with category and subcategory names
+  // Fetch articles
   const fetchArticles = React.useCallback(async () => {
     if (!userCompanyId) {
       setArticles([]);
@@ -71,7 +59,7 @@ const PriceDatabasePage = () => {
     }
     const { data, error } = await supabase
       .from('articles')
-      .select('*, categories(nome), subcategories(nome)')
+      .select('*, categories(nome), subcategories(nome)') // Fetch category and subcategory names
       .eq('company_id', userCompanyId)
       .order('created_at', { ascending: false });
 
@@ -110,7 +98,7 @@ const PriceDatabasePage = () => {
     }
   }, [userCompanyId]);
 
-  // Fetch subcategories (needed for CreateEditArticleDialog)
+  // Fetch subcategories
   const fetchSubcategories = React.useCallback(async () => {
     if (!userCompanyId) {
       setSubcategories([]);
@@ -142,7 +130,7 @@ const PriceDatabasePage = () => {
     const loadAllData = async () => {
       if (userCompanyId) {
         setIsLoadingData(true);
-        await ensureDefaultCategories(userCompanyId);
+        await ensureDefaultCategories(userCompanyId); // Ensure default categories exist
         await Promise.all([
           fetchArticles(),
           fetchCategories(),
@@ -205,43 +193,10 @@ const PriceDatabasePage = () => {
     }
   };
 
-  const columns = createPriceDatabaseColumns({ // Use new columns
-    onCopy: (id: string) => {
-      navigator.clipboard.writeText(id);
-      toast.info("ID do Artigo copiado para a área de transferência!");
-    },
+  const columns = createColumns({
     onEdit: handleEditArticle,
+    onDelete: handleDeleteArticle,
   });
-
-  const filteredArticles = React.useMemo(() => {
-    let filtered = articles;
-
-    if (searchTerm) {
-      filtered = filtered.filter(article =>
-        article.codigo.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        article.descricao.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-    }
-
-    if (selectedCategory) {
-      filtered = filtered.filter(article => article.categoria_id === selectedCategory);
-    }
-
-    if (selectedSource) {
-      filtered = filtered.filter(article => article.fonte_referencia === selectedSource);
-    }
-
-    return filtered;
-  }, [articles, searchTerm, selectedCategory, selectedSource]);
-
-  // Calculate KPIs
-  const uniqueArticlesCount = articles.length; // For now, all are unique
-  const companyArticlesCount = articles.length; // For now, all are company articles
-  const publicCatalogCount = 0; // Mock for now
-  const standardCatalogCount = 241; // Mock for now
-  const averagePrice = articles.length > 0
-    ? articles.reduce((sum, article) => sum + article.preco_unitario, 0) / articles.length
-    : 0;
 
   if (isLoadingData) {
     return (
@@ -255,24 +210,8 @@ const PriceDatabasePage = () => {
             <Skeleton className="h-10 w-32" />
             <Skeleton className="h-10 w-32" />
             <Skeleton className="h-10 w-32" />
+            <Skeleton className="h-10 w-32" />
           </div>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 md:gap-6 mb-8">
-          {[...Array(5)].map((_, i) => (
-            <KPICard
-              key={i}
-              title=""
-              value=""
-              description=""
-              icon={Search}
-              iconColorClass="text-transparent"
-            />
-          ))}
-        </div>
-        <div className="flex items-center py-4">
-          <Skeleton className="h-10 w-64" />
-          <Skeleton className="h-10 w-40 ml-auto" />
-          <Skeleton className="h-10 w-40 ml-2" />
         </div>
         <Card className="bg-card text-card-foreground border border-border">
           <CardHeader><CardTitle><Skeleton className="h-6 w-48" /></CardTitle></CardHeader>
@@ -288,112 +227,52 @@ const PriceDatabasePage = () => {
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row items-center justify-between gap-4 pb-4 md:pb-6">
         <h1 className="text-2xl md:text-3xl font-extrabold text-center md:text-left text-primary dark:text-primary-foreground flex-grow">
-          Base de Preços Unificada
+          Artigos de Trabalho
         </h1>
-        <div className="flex flex-wrap gap-2 mt-2 md:mt-0">
-          <Button onClick={() => setIsImportDialogOpen(true)} variant="outline" className="flex items-center gap-2">
-            <Upload className="h-4 w-4" /> Importar CSV
-          </Button>
-          <Button variant="outline" className="flex items-center gap-2" disabled>
-            <Download className="h-4 w-4" /> Exportar CSV
-          </Button>
-          <Button onClick={() => { setArticleToEdit(null); setIsArticleDialogOpen(true); }} className="flex items-center gap-2">
-            <PlusCircle className="h-4 w-4" /> Novo Artigo
-          </Button>
-        </div>
       </div>
 
       <section className="text-center max-w-3xl mx-auto mb-8">
         <p className="text-base md:text-lg text-muted-foreground leading-relaxed">
-          Gerir artigos personalizados e utilizar a base partilhada.
+          Gerencie o seu catálogo interno de serviços, materiais e equipas com precisão e eficiência.
         </p>
       </section>
 
-      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 md:gap-6 mb-8">
-        <KPICard
-          title="Personalizados"
-          value={`${uniqueArticlesCount}`}
-          description="artigos únicos"
-          icon={PlusCircle}
-          iconColorClass="text-blue-500"
-        />
-        <KPICard
-          title="Empresa"
-          value={`${companyArticlesCount}`}
-          description="da empresa"
-          icon={Download}
-          iconColorClass="text-green-500"
-        />
-        <KPICard
-          title="Sistema"
-          value={`${publicCatalogCount}`}
-          description="catálogo público"
-          icon={Upload}
-          iconColorClass="text-purple-500"
-        />
-        <KPICard
-          title="Catálogo Padrão"
-          value={`${standardCatalogCount}`}
-          description="artigos padrão"
-          icon={History}
-          iconColorClass="text-orange-500"
-        />
-        <KPICard
-          title="Preço Médio"
-          value={`${averagePrice.toFixed(2)} €`}
-          description="por artigo"
-          icon={DollarSign}
-          iconColorClass="text-red-500"
-        />
-      </section>
+      <Separator className="my-8 bg-gray-300 dark:bg-gray-700" />
 
-      <div className="flex items-center py-4 gap-2">
-        <div className="relative flex-grow">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Pesquisar artigos..."
-            value={searchTerm}
-            onChange={(event) => setSearchTerm(event.target.value)}
-            className="max-w-sm pl-10"
-          />
-        </div>
-        <Select value={selectedCategory || ""} onValueChange={setSelectedCategory}>
-          <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="Todas as categorias" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="">Todas as categorias</SelectItem>
-            {categories.map(category => (
-              <SelectItem key={category.id} value={category.id}>{category.nome}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select value={selectedSource || ""} onValueChange={setSelectedSource}>
-          <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="Todas as fontes" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="">Todas as fontes</SelectItem>
-            {/* Mock sources for now, or derive from articles */}
-            <SelectItem value="Catálogo Padrão">Catálogo Padrão</SelectItem>
-            <SelectItem value="Fornecedor">Fornecedor</SelectItem>
-            <SelectItem value="Mercado">Mercado</SelectItem>
-            <SelectItem value="Tabela Salarial">Tabela Salarial</SelectItem>
-            <SelectItem value="Custo Interno">Custo Interno</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
+      <CategoryManagementSection
+        categories={categories}
+        subcategories={subcategories}
+        userCompanyId={userCompanyId}
+        onCategoriesUpdated={fetchCategories}
+        onSubcategoriesUpdated={fetchSubcategories}
+      />
+
+      <Separator className="my-8 bg-gray-300 dark:bg-gray-700" />
 
       <Card className="bg-card text-card-foreground border border-border">
-        <CardHeader>
-          <CardTitle className="text-2xl font-semibold">Artigos Disponíveis</CardTitle>
+        <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between space-y-2 sm:space-y-0 pb-2">
+          <CardTitle className="text-2xl font-semibold">Catálogo Central de Artigos</CardTitle>
+          <div className="flex flex-wrap gap-2">
+            <Button onClick={() => { setArticleToEdit(null); setIsArticleDialogOpen(true); }} className="flex items-center gap-2">
+              <PlusCircle className="h-4 w-4" /> Novo Artigo
+            </Button>
+            <Button onClick={() => setIsImportDialogOpen(true)} variant="outline" className="flex items-center gap-2">
+              <Upload className="h-4 w-4" /> Importar CSV
+            </Button>
+            <Button variant="outline" className="flex items-center gap-2" disabled>
+              <Download className="h-4 w-4" /> Exportar
+            </Button>
+            <Button variant="outline" className="flex items-center gap-2" disabled>
+              <History className="h-4 w-4" /> Histórico de Preços
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           <DataTable
             columns={columns}
-            data={filteredArticles}
-            filterColumnId="descricao" // Filter by description for the search input
-            filterPlaceholder="Filtrar por descrição..." // This will be hidden by the custom search input
+            data={articles}
+            filterColumnId="descricao"
+            filterPlaceholder="Filtrar por descrição..."
           />
         </CardContent>
       </Card>
@@ -419,4 +298,4 @@ const PriceDatabasePage = () => {
   );
 };
 
-export default PriceDatabasePage;
+export default WorkItemsPage;

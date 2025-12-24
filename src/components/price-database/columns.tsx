@@ -11,15 +11,15 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, Eye, Edit, Trash2 } from "lucide-react"; // Added Eye icon
+import { MoreHorizontal, Copy, Edit } from "lucide-react"; // Added Edit icon
+import { toast } from "sonner"; // Import toast
 
-interface ColumnsProps {
-  onEdit: (article: Article) => void;
-  onDelete: (id: string) => void;
-  onView?: (article: Article) => void; // Optional view handler
+interface PriceDatabaseColumnsProps {
+  onCopy: (id: string) => void;
+  onEdit: (article: Article) => void; // Added onEdit handler
 }
 
-export const createColumns = ({ onEdit, onDelete, onView }: ColumnsProps): ColumnDef<Article>[] => [
+export const createPriceDatabaseColumns = ({ onCopy, onEdit }: PriceDatabaseColumnsProps): ColumnDef<Article>[] => [
   {
     accessorKey: "codigo",
     header: "Código",
@@ -31,14 +31,6 @@ export const createColumns = ({ onEdit, onDelete, onView }: ColumnsProps): Colum
   {
     accessorKey: "unidade",
     header: "Unidade",
-  },
-  {
-    accessorKey: "tipo",
-    header: "Tipo",
-    cell: ({ row }) => {
-      const type = row.getValue("tipo") as string;
-      return <span className="capitalize">{type}</span>;
-    },
   },
   {
     accessorKey: "preco_unitario",
@@ -77,17 +69,12 @@ export const createColumns = ({ onEdit, onDelete, onView }: ColumnsProps): Colum
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuLabel>Ações</DropdownMenuLabel>
-            {onView && (
-              <DropdownMenuItem onClick={() => onView(article)}>
-                <Eye className="mr-2 h-4 w-4" /> Ver Detalhes
-              </DropdownMenuItem>
-            )}
-            <DropdownMenuItem onClick={() => onEdit(article)}>
-              <Edit className="mr-2 h-4 w-4" /> Editar
+            <DropdownMenuItem onClick={() => onCopy(article.id || "")}>
+              <Copy className="mr-2 h-4 w-4" /> Copiar ID do Artigo
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => onDelete(article.id || "")} className="text-red-600">
-              <Trash2 className="mr-2 h-4 w-4" /> Eliminar
+            <DropdownMenuItem onClick={() => onEdit(article)}>
+              <Edit className="mr-2 h-4 w-4" /> Editar Artigo
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
