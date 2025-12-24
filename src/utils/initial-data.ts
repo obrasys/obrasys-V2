@@ -114,8 +114,8 @@ Canalização;;CAN-003;Substituição Torneira;Mão de Obra;Un;30.00;50.00;40.00
 Canalização;;CAN-004;Instalação Louça Sanitária;Mão de Obra;Un;35.00;70.00;52.50;Mercado;Por peça (sanita/bidé)
 Telhados;;TEL-001;Estrutura Madeira + Telha;Fornecimento e Aplicação;m2;50.00;90.00;70.00;Fornecedor;Substituição
 Telhados;;TEL-002;Limpeza de Telhado;Serviço;m2;3.00;6.00;4.50;Mercado;Lavagem alta pressão
-Aluguer Equipamento;Retroescavadora;Aluguer;Hora;35.00;50.00;42.50;Fornecedor;Com manobrador
-Aluguer Equipamento;Andaimes;Aluguer;m2/dia;0.05;0.15;0.10;Fornecedor;Grandes áreas/longo prazo
+Aluguer Equipamento;;ALU-001;Retroescavadora;Serviço;Hora;35.00;50.00;42.50;Fornecedor;Com manobrador
+Aluguer Equipamento;;ALU-002;Andaimes;Serviço;m2/dia;0.05;0.15;0.10;Fornecedor;Grandes áreas/longo prazo
 `;
 
 const mapPortugueseTypeToEnum = (type: string): Article['tipo'] => {

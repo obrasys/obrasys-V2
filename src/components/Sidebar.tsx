@@ -218,4 +218,4 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, toggleSidebar, profile }
   );
 };
 
-export default MainLayout;
+export default Sidebar;
