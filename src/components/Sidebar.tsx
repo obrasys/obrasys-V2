@@ -88,6 +88,11 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, toggleSidebar, profile }
       href: "/finance-management/dashboards", // New route
     },
     {
+      name: "Integração Folha Pagamento", // New item
+      icon: ClipboardList, // Using ClipboardList icon
+      href: "/finance-management/payroll-integration", // New route
+    },
+    {
       name: "Financeiro",
       icon: Banknote,
       href: "/finance-management",

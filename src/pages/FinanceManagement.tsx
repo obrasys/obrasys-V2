@@ -64,9 +64,9 @@ const FinanceManagement = () => {
             <p className="text-sm text-muted-foreground mt-2">
               Rastrear com precisão os custos de mão de obra, incluindo salários, benefícios e impostos, e integrar com sistemas de folha de pagamento.
             </p>
-            <Button className="mt-6 w-full" disabled>
-              Integrar Folha (Em breve)
-            </Button>
+            <NavButton to="/finance-management/payroll-integration" className="mt-6 w-full">
+              Integrar Folha
+            </NavButton>
           </CardContent>
         </Card>
 

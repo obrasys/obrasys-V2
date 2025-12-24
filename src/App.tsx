@@ -51,6 +51,9 @@ import AccountsPage from "./pages/AccountsPage";
 // New page for Financial Dashboards
 import FinancialDashboardsPage from "./pages/FinancialDashboardsPage";
 
+// New page for Payroll Integration
+import PayrollIntegrationPage from "./pages/PayrollIntegrationPage";
+
 
 const queryClient = new QueryClient();
 
@@ -119,6 +122,9 @@ const AppContent = () => (
 
       {/* New route for Financial Dashboards */}
       <Route path="/finance-management/dashboards" element={<FinancialDashboardsPage />} />
+
+      {/* New route for Payroll Integration */}
+      <Route path="/finance-management/payroll-integration" element={<PayrollIntegrationPage />} />
     </Route>
 
     {/* Routes that do NOT use the MainLayout (e.g., landing pages, 404) */}
