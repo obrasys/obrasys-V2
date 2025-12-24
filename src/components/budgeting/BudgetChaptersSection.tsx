@@ -135,7 +135,7 @@ const BudgetChaptersSection: React.FC<BudgetChaptersSectionProps> = ({
               handleDuplicateService={handleDuplicateService}
               removeChapter={removeChapter}
               moveChapter={moveChapter}
-              userCompanyId={userCompanyId} {/* NEW: Pass userCompanyId */}
+              userCompanyId={userCompanyId}
             />
           ))}
         </Accordion>

@@ -133,7 +133,7 @@ const NewBudgetPage: React.FC = () => {
             isApproved={isApproved}
             articles={articles}
             calculateCosts={calculateCosts}
-            userCompanyId={userCompanyId} {/* NEW: Pass userCompanyId */}
+            userCompanyId={userCompanyId}
           />
 
           {/* SEÇÃO C — Resumo Financeiro (auto) */}
