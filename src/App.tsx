@@ -24,8 +24,7 @@ import SchedulePage from "./pages/SchedulePage";
 import CollaboratorsPage from "./pages/CollaboratorsPage";
 import CompliancePage from "./pages/CompliancePage";
 import ReportsPage from "./pages/ReportsPage";
-import PriceDatabasePage from "./pages/PriceDatabasePage";
-import WorkItemsPage from "./pages/WorkItemsPage";
+import PriceDatabasePage from "./pages/PriceDatabasePage"; // Updated import
 
 // New pages for Automation & Intelligence module
 import AIAssistantAlertsPage from "./pages/AIAssistantAlertsPage";
@@ -95,8 +94,7 @@ const AppContent = () => (
       <Route path="/collaborators" element={<CollaboratorsPage />} />
       <Route path="/compliance" element={<CompliancePage />} />
       <Route path="/reports" element={<ReportsPage />} />
-      <Route path="/price-database" element={<PriceDatabasePage />} />
-      <Route path="/work-items" element={<WorkItemsPage />} />
+      <Route path="/price-database" element={<PriceDatabasePage />} /> {/* Updated route */}
 
       {/* New routes for Automation & Intelligence features */}
       <Route path="/automation-intelligence/ai-alerts" element={<AIAssistantAlertsPage />} />

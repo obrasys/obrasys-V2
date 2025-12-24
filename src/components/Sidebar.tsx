@@ -87,14 +87,9 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, toggleSidebar, profile }
       href: "/reports",
     },
     {
-      name: "Base de Preços",
-      icon: Database,
-      href: "/price-database",
-    },
-    {
-      name: "Artigos de Trabalho",
-      icon: ClipboardList,
-      href: "/work-items",
+      name: "Base de Preços", // Renamed from "Artigos de Trabalho"
+      icon: Database, // Changed icon to Database
+      href: "/price-database", // Updated href to match the renamed page
     },
     {
       name: "Automação & Inteligência",
