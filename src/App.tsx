@@ -33,6 +33,36 @@ import ReportsPage from "@/pages/ReportsPage";
 
 import { Toaster } from "@/components/ui/sonner";
 
+// Diagnostic logs
+console.log("App.tsx: MainLayout is", typeof MainLayout);
+console.log("App.tsx: Index is", typeof Index);
+console.log("App.tsx: Login is", typeof Login);
+console.log("App.tsx: Signup is", typeof Signup);
+console.log("App.tsx: NotFound is", typeof NotFound);
+console.log("App.tsx: Dashboard is", typeof Dashboard);
+console.log("App.tsx: ProfilePage is", typeof ProfilePage);
+console.log("App.tsx: Budgeting is", typeof Budgeting);
+console.log("App.tsx: NewBudgetPage is", typeof NewBudgetPage);
+console.log("App.tsx: ProjectManagement is", typeof ProjectManagement);
+console.log("App.tsx: SupplyChain is", typeof SupplyChain);
+console.log("App.tsx: CRMPortal is", typeof CRMPortal);
+console.log("App.tsx: AutomationIntelligence is", typeof AutomationIntelligence);
+console.log("App.tsx: AIAssistantAlertsPage is", typeof AIAssistantAlertsPage);
+console.log("App.tsx: ReplanningSuggestionsPage is", typeof ReplanningSuggestionsPage);
+console.log("App.tsx: AIAssistantPage is", typeof AIAssistantPage);
+console.log("App.tsx: PerformanceAnalysisPage is", typeof PerformanceAnalysisPage);
+console.log("App.tsx: ProjectsPage is", typeof ProjectsPage);
+console.log("App.tsx: AccountsPage is", typeof AccountsPage);
+console.log("App.tsx: PayrollIntegrationPage is", typeof PayrollIntegrationPage);
+console.log("App.tsx: FinancialDashboardsPage is", typeof FinancialDashboardsPage);
+console.log("App.tsx: WorkItemsPage is", typeof WorkItemsPage);
+console.log("App.tsx: PriceDatabasePage is", typeof PriceDatabasePage);
+console.log("App.tsx: ApprovalsPage is", typeof ApprovalsPage);
+console.log("App.tsx: CollaboratorsPage is", typeof CollaboratorsPage);
+console.log("App.tsx: ReportsPage is", typeof ReportsPage);
+console.log("App.tsx: Toaster is", typeof Toaster);
+
+
 const App = () => {
   return (
     <BrowserRouter>
@@ -60,7 +90,7 @@ const App = () => {
             <Route path="compliance/livro-de-obra" element={<LivroDeObraPage />} />
             <Route path="compliance/checklist" element={<ComplianceChecklistPage />} />
             <Route path="projects" element={<ProjectsPage />} />
-            <Route path="finance-management" element={<FinancialDashboardsPage />} /> {/* Updated to FinancialDashboardsPage */}
+            <Route path="finance-management" element={<FinancialDashboardsPage />} />
             <Route path="accounts" element={<AccountsPage />} />
             <Route path="finance-management/payroll-integration" element={<PayrollIntegrationPage />} />
             <Route path="finance-management/dashboards" element={<FinancialDashboardsPage />} />
