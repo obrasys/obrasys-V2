@@ -24,6 +24,7 @@ import { NewBudgetFormValues, BudgetItem } from "@/schemas/budget-schema";
 import { Article } from "@/schemas/article-schema";
 import { formatCurrency } from "@/utils/formatters";
 import ArticleSelectDialog from "./ArticleSelectDialog";
+import ArticleAutocompleteInput from "./ArticleAutocompleteInput"; // NEW: Import ArticleAutocompleteInput
 import { Badge } from "@/components/ui/badge"; // Importar Badge diretamente
 
 interface BudgetServiceRowProps {
@@ -35,6 +36,7 @@ interface BudgetServiceRowProps {
   handleRemoveService: (chapterIndex: number, itemIndex: number) => void;
   handleDuplicateService: (chapterIndex: number, itemIndex: number) => void;
   focusRef: React.RefObject<HTMLInputElement>;
+  userCompanyId: string | null; // NEW: Pass userCompanyId
 }
 
 const BudgetServiceRow: React.FC<BudgetServiceRowProps> = ({
@@ -42,10 +44,11 @@ const BudgetServiceRow: React.FC<BudgetServiceRowProps> = ({
   isApproved,
   chapterIndex,
   itemIndex,
-  articles,
+  articles, // Keep for the full dialog
   handleRemoveService,
   handleDuplicateService,
   focusRef,
+  userCompanyId, // Destructure userCompanyId
 }) => {
   const item = form.watch(`chapters.${chapterIndex}.items.${itemIndex}`);
   const [isArticleSelectDialogOpen, setIsArticleSelectDialogOpen] = React.useState(false);
@@ -56,6 +59,7 @@ const BudgetServiceRow: React.FC<BudgetServiceRowProps> = ({
     form.setValue(`chapters.${chapterIndex}.items.${itemIndex}.preco_unitario`, selectedArticle.preco_unitario);
     form.setValue(`chapters.${chapterIndex}.items.${itemIndex}.article_id`, selectedArticle.id);
     form.trigger(`chapters.${chapterIndex}.items.${itemIndex}.quantidade`);
+    form.trigger(`chapters.${chapterIndex}.items.${itemIndex}.preco_unitario`); // Trigger price validation too
   };
 
   const handleClearArticle = () => {
@@ -64,6 +68,7 @@ const BudgetServiceRow: React.FC<BudgetServiceRowProps> = ({
     form.setValue(`chapters.${chapterIndex}.items.${itemIndex}.unidade`, "");
     form.setValue(`chapters.${chapterIndex}.items.${itemIndex}.preco_unitario`, 0);
     form.trigger(`chapters.${chapterIndex}.items.${itemIndex}.quantidade`);
+    form.trigger(`chapters.${chapterIndex}.items.${itemIndex}.preco_unitario`);
   };
 
   const isArticleSelected = !!item.article_id;
@@ -130,12 +135,13 @@ const BudgetServiceRow: React.FC<BudgetServiceRowProps> = ({
             <FormItem className="mb-0">
               <FormControl>
                 <div className="flex items-center gap-1">
-                  <Input
-                    {...field}
-                    ref={itemIndex === 0 ? focusRef : null}
+                  <ArticleAutocompleteInput
+                    value={field.value}
+                    onValueChange={field.onChange}
+                    onSelectArticle={handleSelectArticle}
+                    userCompanyId={userCompanyId || ""} // Pass userCompanyId
                     disabled={isApproved || isArticleSelected}
-                    placeholder="Ex: Demolição manual de parede"
-                    className="h-10 px-3 py-2"
+                    placeholder="Pesquisar ou digitar serviço..."
                   />
                   {!isApproved && (
                     isArticleSelected ? (

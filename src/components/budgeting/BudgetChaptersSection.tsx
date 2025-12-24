@@ -19,6 +19,7 @@ interface BudgetChaptersSectionProps {
   isApproved: boolean;
   articles: Article[]; // NOVO: Passar artigos para os capítulos
   calculateCosts: () => number;
+  userCompanyId: string | null; // NEW: Receive userCompanyId
 }
 
 const BudgetChaptersSection: React.FC<BudgetChaptersSectionProps> = ({
@@ -26,6 +27,7 @@ const BudgetChaptersSection: React.FC<BudgetChaptersSectionProps> = ({
   isApproved,
   articles, // NOVO: Receber artigos
   calculateCosts,
+  userCompanyId, // Destructure userCompanyId
 }) => {
   const { fields: chapterFields, append: appendChapter, remove: removeChapter, move: moveChapter } = useFieldArray({
     control: form.control,
@@ -133,6 +135,7 @@ const BudgetChaptersSection: React.FC<BudgetChaptersSectionProps> = ({
               handleDuplicateService={handleDuplicateService}
               removeChapter={removeChapter}
               moveChapter={moveChapter}
+              userCompanyId={userCompanyId} {/* NEW: Pass userCompanyId */}
             />
           ))}
         </Accordion>

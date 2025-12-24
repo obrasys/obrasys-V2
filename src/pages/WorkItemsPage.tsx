@@ -9,6 +9,7 @@ import { DataTable } from "@/components/work-items/data-table";
 import { createColumns } from "@/components/work-items/columns";
 import CreateEditArticleDialog from "@/components/work-items/create-edit-article-dialog";
 import CategoryManagementSection from "@/components/work-items/category-management-section"; // Import new component
+import ImportArticlesDialog from "@/components/work-items/ImportArticlesDialog"; // NEW: Import ImportArticlesDialog
 import { Article, Category, Subcategory } from "@/schemas/article-schema";
 import { toast } from "sonner";
 import { v4 as uuidv4 } from "uuid";
@@ -28,6 +29,7 @@ const WorkItemsPage = () => {
 
   const [isArticleDialogOpen, setIsArticleDialogOpen] = React.useState(false); // Renamed for clarity
   const [articleToEdit, setArticleToEdit] = React.useState<Article | null>(null);
+  const [isImportDialogOpen, setIsImportDialogOpen] = React.useState(false); // NEW: State for import dialog
 
   // Fetch user's company ID
   const fetchUserCompanyId = React.useCallback(async () => {
@@ -248,8 +250,8 @@ const WorkItemsPage = () => {
             <Button onClick={() => { setArticleToEdit(null); setIsArticleDialogOpen(true); }} className="flex items-center gap-2">
               <PlusCircle className="h-4 w-4" /> Novo Artigo
             </Button>
-            <Button variant="outline" className="flex items-center gap-2" disabled>
-              <Upload className="h-4 w-4" /> Importar
+            <Button onClick={() => setIsImportDialogOpen(true)} variant="outline" className="flex items-center gap-2"> {/* NEW: Import Button */}
+              <Upload className="h-4 w-4" /> Importar CSV
             </Button>
             <Button variant="outline" className="flex items-center gap-2" disabled>
               <Download className="h-4 w-4" /> Exportar
@@ -277,6 +279,16 @@ const WorkItemsPage = () => {
         categories={categories}
         subcategories={subcategories}
       />
+
+      {/* NEW: Import Articles Dialog */}
+      {userCompanyId && (
+        <ImportArticlesDialog
+          isOpen={isImportDialogOpen}
+          onClose={() => setIsImportDialogOpen(false)}
+          onImportSuccess={fetchArticles} // Refresh articles after import
+          userCompanyId={userCompanyId}
+        />
+      )}
     </div>
   );
 };

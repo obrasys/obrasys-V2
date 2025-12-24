@@ -1,5 +1,5 @@
 import React from "react";
-import { UseFormReturn } from "react-hook-form";
+import { UseFormReturn, useFieldArray } from "react-hook-form";
 import { ChevronDown, ChevronUp, ClipboardList, PlusCircle, Trash2, AlertCircle, CheckCircle } from "lucide-react";
 
 import {
@@ -40,6 +40,7 @@ interface BudgetChapterFormProps {
   handleDuplicateService: (chapterIndex: number, itemIndex: number) => void;
   removeChapter: (index: number) => void;
   moveChapter: (from: number, to: number) => void;
+  userCompanyId: string | null; // NEW: Pass userCompanyId
 }
 
 const BudgetChapterForm: React.FC<BudgetChapterFormProps> = ({
@@ -54,6 +55,7 @@ const BudgetChapterForm: React.FC<BudgetChapterFormProps> = ({
   handleDuplicateService,
   removeChapter,
   moveChapter,
+  userCompanyId, // Destructure userCompanyId
 }) => {
   const chapterItems = form.watch(`chapters.${chapterIndex}.items`);
   const serviceInputRef = React.useRef<HTMLInputElement>(null); // Ref para focar o input do serviço
@@ -72,7 +74,7 @@ const BudgetChapterForm: React.FC<BudgetChapterFormProps> = ({
   };
 
   const handleRemoveChapter = () => {
-    if (window.confirm("Tem certeza que deseja remover este capítulo e todos os seus serviços?")) {
+    if (window.confirm("Tem certeza que deseja eliminar este capítulo e todos os seus serviços?")) {
       removeChapter(chapterIndex);
       toast.success("Capítulo removido com sucesso!");
     }
@@ -190,6 +192,7 @@ const BudgetChapterForm: React.FC<BudgetChapterFormProps> = ({
                       handleRemoveService={handleRemoveService}
                       handleDuplicateService={handleDuplicateService}
                       focusRef={serviceInputRef} // Passar a ref para o primeiro input de serviço
+                      userCompanyId={userCompanyId} {/* NEW: Pass userCompanyId */}
                     />
                   ))}
                 </TableBody>

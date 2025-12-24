@@ -1,0 +1,50 @@
+Categoria;Serviço;Tipo;Unidade;Preço Min;Preço Max;Média Estimada;Notas
+Mão de Obra (Geral);Oficial de Construção (Pedreiro);Mão de Obra;Hora;30.50;60.00;30.50;Valor base oficial vs mercado urbano
+Mão de Obra (Geral);Servente / Ajudante;Mão de Obra;Hora;20.00;30.00;20.00;Pressionado pelo SMN
+Mão de Obra (Geral);Ladrilhador / Azulejador;Mão de Obra;Hora;30.00;40.00;35.00;Frequentemente cobrado por m2
+Mão de Obra (Geral);Pintor;Mão de Obra;Hora;20.00;35.00;25.00;
+Mão de Obra (Técnica);Eletricista Certificado;Mão de Obra;Hora;25.00;70.00;45.00;Urgências podem ir a 150€
+Mão de Obra (Técnica);Canalizador / Picheleiro;Mão de Obra;Hora;25.00;45.00;35.00;Urgências 80€-150€
+Mão de Obra (Técnica);Técnico AVAC / Gás;Mão de Obra;Hora;35.00;50.00;42.50;Alta procura
+Logística;Taxa de Deslocação (Urbana);Serviço;Un;30.00;60.00;45.00;Lisboa/Porto/Leiria
+Logística;Ajudas de Custo (Viatura);Despesa;Km;0.36;0.36;0.36;Valor fiscal referência
+Estrutura e Alvenaria;Betão Armado (Colocado);Fornecimento e Aplicação;m3;350.00;500.00;425.00;Inclui aço/cofragem/betão
+Estrutura e Alvenaria;Cofragem (Montagem);Mão de Obra;m2;20.00;60.00;40.00;Varia com complexidade
+Estrutura e Alvenaria;Alvenaria Tijolo Cerâmico;Fornecimento e Aplicação;m2;35.00;50.00;42.50;Tijolo 11/15
+Estrutura e Alvenaria;Bloco Térmico/Acústico;Fornecimento e Aplicação;m2;55.00;75.00;65.00;
+Estrutura e Alvenaria;Reboco Projetado (Exterior);Fornecimento e Aplicação;m2;25.00;35.00;30.00;
+Estrutura e Alvenaria;Estuque Projetado (Interior);Fornecimento e Aplicação;m2;18.00;28.00;23.00;Acabamento liso
+Estrutura e Alvenaria;Muro de Blocos (Simples);Fornecimento e Aplicação;m2;40.00;45.00;42.50;Bloco cimento
+Escavação;Escavação em Terra Branda;Serviço;m3;15.00;30.00;22.50;Máquina
+Escavação;Movimentação de Terras (Geral);Serviço;m3;15.00;50.00;27.50;Inclui transporte vazadouro
+Pavimentos e Revestimentos;Assentamento Cerâmico (<60x60);Mão de Obra;m2;35.00;55.00;45.00;Exclui materiais
+Pavimentos e Revestimentos;Assentamento Grandes Formatos;Mão de Obra;m2;45.00;70.00;57.50;Exclui materiais
+Pavimentos e Revestimentos;Fornecimento e Aplicação Cerâmico;Fornecimento e Aplicação;m2;50.00;120.00;85.00;Material gama média
+Pavimentos e Revestimentos;Aplicação Soleiras/Peitoris;Mão de Obra;Un;80.00;80.00;80.00;Até 3ml
+Pavimentos e Revestimentos;Calçada Portuguesa;Mão de Obra;m2;35.00;90.00;62.50;Depende do desenho
+Pavimentos e Revestimentos;Pavimento Flutuante (Aplicação);Mão de Obra;m2;6.00;10.00;8.00;Sem regularização base
+Pavimentos e Revestimentos;Pavimento Flutuante (Regularização);Mão de Obra;m2;10.00;25.00;17.50;Se base necessitar nivelamento
+Pladur e Tetos Falsos;Teto Falso (Standard);Fornecimento e Aplicação;m2;28.00;35.00;31.50;Perfileria + Placa
+Pladur e Tetos Falsos;Teto Falso (Hidrófugo);Fornecimento e Aplicação;m2;32.00;40.00;36.00;WC/Cozinhas
+Pladur e Tetos Falsos;Divisória Simples;Fornecimento e Aplicação;m2;35.00;45.00;40.00;
+Pladur e Tetos Falsos;Divisória com Isolamento (Lã);Fornecimento e Aplicação;m2;45.00;55.00;50.00;
+Isolamento (Capoto);Sistema ETICS (EPS 60mm);Fornecimento e Aplicação;m2;52.00;58.00;55.00;Chave na mão
+Isolamento (Capoto);Sistema ETICS (EPS 80mm);Fornecimento e Aplicação;m2;58.00;72.00;65.00;Chave na mão
+Pinturas;Pintura Interior (Paredes);Mão de Obra;m2;4.00;8.00;6.00;Só aplicação
+Pintura;Pintura Interior (Paredes + Tinta);Fornecimento e Aplicação;m2;8.00;20.00;14.00;Inclui tinta mate
+Pintura;Pintura Tetos;Fornecimento e Aplicação;m2;8.00;14.00;11.00;
+Pintura;Pintura Exterior (Fachadas);Fornecimento e Aplicação;m2;13.00;25.00;19.00;Pode exigir andaime extra
+Pintura;Lacagem Portas (Unidade);Serviço;Un;60.00;150.00;105.00;Aro + Folha
+Carpintaria;Instalação Porta Interior (Kit);Mão de Obra;Un;65.00;100.00;82.50;Apenas montagem
+Carpintaria;Porta Interior (Fornecimento + Montagem);Fornecimento e Aplicação;Un;300.00;600.00;450.00;Porta standard
+Instalações Elétricas;Ponto de Luz / Tomada;Fornecimento e Aplicação;Un;45.00;65.00;55.00;Abertura roço e aparelhagem
+Instalações Elétricas;Quadro Elétrico (Substituição);Serviço;Un;150.00;400.00;275.00;Residencial
+Instalações Elétricas;Renovação T2/T3;Serviço;Verba;2500.00;5000.00;3750.00;Projeto global
+Canalização;Ponto de Água / Esgoto;Fornecimento e Aplicação;Un;150.00;250.00;200.00;Por dispositivo
+Canalização;Renovação WC Completo;Fornecimento e Aplicação;Verba;1500.00;2500.00;2000.00;Infraestruturas apenas
+Canalização;Substituição Torneira;Mão de Obra;Un;30.00;50.00;40.00;Mais deslocação
+Canalização;Instalação Louça Sanitária;Mão de Obra;Un;35.00;70.00;52.50;Por peça (sanita/bidé)
+Telhados;Estrutura Madeira + Telha;Fornecimento e Aplicação;m2;50.00;90.00;70.00;Substituição
+Telhados;Limpeza de Telhado;Serviço;m2;3.00;6.00;4.50;Lavagem alta pressão
+Aluguer Equipamento;Retroescavadora;Aluguer;Hora;35.00;50.00;42.50;Com manobrador
+Aluguer Equipamento;Andaimes;Aluguer;m2/dia;0.05;0.15;0.10;Grandes áreas/longo prazo
