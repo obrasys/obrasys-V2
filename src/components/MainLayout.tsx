@@ -19,12 +19,19 @@ import { useSession } from "@/components/SessionContextProvider";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import EditProfileModal from "@/components/profile/EditProfileModal";
+import { seedDefaultArticles } from "@/utils/initial-data"; // Import the new seeding function
+
+interface SidebarProps {
+  isCollapsed: boolean;
+  toggleSidebar: () => void;
+  profile: { first_name: string | null; last_name: string | null; avatar_url: string | null; role: string | null; } | null;
+}
 
 const MainLayout = () => {
   const isMobile = useIsMobile();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = React.useState(isMobile);
   const { user, isLoading: isSessionLoading } = useSession();
-  const [profile, setProfile] = React.useState<{ first_name: string | null; last_name: string | null; avatar_url: string | null; role: string | null; } | null>(null);
+  const [profile, setProfile] = React.useState<{ first_name: string | null; last_name: string | null; avatar_url: string | null; role: string | null; company_id: string | null; } | null>(null);
   const [isEditProfileModalOpen, setIsEditProfileModalOpen] = React.useState(false);
   const navigate = useNavigate();
 
@@ -63,6 +70,37 @@ const MainLayout = () => {
       fetchProfile();
     }
   }, [user, isSessionLoading, fetchProfile]);
+
+  // NEW: Effect to seed default articles if not already seeded for the company
+  React.useEffect(() => {
+    const checkAndSeedArticles = async () => {
+      if (profile?.company_id) {
+        const { data: companyData, error: companyError } = await supabase
+          .from('companies')
+          .select('default_articles_seeded')
+          .eq('id', profile.company_id)
+          .single();
+
+        if (companyError) {
+          console.error("Erro ao verificar estado de seeding da empresa:", companyError);
+          return;
+        }
+
+        if (!companyData?.default_articles_seeded) {
+          console.log("Seeding default articles for new company:", profile.company_id);
+          await seedDefaultArticles(profile.company_id);
+          // After seeding, refetch profile to update the company_id (if it was just created)
+          // and ensure the `default_articles_seeded` flag is recognized.
+          fetchProfile();
+        }
+      }
+    };
+
+    if (!isSessionLoading && user && profile) {
+      checkAndSeedArticles();
+    }
+  }, [isSessionLoading, user, profile, fetchProfile]);
+
 
   const toggleSidebar = () => {
     setIsSidebarCollapsed(!isSidebarCollapsed);
