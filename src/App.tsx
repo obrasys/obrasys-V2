@@ -45,8 +45,8 @@ import NewBudgetPage from "./pages/NewBudgetPage";
 // New page for Approvals
 import ApprovalsPage from "./pages/ApprovalsPage";
 
-// New page for Invoicing
-import InvoicingPage from "./pages/InvoicingPage";
+// New page for Accounts (formerly Invoicing)
+import AccountsPage from "./pages/AccountsPage";
 
 
 const queryClient = new QueryClient();
@@ -111,8 +111,8 @@ const AppContent = () => (
       {/* New route for Approvals */}
       <Route path="/approvals" element={<ApprovalsPage />} />
 
-      {/* New route for Invoicing */}
-      <Route path="/invoicing" element={<InvoicingPage />} />
+      {/* New route for Accounts (formerly Invoicing) */}
+      <Route path="/accounts" element={<AccountsPage />} />
     </Route>
 
     {/* Routes that do NOT use the MainLayout (e.g., landing pages, 404) */}

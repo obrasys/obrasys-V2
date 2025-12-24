@@ -5,7 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, Filter, Download, ReceiptText, RefreshCw, ArrowLeft, Loader2, CheckCircle, DollarSign, XCircle } from "lucide-react"; // Adicionado CheckCircle, DollarSign, XCircle
+import { PlusCircle, Filter, Download, ReceiptText, RefreshCw, ArrowLeft, Loader2, CheckCircle, DollarSign, XCircle, Scale } from "lucide-react";
 import EmptyState from "@/components/EmptyState";
 import { useSession } from "@/components/SessionContextProvider";
 import { supabase } from "@/integrations/supabase/client";
@@ -19,7 +19,7 @@ import KPICard from "@/components/KPICard";
 import { formatCurrency } from "@/utils/formatters";
 import { Skeleton } from "@/components/ui/skeleton";
 
-const InvoicingPage: React.FC = () => {
+const AccountsPage: React.FC = () => {
   const navigate = useNavigate();
   const { user, isLoading: isSessionLoading } = useSession();
   const [userCompanyId, setUserCompanyId] = React.useState<string | null>(null);
@@ -29,9 +29,9 @@ const InvoicingPage: React.FC = () => {
   const [isInvoiceDialogOpen, setIsInvoiceDialogOpen] = React.useState(false);
   const [invoiceToEdit, setInvoiceToEdit] = React.useState<Invoice | null>(null);
 
-  console.log("InvoicingPage: selectedInvoice", selectedInvoice);
-  console.log("InvoicingPage: isInvoiceDialogOpen", isInvoiceDialogOpen);
-  console.log("InvoicingPage: invoiceToEdit", invoiceToEdit);
+  console.log("AccountsPage: selectedInvoice", selectedInvoice);
+  console.log("AccountsPage: isInvoiceDialogOpen", isInvoiceDialogOpen);
+  console.log("AccountsPage: invoiceToEdit", invoiceToEdit);
 
   // Fetch user's company ID
   const fetchUserCompanyId = React.useCallback(async () => {
@@ -79,7 +79,7 @@ const InvoicingPage: React.FC = () => {
       setInvoices(invoicesData || []);
     }
     setIsLoadingInvoices(false);
-  }, [userCompanyId]); // Removido selectedInvoice das dependências
+  }, [userCompanyId]);
 
   React.useEffect(() => {
     if (!isSessionLoading) {
@@ -184,9 +184,9 @@ const InvoicingPage: React.FC = () => {
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between pb-4 md:pb-6 border-b border-border mb-4 md:mb-6">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-primary">Faturação e Cobrança</h1>
+          <h1 className="text-2xl md:text-3xl font-bold text-primary">Contas a Pagar e Receber</h1>
           <p className="text-muted-foreground text-sm">
-            Gestão completa do ciclo de vida das faturas e pagamentos.
+            Gestão completa do ciclo de vida das faturas, pedidos e pagamentos.
           </p>
         </div>
         <div className="flex flex-wrap gap-2 mt-2 md:mt-0">
@@ -251,7 +251,7 @@ const InvoicingPage: React.FC = () => {
 
           <Card className="bg-card text-card-foreground border border-border">
             <CardHeader>
-              <CardTitle className="text-2xl font-semibold">Lista de Faturas</CardTitle>
+              <CardTitle className="text-2xl font-semibold">Faturas a Receber</CardTitle>
             </CardHeader>
             <CardContent>
               {invoices.length > 0 ? (
@@ -272,6 +272,21 @@ const InvoicingPage: React.FC = () => {
               )}
             </CardContent>
           </Card>
+          {/* Placeholder for Contas a Pagar section */}
+          <Card className="bg-card text-card-foreground border border-border">
+            <CardHeader>
+              <CardTitle className="text-2xl font-semibold">Contas a Pagar (Em breve)</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <EmptyState
+                icon={Scale}
+                title="Gestão de Contas a Pagar"
+                description="Esta secção permitirá gerir as suas despesas e pagamentos a fornecedores."
+                buttonText="Adicionar Despesa (Em breve)"
+                buttonDisabled={true}
+              />
+            </CardContent>
+          </Card>
         </>
       )}
 
@@ -285,4 +300,4 @@ const InvoicingPage: React.FC = () => {
   );
 };
 
-export default InvoicingPage;
+export default AccountsPage;

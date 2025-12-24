@@ -21,7 +21,7 @@ import {
   ChevronLeft,
   ChevronRight,
   CheckSquare,
-  ReceiptText, // Import ReceiptText for Invoicing
+  Scale, // Import Scale icon
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -78,9 +78,9 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, toggleSidebar, profile }
       href: "/approvals",
     },
     {
-      name: "Faturação", // New item
-      icon: ReceiptText, // Using ReceiptText icon
-      href: "/invoicing", // New route
+      name: "Contas a Pagar/Receber", // Updated name
+      icon: Scale, // Updated icon
+      href: "/accounts", // Updated route
     },
     {
       name: "Financeiro",

@@ -4,7 +4,7 @@ import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
-import { CreditCard, Banknote, ClipboardList, LayoutDashboard, Printer, ReceiptText } from "lucide-react"; // Import ReceiptText
+import { CreditCard, Banknote, ClipboardList, LayoutDashboard, Printer, Scale } from "lucide-react"; // Import Scale
 import NavButton from "@/components/NavButton"; // Import NavButton
 
 const FinanceManagement = () => {
@@ -27,15 +27,15 @@ const FinanceManagement = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-8">
         <Card className="hover:shadow-xl transition-shadow duration-300 ease-in-out bg-card text-card-foreground border border-border">
           <CardHeader className="flex flex-row items-center space-x-4 pb-2">
-            <ReceiptText className="h-8 w-8 text-blue-500 dark:text-blue-400" /> {/* Changed icon to ReceiptText */}
-            <CardTitle className="text-xl font-semibold">Faturação e Cobrança</CardTitle>
+            <Scale className="h-8 w-8 text-blue-500 dark:text-blue-400" /> {/* Changed icon to Scale */}
+            <CardTitle className="text-xl font-semibold">Contas a Pagar/Receber</CardTitle> {/* Updated title */}
           </CardHeader>
           <CardContent>
             <p className="text-sm text-muted-foreground mt-2">
-              Automatizar a geração de faturas com base em seleções aprovadas, progresso e trabalho concluído, com cobrança de pagamentos simplificada.
+              Gerir faturas, pedidos e pagamentos, garantindo clareza financeira e transações atempadas.
             </p>
-            <NavButton to="/invoicing" className="mt-6 w-full"> {/* Updated to NavButton */}
-              Gerir Faturas
+            <NavButton to="/accounts" className="mt-6 w-full"> {/* Updated to NavButton and route */}
+              Gerir Contas
             </NavButton>
           </CardContent>
         </Card>
@@ -43,7 +43,7 @@ const FinanceManagement = () => {
         <Card className="hover:shadow-xl transition-shadow duration-300 ease-in-out bg-card text-card-foreground border border-border">
           <CardHeader className="flex flex-row items-center space-x-4 pb-2">
             <Banknote className="h-8 w-8 text-green-500 dark:text-green-400" />
-            <CardTitle className="text-xl font-semibold">Contas a Pagar/Receber</CardTitle>
+            <CardTitle className="text-xl font-semibold">Contas a Pagar/Receber (Detalhe)</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-sm text-muted-foreground mt-2">
