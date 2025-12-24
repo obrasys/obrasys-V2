@@ -120,9 +120,9 @@ const CompliancePage = () => {
               </p>
             </div>
 
-            <Button className="mt-6 w-full" disabled>
+            <NavButton className="mt-6 w-full" to="/compliance/checklist">
               Consultar Checklist
-            </Button>
+            </NavButton>
           </CardContent>
         </Card>
       </div>

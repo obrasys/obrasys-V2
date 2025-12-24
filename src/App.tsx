@@ -35,6 +35,7 @@ import PerformanceAnalysisPage from "./pages/PerformanceAnalysisPage";
 
 // New page for Compliance module
 import LivroDeObraPage from "./pages/LivroDeObraPage";
+import ComplianceChecklistPage from "./pages/ComplianceChecklistPage"; // NEW: Import ComplianceChecklistPage
 
 // New page for Profile/Company Management
 import ProfilePage from "./pages/ProfilePage";
@@ -105,6 +106,7 @@ const AppContent = () => (
 
       {/* New route for Livro de Obra Digital */}
       <Route path="/compliance/livro-de-obra" element={<LivroDeObraPage />} />
+      <Route path="/compliance/checklist" element={<ComplianceChecklistPage />} /> {/* NEW: Route for Compliance Checklist */}
 
       {/* New route for Profile/Company Management */}
       <Route path="/profile" element={<ProfilePage />} />
