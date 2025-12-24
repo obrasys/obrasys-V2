@@ -190,7 +190,10 @@ const MainLayout = () => {
             </DropdownMenu>
           </div>
         </header>
-        <Outlet />
+        {/* <Outlet /> */}
+        <div className="p-4 text-center text-2xl font-bold">
+          MainLayout está a funcionar!
+        </div>
       </main>
 
       <EditProfileModal
