@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom"; // Importar useNavigate
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import {
   LayoutDashboard,
@@ -15,30 +15,31 @@ import {
   Database,
   ClipboardList,
   LogOut,
-  Zap, // Import Zap icon for Automation
+  Zap,
   Bell,
   Settings,
   ChevronLeft,
   ChevronRight,
-  CheckSquare, // Import CheckSquare for Approvals
+  CheckSquare,
+  ReceiptText, // Import ReceiptText for Invoicing
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
-import NavButton from "@/components/NavButton"; // Importar NavButton
-import { useSession } from "@/components/SessionContextProvider"; // Importar useSession
+import NavButton from "@/components/NavButton";
+import { useSession } from "@/components/SessionContextProvider";
 
 interface SidebarProps {
   isCollapsed: boolean;
   toggleSidebar: () => void;
-  profile: { first_name: string | null; last_name: string | null; avatar_url: string | null; role: string | null; } | null; // Adicionada a prop profile
+  profile: { first_name: string | null; last_name: string | null; avatar_url: string | null; role: string | null; } | null;
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, toggleSidebar, profile }) => {
   const location = useLocation();
-  const navigate = useNavigate(); // Inicializar useNavigate
-  const { user } = useSession(); // Obter o user do useSession para o email
+  const navigate = useNavigate();
+  const { user } = useSession();
 
   const navItems = [
     {
@@ -72,9 +73,14 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, toggleSidebar, profile }
       href: "/compliance",
     },
     {
-      name: "Gestão de Aprovações", // New item
-      icon: CheckSquare, // Using CheckSquare icon
-      href: "/approvals", // New route
+      name: "Gestão de Aprovações",
+      icon: CheckSquare,
+      href: "/approvals",
+    },
+    {
+      name: "Faturação", // New item
+      icon: ReceiptText, // Using ReceiptText icon
+      href: "/invoicing", // New route
     },
     {
       name: "Financeiro",
@@ -97,29 +103,28 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, toggleSidebar, profile }
       href: "/work-items",
     },
     {
-      name: "Automação & Inteligência", // New item
-      icon: Zap, // Using Zap icon
+      name: "Automação & Inteligência",
+      icon: Zap,
       href: "/automation-intelligence",
     },
   ];
 
   const handleLogout = () => {
-    // Lógica de logout aqui, se houver
-    navigate('/login'); // Redirecionar para a página de login
+    navigate('/login');
   };
 
   const userInitials = profile?.first_name && profile?.last_name
     ? `${profile.first_name.charAt(0)}${profile.last_name.charAt(0)}`.toUpperCase()
-    : user?.email?.charAt(0).toUpperCase() || 'US'; // Fallback to email initial
+    : user?.email?.charAt(0).toUpperCase() || 'US';
 
   return (
     <aside
       className={cn(
-        "flex flex-col h-screen bg-sidebar text-sidebar-foreground border-r border-sidebar-border transition-all duration-300 ease-in-out fixed md:relative z-50", // Adicionado fixed e z-50 para mobile
+        "flex flex-col h-screen bg-sidebar text-sidebar-foreground border-r border-sidebar-border transition-all duration-300 ease-in-out fixed md:relative z-50",
         isCollapsed ? "w-16" : "w-64",
-        isCollapsed && "md:w-16", // Colapsado em mobile e desktop
-        !isCollapsed && "md:w-64", // Expandido em desktop
-        isCollapsed ? "-translate-x-full md:translate-x-0" : "translate-x-0" // Esconder/mostrar sidebar em mobile
+        isCollapsed && "md:w-16",
+        !isCollapsed && "md:w-64",
+        isCollapsed ? "-translate-x-full md:translate-x-0" : "translate-x-0"
       )}
     >
       {/* Header / Logo */}
@@ -159,13 +164,13 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, toggleSidebar, profile }
         )}
       >
         <Avatar className="h-9 w-9">
-          <AvatarImage src={profile?.avatar_url || undefined} alt="User Avatar" /> {/* Usando profile.avatar_url */}
+          <AvatarImage src={profile?.avatar_url || undefined} alt="User Avatar" />
           <AvatarFallback>{userInitials}</AvatarFallback>
         </Avatar>
         {!isCollapsed && (
           <div className="flex flex-col">
-            <span className="font-semibold text-sm">{profile?.first_name} {profile?.last_name}</span> {/* Usando profile.first_name e last_name */}
-            <span className="text-xs text-muted-foreground">{profile?.role || "Cliente"}</span> {/* Usando profile.role */}
+            <span className="font-semibold text-sm">{profile?.first_name} {profile?.last_name}</span>
+            <span className="text-xs text-muted-foreground">{profile?.role || "Cliente"}</span>
           </div>
         )}
       </div>
@@ -210,7 +215,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, toggleSidebar, profile }
         )}
         <Button
           variant="ghost"
-          onClick={handleLogout} // Usar onClick direto
+          onClick={handleLogout}
           className={cn(
             "w-full flex items-center gap-3 justify-start text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
             isCollapsed && "justify-center px-0",

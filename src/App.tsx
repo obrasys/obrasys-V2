@@ -1,7 +1,7 @@
 import React from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip"; // Reativado
+import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Dashboard from "./pages/Dashboard";
@@ -28,7 +28,7 @@ import PriceDatabasePage from "./pages/PriceDatabasePage";
 import WorkItemsPage from "./pages/WorkItemsPage";
 
 // New pages for Automation & Intelligence module
-import AIAssistantAlertsPage from "./pages/AIAssistantAlertsPage"; // Rota atualizada
+import AIAssistantAlertsPage from "./pages/AIAssistantAlertsPage";
 import ReplanningSuggestionsPage from "./pages/ReplanningSuggestionsPage";
 import AIAssistantPage from "./pages/AIAssistantPage";
 import PerformanceAnalysisPage from "./pages/PerformanceAnalysisPage";
@@ -44,6 +44,9 @@ import NewBudgetPage from "./pages/NewBudgetPage";
 
 // New page for Approvals
 import ApprovalsPage from "./pages/ApprovalsPage";
+
+// New page for Invoicing
+import InvoicingPage from "./pages/InvoicingPage";
 
 
 const queryClient = new QueryClient();
@@ -89,7 +92,7 @@ const AppContent = () => (
       <Route path="/work-items" element={<WorkItemsPage />} />
 
       {/* New routes for Automation & Intelligence features */}
-      <Route path="/automation-intelligence/ai-alerts" element={<AIAssistantAlertsPage />} /> {/* Rota atualizada */}
+      <Route path="/automation-intelligence/ai-alerts" element={<AIAssistantAlertsPage />} />
       <Route path="/automation-intelligence/replanning-suggestions" element={<ReplanningSuggestionsPage />} />
       <Route path="/automation-intelligence/ai-assistant" element={<AIAssistantPage />} />
       <Route path="/automation-intelligence/performance-analysis" element={<PerformanceAnalysisPage />} />
@@ -107,6 +110,9 @@ const AppContent = () => (
 
       {/* New route for Approvals */}
       <Route path="/approvals" element={<ApprovalsPage />} />
+
+      {/* New route for Invoicing */}
+      <Route path="/invoicing" element={<InvoicingPage />} />
     </Route>
 
     {/* Routes that do NOT use the MainLayout (e.g., landing pages, 404) */}
@@ -121,7 +127,7 @@ const App = () => (
     <Toaster />
     <Sonner />
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider> {/* Reativado */}
+      <TooltipProvider>
         <BrowserRouter>
           <SessionContextProvider>
             <AppContent />
