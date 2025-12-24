@@ -17,6 +17,7 @@ import CreateEditInvoiceDialog from "@/components/invoicing/CreateEditInvoiceDia
 import InvoiceDetailView from "@/components/invoicing/InvoiceDetailView";
 import KPICard from "@/components/KPICard";
 import { formatCurrency } from "@/utils/formatters";
+import { Skeleton } from "@/components/ui/skeleton"; // Adicionado: Importação do componente Skeleton
 
 const InvoicingPage: React.FC = () => {
   const navigate = useNavigate();
@@ -155,15 +156,15 @@ const InvoicingPage: React.FC = () => {
       <div className="space-y-6">
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between pb-4 md:pb-6 border-b border-border mb-4 md:mb-6">
           <div>
-            <Skeleton className="h-8 w-64 mb-2" />
-            <Skeleton className="h-4 w-48" />
+            <Skeleton className="h-8 w-64 bg-gray-200 rounded mb-2" />
+            <Skeleton className="h-4 w-48 bg-gray-200 rounded" />
           </div>
           <Skeleton className="h-10 w-40 mt-2 md:mt-0" />
         </div>
         <div className="p-4 space-y-4">
-          <Skeleton className="h-48 w-full" />
-          <Skeleton className="h-32 w-full" />
-          <Skeleton className="h-32 w-full" />
+          <Skeleton className="h-24 w-full" />
+          <Skeleton className="h-24 w-full" />
+          <Skeleton className="h-24 w-full" />
         </div>
       </div>
     );
