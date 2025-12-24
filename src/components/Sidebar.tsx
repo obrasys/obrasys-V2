@@ -87,7 +87,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, toggleSidebar, profile }
       href: "/reports",
     },
     {
-      name: "Base de Preços", // Renamed from "Artigos de Trabalho"
+      name: "Base de Artigos", // Renamed from "Base de Preços"
       icon: Database, // Changed icon to Database
       href: "/price-database", // Updated href to match the renamed page
     },
@@ -218,4 +218,4 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, toggleSidebar, profile }
   );
 };
 
-export default Sidebar;
+export default MainLayout;

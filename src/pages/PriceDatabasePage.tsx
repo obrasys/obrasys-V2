@@ -234,12 +234,47 @@ const WorkItemsPage = () => {
 
       <Separator className="my-8 bg-gray-300 dark:bg-gray-700" />
 
-      {/* Nova Secção de Gestão de Capítulos */}
-      <CategoryManagementSection
-        categories={categories}
-        userCompanyId={userCompanyId}
-        onCategoriesUpdated={fetchCategories} // Pass callback to refresh categories
-      />
+      {/* Nova Secção de Gestão de Categorias de Artigos */}
+      <Card className="bg-card text-card-foreground border border-border">
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle className="text-xl font-semibold flex items-center gap-2">
+            <FolderOpen className="h-5 w-5 text-primary" /> Gestão de Categorias de Artigos
+          </CardTitle>
+          <Button onClick={() => { setArticleToEdit(null); setIsArticleDialogOpen(true); }}>
+            <PlusCircle className="h-4 w-4 mr-2" /> Adicionar Categoria
+          </Button>
+        </CardHeader>
+        <CardContent>
+          {categories.length === 0 ? (
+            <EmptyState
+              icon={FolderOpen}
+              title="Nenhuma categoria de artigo encontrada"
+              description="Adicione categorias para organizar os seus artigos de construção."
+              buttonText="Adicionar Primeira Categoria"
+              onButtonClick={() => { setArticleToEdit(null); setIsArticleDialogOpen(true); }}
+            />
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {categories.map((category) => (
+                <Card key={category.id} className="p-4 flex flex-col justify-between">
+                  <div>
+                    <h3 className="font-semibold text-lg mb-1">{category.nome}</h3>
+                    <p className="text-sm text-muted-foreground">{category.descricao || "Sem descrição."}</p>
+                  </div>
+                  <div className="flex gap-2 mt-4">
+                    <Button variant="outline" size="sm" onClick={() => handleEditArticle({ ...category, codigo: "", descricao: category.descricao || "", unidade: "", tipo: "material", preco_unitario: 0, fonte_referencia: "" })} className="flex-1"> {/* Simplified for category edit */}
+                      <Edit className="h-4 w-4 mr-2" /> Editar
+                    </Button>
+                    <Button variant="destructive" size="sm" onClick={() => handleDeleteArticle(category.id)} className="flex-1"> {/* This will delete the category, not an article */}
+                      <Trash2 className="h-4 w-4 mr-2" /> Eliminar
+                    </Button>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       <Separator className="my-8 bg-gray-300 dark:bg-gray-700" />
 

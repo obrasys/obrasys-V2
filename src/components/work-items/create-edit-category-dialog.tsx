@@ -64,7 +64,7 @@ const CreateEditCategoryDialog: React.FC<CreateEditCategoryDialogProps> = ({
       id: data.id || uuidv4(), // Generate ID if new category
     };
     onSave(newCategory);
-    toast.success(`Capítulo ${categoryToEdit ? "atualizado" : "criado"} com sucesso!`);
+    toast.success(`Categoria ${categoryToEdit ? "atualizada" : "criada"} com sucesso!`);
     onClose();
   };
 
@@ -72,9 +72,9 @@ const CreateEditCategoryDialog: React.FC<CreateEditCategoryDialogProps> = ({
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>{categoryToEdit ? "Editar Capítulo" : "Criar Novo Capítulo"}</DialogTitle>
+          <DialogTitle>{categoryToEdit ? "Editar Categoria de Artigo" : "Criar Nova Categoria de Artigo"}</DialogTitle>
           <DialogDescription>
-            Defina o nome e a descrição para este capítulo do catálogo.
+            Defina o nome e a descrição para esta categoria de artigos.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -84,7 +84,7 @@ const CreateEditCategoryDialog: React.FC<CreateEditCategoryDialogProps> = ({
               name="nome"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Nome do Capítulo *</FormLabel>
+                  <FormLabel>Nome da Categoria *</FormLabel>
                   <FormControl>
                     <Input placeholder="Ex: 01 – Trabalhos Preparatórios" {...field} />
                   </FormControl>
@@ -99,14 +99,14 @@ const CreateEditCategoryDialog: React.FC<CreateEditCategoryDialogProps> = ({
                 <FormItem>
                   <FormLabel>Descrição (opcional)</FormLabel>
                   <FormControl>
-                    <Textarea placeholder="Breve descrição do capítulo..." {...field} />
+                    <Textarea placeholder="Breve descrição da categoria..." {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
             <Button type="submit" className="mt-4">
-              {categoryToEdit ? "Guardar Alterações" : "Criar Capítulo"}
+              {categoryToEdit ? "Guardar Alterações" : "Criar Categoria"}
             </Button>
           </form>
         </Form>
