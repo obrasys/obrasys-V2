@@ -192,7 +192,7 @@ const BudgetChapterForm: React.FC<BudgetChapterFormProps> = ({
                       handleRemoveService={handleRemoveService}
                       handleDuplicateService={handleDuplicateService}
                       focusRef={serviceInputRef} // Passar a ref para o primeiro input de serviço
-                      userCompanyId={userCompanyId} {/* NEW: Pass userCompanyId */}
+                      userCompanyId={userCompanyId}
                     />
                   ))}
                 </TableBody>
