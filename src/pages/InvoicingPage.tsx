@@ -29,6 +29,10 @@ const InvoicingPage: React.FC = () => {
   const [isInvoiceDialogOpen, setIsInvoiceDialogOpen] = React.useState(false);
   const [invoiceToEdit, setInvoiceToEdit] = React.useState<Invoice | null>(null);
 
+  console.log("InvoicingPage: selectedInvoice", selectedInvoice);
+  console.log("InvoicingPage: isInvoiceDialogOpen", isInvoiceDialogOpen);
+  console.log("InvoicingPage: invoiceToEdit", invoiceToEdit);
+
   // Fetch user's company ID
   const fetchUserCompanyId = React.useCallback(async () => {
     if (!user) {

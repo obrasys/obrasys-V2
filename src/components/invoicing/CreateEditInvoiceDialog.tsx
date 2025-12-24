@@ -74,6 +74,10 @@ const CreateEditInvoiceDialog: React.FC<CreateEditInvoiceDialogProps> = ({
     name: "items",
   });
 
+  console.log("CreateEditInvoiceDialog: isOpen", isOpen);
+  console.log("CreateEditInvoiceDialog: invoiceToEdit", invoiceToEdit);
+  console.log("CreateEditInvoiceDialog: isLoadingData", isLoadingData);
+
   // Fetch user's company ID
   const fetchUserCompanyId = React.useCallback(async () => {
     if (!user) {
@@ -179,10 +183,10 @@ const CreateEditInvoiceDialog: React.FC<CreateEditInvoiceDialogProps> = ({
       }
     };
 
-    if (!isLoadingData) { // Only populate once initial data is loaded
+    if (isOpen && !isLoadingData) { // Only populate once initial data is loaded AND dialog is open
       populateForm();
     }
-  }, [invoiceToEdit, form, isLoadingData]);
+  }, [invoiceToEdit, form, isLoadingData, isOpen]); // Added isOpen to dependencies
 
   // Calculate line_total and total_amount whenever items change
   React.useEffect(() => {
@@ -211,19 +215,11 @@ const CreateEditInvoiceDialog: React.FC<CreateEditInvoiceDialogProps> = ({
     }
     setIsSaving(true);
     try {
-      // Explicitly pick fields for the 'invoices' table
       const invoiceDataToSave: Invoice = {
-        id: data.id || uuidv4(),
+        ...data,
         company_id: userCompanyId,
-        project_id: data.project_id,
-        client_id: data.client_id,
-        invoice_number: data.invoice_number,
-        issue_date: data.issue_date,
-        due_date: data.due_date,
+        id: data.id || uuidv4(),
         total_amount: data.items.reduce((sum, item) => sum + item.line_total, 0),
-        paid_amount: data.paid_amount,
-        status: data.status,
-        notes: data.notes,
       };
 
       let currentInvoiceId = invoiceDataToSave.id;

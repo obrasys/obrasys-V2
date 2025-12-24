@@ -24,6 +24,7 @@ import { toast } from "sonner";
 import { useSession } from "@/components/SessionContextProvider";
 import PaymentDialog from "./PaymentDialog";
 import { Skeleton } from "@/components/ui/skeleton";
+import { v4 as uuidv4 } from "uuid"; // Import uuidv4
 
 interface InvoiceDetailViewProps {
   invoice: InvoiceWithRelations;
@@ -42,6 +43,10 @@ const InvoiceDetailView: React.FC<InvoiceDetailViewProps> = ({
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = React.useState(false);
   const [invoiceItems, setInvoiceItems] = React.useState<InvoiceItem[]>([]);
   const [payments, setPayments] = React.useState<Payment[]>([]);
+
+  console.log("InvoiceDetailView: invoice prop", invoice);
+  console.log("InvoiceDetailView: isLoadingDetails", isLoadingDetails);
+  console.log("InvoiceDetailView: isPaymentDialogOpen", isPaymentDialogOpen);
 
   const fetchInvoiceDetails = React.useCallback(async () => {
     setIsLoadingDetails(true);
