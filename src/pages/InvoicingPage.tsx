@@ -5,7 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, Filter, Download, ReceiptText, RefreshCw, ArrowLeft, Loader2 } from "lucide-react";
+import { PlusCircle, Filter, Download, ReceiptText, RefreshCw, ArrowLeft, Loader2, CheckCircle, DollarSign, XCircle } from "lucide-react"; // Adicionado CheckCircle, DollarSign, XCircle
 import EmptyState from "@/components/EmptyState";
 import { useSession } from "@/components/SessionContextProvider";
 import { supabase } from "@/integrations/supabase/client";
@@ -17,7 +17,7 @@ import CreateEditInvoiceDialog from "@/components/invoicing/CreateEditInvoiceDia
 import InvoiceDetailView from "@/components/invoicing/InvoiceDetailView";
 import KPICard from "@/components/KPICard";
 import { formatCurrency } from "@/utils/formatters";
-import { Skeleton } from "@/components/ui/skeleton"; // Adicionado: Importação do componente Skeleton
+import { Skeleton } from "@/components/ui/skeleton";
 
 const InvoicingPage: React.FC = () => {
   const navigate = useNavigate();
