@@ -77,14 +77,9 @@ const InvoicingPage: React.FC = () => {
       setInvoices([]);
     } else {
       setInvoices(invoicesData || []);
-      // If an invoice was selected, try to re-select it with updated data
-      if (selectedInvoice) {
-        const updatedSelected = (invoicesData || []).find(inv => inv.id === selectedInvoice.id);
-        setSelectedInvoice(updatedSelected || null);
-      }
     }
     setIsLoadingInvoices(false);
-  }, [userCompanyId, selectedInvoice]);
+  }, [userCompanyId]); // Removido selectedInvoice das dependências
 
   React.useEffect(() => {
     if (!isSessionLoading) {
@@ -97,6 +92,17 @@ const InvoicingPage: React.FC = () => {
       fetchInvoices();
     }
   }, [userCompanyId, fetchInvoices]);
+
+  // NOVO useEffect para gerir a atualização do objeto selectedInvoice
+  React.useEffect(() => {
+    if (selectedInvoice) {
+      const updatedSelected = invoices.find(inv => inv.id === selectedInvoice.id);
+      // Apenas atualiza se a referência do objeto for diferente ou se o objeto foi removido
+      if (updatedSelected !== selectedInvoice) {
+        setSelectedInvoice(updatedSelected || null);
+      }
+    }
+  }, [invoices, selectedInvoice]); // Depende da lista de faturas e do objeto selecionado
 
   const handleSaveInvoice = async (fullInvoice: InvoiceWithRelations) => {
     // This function is called by CreateEditInvoiceDialog after successful upsert
