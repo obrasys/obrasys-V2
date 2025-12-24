@@ -52,6 +52,7 @@ interface CreateEditPayrollEntryDialogProps {
   entryToEdit?: PayrollEntry | null;
   projects: Project[];
   companyMembers: Profile[];
+  userCompanyId: string | null; // Added userCompanyId prop
 }
 
 const CreateEditPayrollEntryDialog: React.FC<CreateEditPayrollEntryDialogProps> = ({
@@ -61,6 +62,7 @@ const CreateEditPayrollEntryDialog: React.FC<CreateEditPayrollEntryDialogProps> 
   entryToEdit,
   projects,
   companyMembers,
+  userCompanyId, // Destructured prop
 }) => {
   const { user } = useSession();
   const [isSaving, setIsSaving] = React.useState(false);
@@ -95,15 +97,15 @@ const CreateEditPayrollEntryDialog: React.FC<CreateEditPayrollEntryDialogProps> 
   }, [isOpen, entryToEdit, form]);
 
   const onSubmit = async (data: PayrollEntry) => {
-    if (!user) {
-      toast.error("Utilizador não autenticado.");
+    if (!user || !userCompanyId) { // Check for userCompanyId
+      toast.error("Utilizador não autenticado ou ID da empresa não encontrado.");
       return;
     }
     setIsSaving(true);
     try {
       const payrollDataToSave: PayrollEntry = {
         ...data,
-        company_id: user.id, // Assuming user.id is the company_id for simplicity, or fetch from profile
+        company_id: userCompanyId, // Use userCompanyId here
         id: data.id || uuidv4(),
       };
 
