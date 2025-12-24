@@ -61,18 +61,18 @@ export function useNewBudgetForm({
     resolver: zodResolver(newBudgetFormSchema),
     defaultValues: {
       nome: "",
-      client_id: null,
+      client_id: null, // Alterado para null
       localizacao: "",
       tipo_obra: "Nova construção",
       data_orcamento: format(new Date(), "yyyy-MM-dd"),
-      observacoes_gerais: "",
+      observacoes_gerais: null, // Alterado para null
       estado: "Rascunho",
       chapters: [
         {
           id: uuidv4(),
           codigo: "01",
           nome: "Fundações",
-          observacoes: "",
+          observacoes: null, // Alterado para null
           items: [
             {
               id: uuidv4(),
@@ -162,13 +162,13 @@ export function useNewBudgetForm({
           localizacao: budgetData.localizacao || "",
           tipo_obra: budgetData.tipo_obra || "Nova construção",
           data_orcamento: budgetData.data_orcamento ? format(parseISO(budgetData.data_orcamento), "yyyy-MM-dd") : format(new Date(), "yyyy-MM-dd"),
-          observacoes_gerais: budgetData.observacoes_gerais || "",
+          observacoes_gerais: budgetData.observacoes_gerais || null, // Alterado para null
           estado: budgetData.estado,
           chapters: (budgetData.budget_chapters || []).map((chapter: any) => ({
             id: chapter.id,
             codigo: chapter.code || "",
             nome: chapter.title || "",
-            observacoes: chapter.notes || "",
+            observacoes: chapter.notes || null, // Alterado para null
             items: (chapter.budget_items || []).map((item: any) => ({
               id: item.id,
               capitulo_id: chapter.id,

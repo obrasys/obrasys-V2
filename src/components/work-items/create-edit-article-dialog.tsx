@@ -56,8 +56,8 @@ const CreateEditArticleDialog: React.FC<CreateEditArticleDialogProps> = ({
       codigo: "",
       descricao: "",
       unidade: "",
-      categoria_id: "",
-      subcategoria_id: "",
+      categoria_id: null, // Alterado para null
+      subcategoria_id: null, // Alterado para null
       tipo: "material",
       preco_unitario: 0,
       fonte_referencia: "",
@@ -73,8 +73,8 @@ const CreateEditArticleDialog: React.FC<CreateEditArticleDialogProps> = ({
         codigo: "",
         descricao: "",
         unidade: "",
-        categoria_id: "",
-        subcategoria_id: "",
+        categoria_id: null, // Alterado para null
+        subcategoria_id: null, // Alterado para null
         tipo: "material",
         preco_unitario: 0,
         fonte_referencia: "",
@@ -179,13 +179,14 @@ const CreateEditArticleDialog: React.FC<CreateEditArticleDialogProps> = ({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Categoria</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value || "placeholder"}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Selecione uma categoria" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
+                        <SelectItem value="placeholder" disabled>Selecione uma categoria</SelectItem>
                         {categories.map((category) => (
                           <SelectItem key={category.id} value={category.id}>
                             {category.nome}
@@ -203,13 +204,14 @@ const CreateEditArticleDialog: React.FC<CreateEditArticleDialogProps> = ({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Subcategoria</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value} disabled={!selectedCategoryId || filteredSubcategories.length === 0}>
+                    <Select onValueChange={field.onChange} value={field.value || "placeholder"} disabled={!selectedCategoryId || filteredSubcategories.length === 0}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Selecione uma subcategoria" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
+                        <SelectItem value="placeholder" disabled>Selecione uma subcategoria</SelectItem>
                         {filteredSubcategories.map((sub) => (
                           <SelectItem key={sub.id} value={sub.id}>
                             {sub.nome}

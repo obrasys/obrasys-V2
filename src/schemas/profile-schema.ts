@@ -16,7 +16,7 @@ export type Profile = z.infer<typeof profileSchema>;
 export const companySchema = z.object({
   id: z.string().uuid().optional(),
   name: z.string().min(1, "O nome da empresa é obrigatório."),
-  nif: z.string().optional().nullable(),
+  nif: z.string().optional().nullable(), // Alterado para nullable
   email: z.string().email("Formato de email inválido.").optional().nullable(),
   phone: z.string().optional().nullable(),
   address: z.string().optional().nullable(),

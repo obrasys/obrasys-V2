@@ -60,13 +60,14 @@ const CreateLivroDeObraDialog: React.FC<CreateLivroDeObraDialogProps> = ({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Obra</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <Select onValueChange={field.onChange} value={field.value || "placeholder"}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Selecione uma obra" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
+                        <SelectItem value="placeholder" disabled>Selecione uma obra</SelectItem>
                       {projects.map((project) => (
                         <SelectItem key={project.id} value={project.id}>
                           {project.nome}

@@ -63,6 +63,8 @@ const CreateEditInvoiceDialog: React.FC<CreateEditInvoiceDialogProps> = ({
     resolver: zodResolver(fullInvoiceSchema),
     defaultValues: {
       ...invoiceToEdit,
+      client_id: invoiceToEdit?.client_id || null, // Alterado para null
+      project_id: invoiceToEdit?.project_id || null, // Alterado para null
       issue_date: invoiceToEdit?.issue_date ? format(parseISO(invoiceToEdit.issue_date), "yyyy-MM-dd") : format(new Date(), "yyyy-MM-dd"),
       due_date: invoiceToEdit?.due_date ? format(parseISO(invoiceToEdit.due_date), "yyyy-MM-dd") : format(new Date(new Date().setDate(new Date().getDate() + 30)), "yyyy-MM-dd"), // Default 30 days
       items: [], // Will be populated in useEffect
@@ -142,6 +144,8 @@ const CreateEditInvoiceDialog: React.FC<CreateEditInvoiceDialogProps> = ({
       if (invoiceToEdit) {
         form.reset({
           ...invoiceToEdit,
+          client_id: invoiceToEdit.client_id || null, // Ensure null for optional
+          project_id: invoiceToEdit.project_id || null, // Ensure null for optional
           issue_date: invoiceToEdit.issue_date ? format(parseISO(invoiceToEdit.issue_date), "yyyy-MM-dd") : format(new Date(), "yyyy-MM-dd"),
           due_date: invoiceToEdit.due_date ? format(parseISO(invoiceToEdit.due_date), "yyyy-MM-dd") : format(new Date(new Date().setDate(new Date().getDate() + 30)), "yyyy-MM-dd"), // Default 30 days
         });
@@ -161,8 +165,8 @@ const CreateEditInvoiceDialog: React.FC<CreateEditInvoiceDialogProps> = ({
       } else {
         form.reset({
           invoice_number: "",
-          client_id: "",
-          project_id: null,
+          client_id: null, // Alterado para null
+          project_id: null, // Alterado para null
           issue_date: format(new Date(), "yyyy-MM-dd"),
           due_date: format(new Date(new Date().setDate(new Date().getDate() + 30)), "yyyy-MM-dd"),
           total_amount: 0,

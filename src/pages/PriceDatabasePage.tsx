@@ -248,8 +248,8 @@ const PriceDatabasePage = () => {
       <div className="space-y-6">
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between pb-4 md:pb-6 border-b border-border mb-4 md:mb-6">
           <div>
-            <Skeleton className="h-8 w-64 mb-2" />
-            <Skeleton className="h-4 w-48" />
+            <Skeleton className="h-8 w-64 bg-gray-200 rounded mb-2" />
+            <Skeleton className="h-4 w-48 bg-gray-200 rounded" />
           </div>
           <div className="flex gap-2">
             <Skeleton className="h-10 w-32" />
@@ -335,7 +335,7 @@ const PriceDatabasePage = () => {
           title="Catálogo Padrão"
           value={`${standardCatalogCount}`}
           description="artigos padrão"
-          icon={Clock} // Changed from History to Clock
+          icon={Clock}
           iconColorClass="text-orange-500"
         />
         <KPICard
@@ -357,23 +357,23 @@ const PriceDatabasePage = () => {
             className="max-w-sm pl-10"
           />
         </div>
-        <Select value={selectedCategory || ""} onValueChange={setSelectedCategory}>
+        <Select value={selectedCategory || "all"} onValueChange={(value) => setSelectedCategory(value === "all" ? null : value)}>
           <SelectTrigger className="w-[180px]">
             <SelectValue placeholder="Todas as categorias" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">Todas as categorias</SelectItem>
+            <SelectItem value="all">Todas as categorias</SelectItem>
             {categories.map(category => (
               <SelectItem key={category.id} value={category.id}>{category.nome}</SelectItem>
             ))}
           </SelectContent>
         </Select>
-        <Select value={selectedSource || ""} onValueChange={setSelectedSource}>
+        <Select value={selectedSource || "all"} onValueChange={(value) => setSelectedSource(value === "all" ? null : value)}>
           <SelectTrigger className="w-[180px]">
             <SelectValue placeholder="Todas as fontes" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">Todas as fontes</SelectItem>
+            <SelectItem value="all">Todas as fontes</SelectItem>
             {/* Mock sources for now, or derive from articles */}
             <SelectItem value="Catálogo Padrão">Catálogo Padrão</SelectItem>
             <SelectItem value="Fornecedor">Fornecedor</SelectItem>

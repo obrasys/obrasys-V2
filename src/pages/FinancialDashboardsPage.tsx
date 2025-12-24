@@ -227,14 +227,15 @@ const FinancialDashboardsPage = () => {
         <CardContent>
           {projects.length > 0 ? (
             <Select
-              value={selectedProjectId || ""}
-              onValueChange={setSelectedProjectId}
+              value={selectedProjectId || "placeholder"}
+              onValueChange={(value) => setSelectedProjectId(value === "placeholder" ? null : value)}
               disabled={isLoadingProjects || isLoadingFinancialData}
             >
               <SelectTrigger className="w-full md:w-[300px]">
                 <SelectValue placeholder="Selecione uma obra para ver os painéis" />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="placeholder" disabled>Selecione uma obra para ver os painéis</SelectItem>
                 {projects.map((project) => (
                   <SelectItem key={project.id} value={project.id}>
                     {project.nome}

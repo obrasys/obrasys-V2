@@ -76,8 +76,8 @@ const CreateEditPayrollEntryDialog: React.FC<CreateEditPayrollEntryDialogProps> 
       type: "salary",
       status: "pending",
       notes: "",
-      project_id: null,
-      user_id: null,
+      project_id: null, // Alterado para null
+      user_id: null, // Alterado para null
     },
   });
 
@@ -90,8 +90,8 @@ const CreateEditPayrollEntryDialog: React.FC<CreateEditPayrollEntryDialogProps> 
         type: "salary",
         status: "pending",
         notes: "",
-        project_id: null,
-        user_id: null,
+        project_id: null, // Alterado para null
+        user_id: null, // Alterado para null
       });
     }
   }, [isOpen, entryToEdit, form]);
@@ -236,15 +236,16 @@ const CreateEditPayrollEntryDialog: React.FC<CreateEditPayrollEntryDialogProps> 
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Colaborador (opcional)</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value || ""}>
+                    <Select onValueChange={field.onChange} value={field.value || "placeholder"}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Selecione um colaborador" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {companyMembers.map((member) => (
-                          <SelectItem key={member.id} value={member.id || ""}>
+                        <SelectItem value="placeholder" disabled>Selecione um colaborador</SelectItem>
+                        {companyMembers.filter(member => member.id).map((member) => ( // Filter out members without an ID
+                          <SelectItem key={member.id} value={member.id!}>
                             {member.first_name} {member.last_name}
                           </SelectItem>
                         ))}
@@ -260,13 +261,14 @@ const CreateEditPayrollEntryDialog: React.FC<CreateEditPayrollEntryDialogProps> 
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Obra (opcional)</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value || ""}>
+                    <Select onValueChange={field.onChange} value={field.value || "placeholder"}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Selecione uma obra" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
+                        <SelectItem value="placeholder" disabled>Selecione uma obra</SelectItem>
                         {projects.map((project) => (
                           <SelectItem key={project.id} value={project.id}>
                             {project.nome}

@@ -75,7 +75,7 @@ const CreateEditProjectDialog: React.FC<CreateEditProjectDialogProps> = ({
     resolver: zodResolver(projectSchema),
     defaultValues: projectToEdit || {
       nome: "",
-      client_id: "", // Alterado de 'cliente' para 'client_id'
+      client_id: null, // Alterado para null
       localizacao: "",
       estado: "Planeada",
       progresso: 0,
@@ -92,7 +92,7 @@ const CreateEditProjectDialog: React.FC<CreateEditProjectDialogProps> = ({
     } else {
       form.reset({
         nome: "",
-        client_id: "", // Alterado de 'cliente' para 'client_id'
+        client_id: null, // Alterado para null
         localizacao: "",
         estado: "Planeada",
         progresso: 0,
@@ -144,13 +144,14 @@ const CreateEditProjectDialog: React.FC<CreateEditProjectDialogProps> = ({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Cliente</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value || ""}>
+                  <Select onValueChange={field.onChange} value={field.value || "placeholder"}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Selecione um cliente" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
+                        <SelectItem value="placeholder" disabled>Selecione um cliente</SelectItem>
                       {clients.map((client) => (
                         <SelectItem key={client.id} value={client.id}>
                           {client.nome}

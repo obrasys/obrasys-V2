@@ -72,13 +72,14 @@ const BudgetGeneralInfo: React.FC<BudgetGeneralInfoProps> = ({
             render={({ field }) => (
               <FormItem className="flex-grow">
                 <FormLabel>Cliente *</FormLabel>
-                <Select onValueChange={field.onChange} value={field.value} disabled={isApproved}>
+                <Select onValueChange={field.onChange} value={field.value || "placeholder"} disabled={isApproved}>
                   <FormControl>
                     <SelectTrigger>
                       <SelectValue placeholder="Selecione um cliente" />
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
+                    <SelectItem value="placeholder" disabled>Selecione um cliente</SelectItem>
                     {clients.map((client) => (
                       <SelectItem key={client.id} value={client.id}>
                         {client.nome}

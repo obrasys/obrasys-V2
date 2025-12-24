@@ -63,13 +63,14 @@ const InvoiceGeneralForm: React.FC<InvoiceGeneralFormProps> = ({
         render={({ field }) => (
           <FormItem>
             <FormLabel>Cliente *</FormLabel>
-            <Select onValueChange={field.onChange} value={field.value || ""}>
+            <Select onValueChange={field.onChange} value={field.value || "placeholder"}>
               <FormControl>
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione um cliente" />
                 </SelectTrigger>
               </FormControl>
               <SelectContent>
+                <SelectItem value="placeholder" disabled>Selecione um cliente</SelectItem>
                 {clients.map((client) => (
                   <SelectItem key={client.id} value={client.id}>
                     {client.nome}
@@ -87,13 +88,14 @@ const InvoiceGeneralForm: React.FC<InvoiceGeneralFormProps> = ({
         render={({ field }) => (
           <FormItem>
             <FormLabel>Obra (opcional)</FormLabel>
-            <Select onValueChange={field.onChange} value={field.value || ""}>
+            <Select onValueChange={field.onChange} value={field.value || "placeholder"}>
               <FormControl>
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione uma obra" />
                 </SelectTrigger>
               </FormControl>
               <SelectContent>
+                <SelectItem value="placeholder" disabled>Selecione uma obra</SelectItem>
                 {projects.map((project) => (
                   <SelectItem key={project.id} value={project.id}>
                     {project.nome}

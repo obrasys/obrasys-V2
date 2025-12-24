@@ -121,13 +121,14 @@ const SchedulePage = () => {
         <CardContent>
           {projects.length > 0 ? (
             <Select
-              value={selectedProjectId || ""}
-              onValueChange={setSelectedProjectId}
+              value={selectedProjectId || "placeholder"}
+              onValueChange={(value) => setSelectedProjectId(value === "placeholder" ? null : value)}
             >
               <SelectTrigger className="w-full md:w-[300px]">
                 <SelectValue placeholder="Selecione uma obra para ver o cronograma" />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="placeholder" disabled>Selecione uma obra para ver o cronograma</SelectItem>
                 {projects.map((project) => (
                   <SelectItem key={project.id} value={project.id}>
                     {project.nome}
