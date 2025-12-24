@@ -79,9 +79,9 @@ const FinanceManagement = () => {
             <p className="text-sm text-muted-foreground mt-2">
               Fornecer informações em tempo real sobre custos de trabalho, margens, previsões e fluxo de caixa.
             </p>
-            <Button className="mt-6 w-full" disabled>
-              Ver Painéis (Em breve)
-            </Button>
+            <NavButton to="/finance-management/dashboards" className="mt-6 w-full">
+              Ver Painéis
+            </NavButton>
           </CardContent>
         </Card>
 

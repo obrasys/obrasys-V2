@@ -48,6 +48,9 @@ import ApprovalsPage from "./pages/ApprovalsPage";
 // New page for Accounts (formerly Invoicing)
 import AccountsPage from "./pages/AccountsPage";
 
+// New page for Financial Dashboards
+import FinancialDashboardsPage from "./pages/FinancialDashboardsPage";
+
 
 const queryClient = new QueryClient();
 
@@ -113,6 +116,9 @@ const AppContent = () => (
 
       {/* New route for Accounts (formerly Invoicing) */}
       <Route path="/accounts" element={<AccountsPage />} />
+
+      {/* New route for Financial Dashboards */}
+      <Route path="/finance-management/dashboards" element={<FinancialDashboardsPage />} />
     </Route>
 
     {/* Routes that do NOT use the MainLayout (e.g., landing pages, 404) */}

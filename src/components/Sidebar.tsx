@@ -78,9 +78,14 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, toggleSidebar, profile }
       href: "/approvals",
     },
     {
-      name: "Contas a Pagar/Receber", // Updated name
-      icon: Scale, // Updated icon
-      href: "/accounts", // Updated route
+      name: "Contas a Pagar/Receber",
+      icon: Scale,
+      href: "/accounts",
+    },
+    {
+      name: "Painéis Financeiros", // New item
+      icon: LayoutDashboard, // Using LayoutDashboard icon
+      href: "/finance-management/dashboards", // New route
     },
     {
       name: "Financeiro",
