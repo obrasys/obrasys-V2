@@ -226,102 +226,104 @@ const PayrollIntegrationPage = () => {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col md:flex-row items-center justify-between gap-4 pb-4 md:pb-6">
-        <h1 className="text-2xl md:text-3xl font-extrabold text-center md:text-left text-primary dark:text-primary-foreground flex-grow">
-          Integração de Folha de Pagamento
-        </h1>
-        <Button onClick={fetchPayrollEntries} disabled={isLoadingData || isProcessingAction} className="flex items-center gap-2">
-          {isLoadingData ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <RefreshCw className="h-4 w-4" />
-          )}
-          Atualizar Registos
-        </Button>
+    <React.Fragment>
+      <div className="space-y-6">
+        <div className="flex flex-col md:flex-row items-center justify-between gap-4 pb-4 md:pb-6">
+          <h1 className="text-2xl md:text-3xl font-extrabold text-center md:text-left text-primary dark:text-primary-foreground flex-grow">
+            Integração de Folha de Pagamento
+          </h1>
+          <Button onClick={fetchPayrollEntries} disabled={isLoadingData || isProcessingAction} className="flex items-center gap-2">
+            {isLoadingData ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <RefreshCw className="h-4 w-4" />
+            )}
+            Atualizar Registos
+          </Button>
+        </div>
+        <section className="text-center max-w-3xl mx-auto mb-8">
+          <p className="text-base md:text-lg text-muted-foreground leading-relaxed">
+            Rastreie com precisão os custos de mão de obra, incluindo salários, benefícios e impostos, e integre com sistemas de folha de pagamento.
+          </p>
+        </section>
+
+        <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-8">
+          <KPICard
+            title="Custo Total de Mão de Obra (€)"
+            value={formatCurrency(totalPayrollCost)}
+            description="Total de todos os registos"
+            icon={DollarSign}
+            iconColorClass="text-blue-500"
+          />
+          <KPICard
+            title="Total Pago (€)"
+            value={formatCurrency(totalPaidPayroll)}
+            description="Valor já liquidado"
+            icon={CheckCircle}
+            iconColorClass="text-green-500"
+          />
+          <KPICard
+            title="Total Pendente (€)"
+            value={formatCurrency(totalPendingPayroll)}
+            description="Valor a pagar/processar"
+            icon={DollarSign}
+            iconColorClass="text-orange-500"
+          />
+          <KPICard
+            title="Registos Pendentes"
+            value={pendingEntriesCount.toString()}
+            description="Registos aguardando ação"
+            icon={ClipboardList}
+            iconColorClass="text-red-500"
+          />
+        </section>
+
+        <Card className="bg-card text-card-foreground border border-border">
+          <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between space-y-2 sm:space-y-0 pb-2">
+            <CardTitle className="text-2xl font-semibold">Registos de Folha de Pagamento</CardTitle>
+            <div className="flex flex-wrap gap-2">
+              <Button onClick={() => { setEntryToEdit(null); setIsPayrollEntryDialogOpen(true); }} className="flex items-center gap-2">
+                <PlusCircle className="h-4 w-4" /> Novo Registo
+              </Button>
+              <Button variant="outline" className="flex items-center gap-2" disabled>
+                <Filter className="h-4 w-4" /> Filtros
+              </Button>
+              <Button variant="outline" className="flex items-center gap-2" disabled>
+                <Download className="h-4 w-4" /> Exportar
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {payrollEntries.length > 0 ? (
+              <DataTable
+                columns={columns}
+                data={payrollEntries}
+                filterColumnId="description"
+                filterPlaceholder="Filtrar por descrição..."
+              />
+            ) : (
+              <EmptyState
+                icon={ClipboardList}
+                title="Nenhum registo de folha de pagamento encontrado"
+                description="Crie um novo registo para começar a gerir os custos de mão de obra."
+                buttonText="Novo Registo de Folha de Pagamento"
+                onButtonClick={() => { setEntryToEdit(null); setIsPayrollEntryDialogOpen(true); }}
+              />
+            )}
+          </CardContent>
+        </Card>
+
+        <CreateEditPayrollEntryDialog
+          isOpen={isPayrollEntryDialogOpen}
+          onClose={() => setIsPayrollEntryDialogOpen(false)}
+          onSave={handleSavePayrollEntry}
+          entryToEdit={entryToEdit}
+          projects={projects}
+          companyMembers={companyMembers}
+          userCompanyId={userCompanyId} {/* Pass userCompanyId here */}
+        />
       </div>
-      <section className="text-center max-w-3xl mx-auto mb-8">
-        <p className="text-base md:text-lg text-muted-foreground leading-relaxed">
-          Rastreie com precisão os custos de mão de obra, incluindo salários, benefícios e impostos, e integre com sistemas de folha de pagamento.
-        </p>
-      </section>
-
-      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-8">
-        <KPICard
-          title="Custo Total de Mão de Obra (€)"
-          value={formatCurrency(totalPayrollCost)}
-          description="Total de todos os registos"
-          icon={DollarSign}
-          iconColorClass="text-blue-500"
-        />
-        <KPICard
-          title="Total Pago (€)"
-          value={formatCurrency(totalPaidPayroll)}
-          description="Valor já liquidado"
-          icon={CheckCircle}
-          iconColorClass="text-green-500"
-        />
-        <KPICard
-          title="Total Pendente (€)"
-          value={formatCurrency(totalPendingPayroll)}
-          description="Valor a pagar/processar"
-          icon={DollarSign}
-          iconColorClass="text-orange-500"
-        />
-        <KPICard
-          title="Registos Pendentes"
-          value={pendingEntriesCount.toString()}
-          description="Registos aguardando ação"
-          icon={ClipboardList}
-          iconColorClass="text-red-500"
-        />
-      </section>
-
-      <Card className="bg-card text-card-foreground border border-border">
-        <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between space-y-2 sm:space-y-0 pb-2">
-          <CardTitle className="text-2xl font-semibold">Registos de Folha de Pagamento</CardTitle>
-          <div className="flex flex-wrap gap-2">
-            <Button onClick={() => { setEntryToEdit(null); setIsPayrollEntryDialogOpen(true); }} className="flex items-center gap-2">
-              <PlusCircle className="h-4 w-4" /> Novo Registo
-            </Button>
-            <Button variant="outline" className="flex items-center gap-2" disabled>
-              <Filter className="h-4 w-4" /> Filtros
-            </Button>
-            <Button variant="outline" className="flex items-center gap-2" disabled>
-              <Download className="h-4 w-4" /> Exportar
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {payrollEntries.length > 0 ? (
-            <DataTable
-              columns={columns}
-              data={payrollEntries}
-              filterColumnId="description"
-              filterPlaceholder="Filtrar por descrição..."
-            />
-          ) : (
-            <EmptyState
-              icon={ClipboardList}
-              title="Nenhum registo de folha de pagamento encontrado"
-              description="Crie um novo registo para começar a gerir os custos de mão de obra."
-              buttonText="Novo Registo de Folha de Pagamento"
-              onButtonClick={() => { setEntryToEdit(null); setIsPayrollEntryDialogOpen(true); }}
-            />
-          )}
-        </CardContent>
-      </Card>
-
-      <CreateEditPayrollEntryDialog
-        isOpen={isPayrollEntryDialogOpen}
-        onClose={() => setIsPayrollEntryDialogOpen(false)}
-        onSave={handleSavePayrollEntry}
-        entryToEdit={entryToEdit}
-        projects={projects}
-        companyMembers={companyMembers}
-        userCompanyId={userCompanyId} {/* Pass userCompanyId here */}
-      />
-    </div>
+    </React.Fragment>
   );
 };
 
