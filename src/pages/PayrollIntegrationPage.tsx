@@ -226,7 +226,7 @@ const PayrollIntegrationPage = () => {
   }
 
   return (
-    <React.Fragment>
+    <>
       <div className="space-y-6">
         <div className="flex flex-col md:flex-row items-center justify-between gap-4 pb-4 md:pb-6">
           <h1 className="text-2xl md:text-3xl font-extrabold text-center md:text-left text-primary dark:text-primary-foreground flex-grow">
@@ -323,7 +323,7 @@ const PayrollIntegrationPage = () => {
           userCompanyId={userCompanyId} {/* Pass userCompanyId here */}
         />
       </div>
-    </React.Fragment>
+    </>
   );
 };
 
