@@ -33,7 +33,7 @@ import ReportsPage from "@/pages/ReportsPage";
 
 import { Toaster } from "@/components/ui/sonner";
 
-// Diagnostic logs
+// Diagnostic logs (can be removed after confirming fix)
 console.log("App.tsx: MainLayout is", typeof MainLayout);
 console.log("App.tsx: Index is", typeof Index);
 console.log("App.tsx: Login is", typeof Login);
@@ -65,7 +65,7 @@ console.log("App.tsx: Toaster is", typeof Toaster);
 
 const App = () => {
   return (
-    <BrowserRouter>
+    <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <SessionContextProvider>
         <Toaster richColors position="top-right" />
         <Routes>
