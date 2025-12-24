@@ -3,7 +3,7 @@
 import React from "react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod"; // Adicionado: Importação de z
+import { z } from "zod";
 import { v4 as uuidv4 } from "uuid";
 import { format, parseISO } from "date-fns";
 import { pt } from "date-fns/locale";
@@ -36,8 +36,8 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { cn } => "@/lib/utils";
-import { CalendarDays, PlusCircle, Trash2, Loader2 } from "lucide-react"; // Adicionado Loader2
+import { cn } from "@/lib/utils"; // Corrigido: de '=>' para 'from'
+import { CalendarDays, PlusCircle, Trash2, Loader2 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
 import { Invoice, InvoiceItem, invoiceSchema, invoiceItemSchema } from "@/schemas/invoicing-schema";
@@ -154,7 +154,7 @@ const CreateEditInvoiceDialog: React.FC<CreateEditInvoiceDialogProps> = ({
         form.reset({
           ...invoiceToEdit,
           issue_date: format(parseISO(invoiceToEdit.issue_date), "yyyy-MM-dd"),
-          due_date: format(parseISO(invoiceToEdit.due_date), "yyyy-MM-MM-dd"),
+          due_date: format(parseISO(invoiceToEdit.due_date), "yyyy-MM-dd"),
         });
 
         const { data: itemsData, error: itemsError } = await supabase
