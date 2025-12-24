@@ -109,7 +109,7 @@ const InvoiceItemsSection: React.FC<InvoiceItemsSectionProps> = ({
             />
             <div className="flex flex-col">
               <FormLabel>Total</FormLabel>
-              <Input value={form.watch(`items.${index}.line_total`).toFixed(2)} readOnly disabled />
+              <Input value={(form.watch(`items.${index}.line_total`) || 0).toFixed(2)} readOnly disabled />
             </div>
             <Button type="button" variant="destructive" size="icon" onClick={() => removeItem(index)} className="self-end">
               <Trash2 className="h-4 w-4" />
