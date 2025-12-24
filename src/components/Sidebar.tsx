@@ -16,7 +16,6 @@ import {
   ClipboardList,
   LogOut,
   Zap,
-  Bell,
   Settings,
   ChevronLeft,
   ChevronRight,
@@ -78,22 +77,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, toggleSidebar, profile }
       href: "/approvals",
     },
     {
-      name: "Contas a Pagar/Receber",
-      icon: Scale,
-      href: "/accounts",
-    },
-    {
-      name: "Painéis Financeiros", // New item
-      icon: LayoutDashboard, // Using LayoutDashboard icon
-      href: "/finance-management/dashboards", // New route
-    },
-    {
-      name: "Integração Folha Pagamento", // New item
-      icon: ClipboardList, // Using ClipboardList icon
-      href: "/finance-management/payroll-integration", // New route
-    },
-    {
-      name: "Financeiro",
+      name: "Financeiro", // This will be the main entry for all financial modules
       icon: Banknote,
       href: "/finance-management",
     },

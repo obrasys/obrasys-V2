@@ -42,21 +42,6 @@ const FinanceManagement = () => {
 
         <Card className="hover:shadow-xl transition-shadow duration-300 ease-in-out bg-card text-card-foreground border border-border">
           <CardHeader className="flex flex-row items-center space-x-4 pb-2">
-            <Banknote className="h-8 w-8 text-green-500 dark:text-green-400" />
-            <CardTitle className="text-xl font-semibold">Contas a Pagar/Receber (Detalhe)</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground mt-2">
-              Gerir faturas, pedidos e pagamentos, garantindo clareza financeira e transações atempadas.
-            </p>
-            <NavButton to="/accounts" className="mt-6 w-full"> {/* Changed to NavButton and route */}
-              Gerir Contas (Detalhe)
-            </NavButton>
-          </CardContent>
-        </Card>
-
-        <Card className="hover:shadow-xl transition-shadow duration-300 ease-in-out bg-card text-card-foreground border border-border">
-          <CardHeader className="flex flex-row items-center space-x-4 pb-2">
             <ClipboardList className="h-8 w-8 text-purple-500 dark:text-purple-400" />
             <CardTitle className="text-xl font-semibold">Integração de Folha de Pagamento</CardTitle>
           </CardHeader>
