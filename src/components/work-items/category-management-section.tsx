@@ -41,12 +41,12 @@ const CategoryManagementSection: React.FC<CategoryManagementSectionProps> = ({
 
       if (error) throw error;
 
-      toast.success(`Capítulo "${category.nome}" ${category.id ? "atualizado" : "criado"} com sucesso!`);
+      toast.success(`Categoria "${category.nome}" ${category.id ? "atualizada" : "criada"} com sucesso!`);
       onCategoriesUpdated(); // Refresh categories in parent
       setIsDialogOpen(false);
     } catch (error: any) {
-      toast.error(`Erro ao guardar capítulo: ${error.message}`);
-      console.error("Erro ao guardar capítulo:", error);
+      toast.error(`Erro ao guardar categoria: ${error.message}`);
+      console.error("Erro ao guardar categoria:", error);
     }
   };
 
@@ -56,7 +56,7 @@ const CategoryManagementSection: React.FC<CategoryManagementSectionProps> = ({
   };
 
   const handleDeleteCategory = async (id: string) => {
-    if (!window.confirm("Tem certeza que deseja eliminar este capítulo? Todos os artigos associados a ele ficarão sem categoria.")) return;
+    if (!window.confirm("Tem certeza que deseja eliminar esta categoria? Todos os artigos associados a ela ficarão sem categoria.")) return;
     try {
       const { error } = await supabase
         .from('categories')
@@ -66,11 +66,11 @@ const CategoryManagementSection: React.FC<CategoryManagementSectionProps> = ({
 
       if (error) throw error;
 
-      toast.success("Capítulo eliminado com sucesso!");
+      toast.success("Categoria eliminada com sucesso!");
       onCategoriesUpdated(); // Refresh categories in parent
     } catch (error: any) {
-      toast.error(`Erro ao eliminar capítulo: ${error.message}`);
-      console.error("Erro ao eliminar capítulo:", error);
+      toast.error(`Erro ao eliminar categoria: ${error.message}`);
+      console.error("Erro ao eliminar categoria:", error);
     }
   };
 
@@ -78,19 +78,19 @@ const CategoryManagementSection: React.FC<CategoryManagementSectionProps> = ({
     <Card className="bg-card text-card-foreground border border-border">
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle className="text-xl font-semibold flex items-center gap-2">
-          <FolderOpen className="h-5 w-5 text-primary" /> Gestão de Capítulos
+          <FolderOpen className="h-5 w-5 text-primary" /> Gestão de Categorias de Artigos
         </CardTitle>
         <Button onClick={() => { setCategoryToEdit(null); setIsDialogOpen(true); }}>
-          <PlusCircle className="h-4 w-4 mr-2" /> Adicionar Capítulo
+          <PlusCircle className="h-4 w-4 mr-2" /> Adicionar Categoria
         </Button>
       </CardHeader>
       <CardContent>
         {categories.length === 0 ? (
           <EmptyState
             icon={FolderOpen}
-            title="Nenhum capítulo encontrado"
-            description="Adicione capítulos para organizar os seus artigos de construção."
-            buttonText="Adicionar Primeiro Capítulo"
+            title="Nenhuma categoria de artigo encontrada"
+            description="Adicione categorias para organizar os seus artigos de construção."
+            buttonText="Adicionar Primeira Categoria"
             onButtonClick={() => { setCategoryToEdit(null); setIsDialogOpen(true); }}
           />
         ) : (
