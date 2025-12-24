@@ -2,7 +2,7 @@
 
 import React from "react";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, Upload, Download, ArrowLeft, Search, DollarSign } from "lucide-react"; // Adicionado DollarSign
+import { PlusCircle, Upload, Download, ArrowLeft, Search, DollarSign, Clock } from "lucide-react"; // Adicionado DollarSign, substituído History por Clock
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { DataTable } from "@/components/work-items/data-table";
@@ -335,7 +335,7 @@ const PriceDatabasePage = () => {
           title="Catálogo Padrão"
           value={`${standardCatalogCount}`}
           description="artigos padrão"
-          icon={History}
+          icon={Clock} {/* Changed from History to Clock */}
           iconColorClass="text-orange-500"
         />
         <KPICard

@@ -5,7 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, Filter, Download, ReceiptText, RefreshCw, ArrowLeft, Loader2, CheckCircle, DollarSign, XCircle, Scale, Wallet } from "lucide-react";
+import { PlusCircle, Filter, Download, ReceiptText, RefreshCw, ArrowLeft, Loader2, CheckCircle, DollarSign, XCircle, Scale, Wallet, Edit, Trash2 } from "lucide-react"; // Adicionado Edit e Trash2
 import EmptyState from "@/components/EmptyState";
 import { useSession } from "@/components/SessionContextProvider";
 import { supabase } from "@/integrations/supabase/client";
@@ -18,7 +18,7 @@ import CreateEditInvoiceDialog from "@/components/invoicing/CreateEditInvoiceDia
 import CreateEditExpenseDialog from "@/components/invoicing/CreateEditExpenseDialog"; // Import new expense dialog
 import InvoiceDetailView from "@/components/invoicing/InvoiceDetailView";
 import KPICard from "@/components/KPICard";
-import { formatCurrency } from "@/utils/formatters";
+import { formatCurrency, formatDate } from "@/utils/formatters"; // Importado formatDate
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"; // Import Tabs
 
@@ -110,6 +110,8 @@ const AccountsPage: React.FC = () => {
       console.error("Erro ao carregar despesas:", expensesError);
       setExpenses([]);
     } else {
+      // Filter expenses that might be related to the project if a project_id column existed in expenses
+      // For now, we'll just show all company expenses, or filter by project if a link is added later.
       setExpenses(expensesData || []);
     }
     setIsLoadingExpenses(false);

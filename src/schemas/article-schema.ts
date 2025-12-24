@@ -2,6 +2,7 @@ import { z } from "zod";
 
 export const articleSchema = z.object({
   id: z.string().uuid().optional(),
+  company_id: z.string().uuid(), // Adicionado: company_id é obrigatório
   codigo: z.string().min(1, "O código é obrigatório."),
   descricao: z.string().min(1, "A descrição é obrigatória."),
   unidade: z.string().min(1, "A unidade é obrigatória."),

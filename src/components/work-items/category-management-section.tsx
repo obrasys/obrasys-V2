@@ -207,10 +207,10 @@ const CategoryManagementSection: React.FC<CategoryManagementSectionProps> = ({
                             <p className="text-xs text-muted-foreground">{sub.descricao || "Sem descrição."}</p>
                           </div>
                           <div className="flex gap-2 mt-3">
-                            <Button variant="outline" size="xs" onClick={() => handleEditSubcategory(sub)} className="flex-1">
+                            <Button variant="outline" size="sm" onClick={() => handleEditSubcategory(sub)} className="flex-1">
                               <Edit className="h-3 w-3 mr-1" /> Editar
                             </Button>
-                            <Button variant="destructive" size="xs" onClick={() => handleDeleteSubcategory(sub.id)} className="flex-1">
+                            <Button variant="destructive" size="sm" onClick={() => handleDeleteSubcategory(sub.id)} className="flex-1">
                               <Trash2 className="h-3 w-3 mr-1" /> Eliminar
                             </Button>
                           </div>
