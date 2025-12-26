@@ -63,7 +63,7 @@ const NewBudgetPage: React.FC = () => {
 
   // Calcular o total executado a partir dos valores do formulário
   const totalExecuted = form.watch("chapters").reduce((acc, chapter) => 
-    acc + chapter.items.reduce((itemAcc, item) => itemAcc + (item.custo_real_material + item.custo_real_mao_obra), 0)
+    acc + chapter.items.reduce((itemAcc, item) => itemAcc + ((item.custo_real_material || 0) + (item.custo_real_mao_obra || 0)), 0)
   , 0);
 
   if (isLoadingData) {
