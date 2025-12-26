@@ -1,12 +1,12 @@
 "use client";
 
-import * as React from "react"; // Adicionado: Importação explícita de React
+import * as React from "react";
 import * as AccordionPrimitive from "@radix-ui/react-accordion";
 import { ChevronDown } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
-const Accordion = AccordionPrimitive.Root; // Adicionado: Definição de Accordion
+const Accordion = AccordionPrimitive.Root;
 const AccordionItem = React.forwardRef<
   React.ElementRef<typeof AccordionPrimitive.Item>,
   React.ComponentPropsWithoutRef<typeof AccordionPrimitive.Item>
@@ -32,10 +32,15 @@ const AccordionTrigger = React.forwardRef<
       )}
       {...props}
     >
-      {children}
-      {/* Conditionally render ChevronDown only if asChild is NOT true */}
-      {!props.asChild && (
-        <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200" />
+      {/* AQUI ESTÁ A CORREÇÃO: Se asChild for true, renderiza APENAS os filhos.
+          Caso contrário, renderiza os filhos e o ChevronDown dentro de um Fragment. */}
+      {props.asChild ? (
+        children
+      ) : (
+        <>
+          {children}
+          <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200" />
+        </>
       )}
     </AccordionPrimitive.Trigger>
   </AccordionPrimitive.Header>
