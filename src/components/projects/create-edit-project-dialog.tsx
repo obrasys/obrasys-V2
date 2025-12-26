@@ -62,7 +62,7 @@ const CreateEditProjectDialog: React.FC<CreateEditProjectDialogProps> = ({
     const fetchClients = async () => {
       const { data, error } = await supabase.from('clients').select('id, nome');
       if (error) {
-        toast.error(`Erro ao carregar clientes: ${error.message}`);
+        toast.error(`Erro ao carregar clientes: ${error.error.message}`);
         console.error("Erro ao carregar clientes:", error);
       } else {
         setClients(data || []);

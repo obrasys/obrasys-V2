@@ -215,7 +215,7 @@ const CreateEditPayrollEntryDialog: React.FC<CreateEditPayrollEntryDialogProps> 
                           <SelectValue placeholder="Selecione o tipo" />
                         </SelectTrigger>
                       </FormControl>
-                      <SelectContent>
+                    <SelectContent>
                         <SelectItem value="salary">Salário</SelectItem>
                         <SelectItem value="bonus">Bónus</SelectItem>
                         <SelectItem value="overtime">Horas Extras</SelectItem>
@@ -244,7 +244,7 @@ const CreateEditPayrollEntryDialog: React.FC<CreateEditPayrollEntryDialogProps> 
                       </FormControl>
                       <SelectContent>
                         <SelectItem value="placeholder" disabled>Selecione um colaborador</SelectItem>
-                        {companyMembers.filter(member => member.id).map((member) => ( // Filter out members without an ID
+                        {companyMembers.filter(member => member.id).map((member) => (
                           <SelectItem key={member.id} value={member.id!}>
                             {member.first_name} {member.last_name}
                           </SelectItem>

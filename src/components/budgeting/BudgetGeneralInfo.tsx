@@ -177,7 +177,7 @@ const BudgetGeneralInfo: React.FC<BudgetGeneralInfoProps> = ({
             <FormItem className="md:col-span-2">
               <FormLabel>Observações Gerais (opcional)</FormLabel>
               <FormControl>
-                <Textarea {...field} value={field.value || ""} disabled={isApproved} /> {/* Adicionado value={field.value || ""} */}
+                <Textarea {...field} value={field.value || ""} disabled={isApproved} />
               </FormControl>
               <FormMessage />
             </FormItem>
