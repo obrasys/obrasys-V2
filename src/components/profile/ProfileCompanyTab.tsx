@@ -258,8 +258,12 @@ const ProfileCompanyTab: React.FC = () => {
         throw error;
       }
       toast.success("Dados da empresa atualizados com sucesso!");
-      console.log("[ProfileCompanyTab] onSubmit: Company data updated in DB. Calling fetchCompanyData to refresh.");
-      await fetchCompanyData(); // Re-fetch to update UI with new logo_url
+      console.log("[ProfileCompanyTab] onSubmit: Company data updated in DB. Directly updating UI state.");
+      // Directly update the form state and preview state for immediate visual feedback
+      form.setValue('logo_url', finalLogoUrl);
+      setLogoPreview(finalLogoUrl);
+      // No need to call fetchCompanyData() here, as the state is already updated.
+      // The useEffect will eventually re-fetch, ensuring consistency.
     } catch (error: any) {
       console.error("[ProfileCompanyTab] onSubmit: General error during company data update:", error);
       toast.error(`Erro ao atualizar dados da empresa: ${error.message}`);
