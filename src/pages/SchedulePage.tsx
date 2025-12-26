@@ -20,6 +20,7 @@ import { Project } from "@/schemas/project-schema";
 import ScheduleTab from "@/components/projects/schedule-tab"; // Importar o ScheduleTab
 
 const SchedulePage = () => {
+  console.log("SchedulePage: Component is being rendered."); // Adicionado para diagnóstico
   const navigate = useNavigate();
   const { user, isLoading: isSessionLoading } = useSession();
   const [userCompanyId, setUserCompanyId] = React.useState<string | null>(null);
