@@ -14,6 +14,7 @@ import { Project } from "@/schemas/project-schema";
 import { LivroObra, RdoEntry, livroObraSchema, rdoEntrySchema } from "@/schemas/compliance-schema"; // Import RdoEntry and rdoEntrySchema
 import { formatCurrency, formatDate } from "@/utils/formatters";
 import { useSession } from "@/components/SessionContextProvider"; // Import useSession
+import { Company } from "@/schemas/profile-schema"; // Import Company schema
 
 // Importar os novos componentes
 import LivroDeObraList from "@/components/compliance/LivroDeObraList";
@@ -34,6 +35,7 @@ const LivroDeObraPage = () => {
   const [selectedLivroObra, setSelectedLivroObra] = React.useState<LivroObra | null>(null);
   const [rdoEntries, setRdoEntries] = React.useState<RdoEntry[]>([]); // State for RDO entries
   const [projectUsers, setProjectUsers] = React.useState<{ id: string; first_name: string; last_name: string; avatar_url: string | null; }[]>([]); // State for users involved in project
+  const [companyData, setCompanyData] = React.useState<Company | null>(null); // NEW: State for company data
   const [isLoading, setIsLoading] = React.useState(true);
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
   const [isManualRdoDialogOpen, setIsManualRdoDialogOpen] = React.useState(false);
@@ -75,6 +77,27 @@ const LivroDeObraPage = () => {
       setUserCompanyId(profileData.company_id);
     }
   }, [user]);
+
+  // NEW: Fetch company data
+  const fetchCompanyData = React.useCallback(async () => {
+    if (!userCompanyId) {
+      setCompanyData(null);
+      return;
+    }
+    const { data, error } = await supabase
+      .from('companies')
+      .select('*')
+      .eq('id', userCompanyId)
+      .single();
+
+    if (error) {
+      console.error("Erro ao carregar dados da empresa:", error);
+      toast.error(`Erro ao carregar dados da empresa: ${error.message}`);
+      setCompanyData(null);
+    } else {
+      setCompanyData(data);
+    }
+  }, [userCompanyId]);
 
   const fetchProjectsAndLivrosObra = React.useCallback(async () => {
     setIsLoading(true);
@@ -184,8 +207,9 @@ const LivroDeObraPage = () => {
   React.useEffect(() => {
     if (userCompanyId) {
       fetchProjectsAndLivrosObra();
+      fetchCompanyData(); // NEW: Fetch company data here
     }
-  }, [userCompanyId, fetchProjectsAndLivrosObra]);
+  }, [userCompanyId, fetchProjectsAndLivrosObra, fetchCompanyData]);
 
   React.useEffect(() => {
     fetchRdoEntries();
@@ -246,7 +270,7 @@ const LivroDeObraPage = () => {
     }
   };
 
-  const generatePdfContent = (livro: LivroObra, project: Project | undefined, rdos: RdoEntry[], users: { id: string; first_name: string; last_name: string; }[]) => {
+  const generatePdfContent = (livro: LivroObra, project: Project | undefined, rdos: RdoEntry[], users: { id: string; first_name: string; last_name: string; }[], company: Company | null) => {
     const totalDias = rdos.length;
     const custoTotal = rdos.reduce((sum, rdo) => {
       // Attempt to parse cost from details if available, otherwise default to 0
@@ -305,6 +329,7 @@ const LivroDeObraPage = () => {
               .signature-block { width: 45%; }
               .signature-line { border-bottom: 1px solid #333; width: 80%; margin: 0 auto 10px auto; padding-bottom: 5px; }
               .footer { margin-top: 50px; font-size: 0.75em; text-align: center; color: #777; border-top: 1px solid #eee; padding-top: 20px; }
+              .company-logo { max-height: 60px; margin-bottom: 15px; }
               @media print {
                   body { margin: 0; }
                   .no-print { display: none; }
@@ -318,13 +343,16 @@ const LivroDeObraPage = () => {
           </div>
           <h1>LIVRO DE OBRA DIGITAL</h1>
           <div class="header-info">
+              ${company?.logo_url ? `<img src="${company.logo_url}" alt="${company.name} Logo" class="company-logo" />` : ''}
+              <p><strong>Empresa:</strong> ${company?.name || 'N/A'}</p>
+              <p><strong>NIF da Empresa:</strong> ${company?.nif || 'N/A'}</p>
+              <p><strong>Endereço da Empresa:</strong> ${company?.address || 'N/A'}</p>
               <p><strong>Obra:</strong> ${project?.nome || 'N/A'}</p>
-              <p><strong>Localização:</strong> ${project?.localizacao || 'N/A'}</p>
+              <p><strong>Localização da Obra:</strong> ${project?.localizacao || 'N/A'}</p>
               <p><strong>Cliente:</strong> ${project?.client_name || 'N/A'}</p>
-              <p><strong>Empresa Responsável:</strong> Obra Sys</p>
-              <p><strong>Período:</strong> ${formatDate(livro.periodo_inicio)} a ${formatDate(livro.periodo_fim)}</p>
+              <p><strong>Período do Livro:</strong> ${formatDate(livro.periodo_inicio)} a ${formatDate(livro.periodo_fim)}</p>
               <p><strong>Estado do Livro:</strong> <span style="text-transform: capitalize;">${livro.estado.replace('_', ' ')}</span></p>
-              ${livro.observacoes ? `<p><strong>Observações:</strong> ${livro.observacoes}</p>` : ''}
+              ${livro.observacoes ? `<p><strong>Observações do Livro:</strong> ${livro.observacoes}</p>` : ''}
           </div>
 
           <h2>Registos Diários de Obra (RDOs)</h2>
@@ -383,7 +411,7 @@ const LivroDeObraPage = () => {
       return;
     }
     const project = projects.find(p => p.id === selectedLivroObra.project_id);
-    const content = generatePdfContent(selectedLivroObra, project, rdoEntries, projectUsers);
+    const content = generatePdfContent(selectedLivroObra, project, rdoEntries, projectUsers, companyData);
     const printWindow = window.open('', '_blank');
     if (printWindow) {
       printWindow.document.write(content);

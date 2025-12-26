@@ -25,6 +25,7 @@ import { useSession } from "@/components/SessionContextProvider";
 import PaymentDialog from "./PaymentDialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { v4 as uuidv4 } from "uuid"; // Import uuidv4
+import { Company } from "@/schemas/profile-schema"; // Import Company schema
 
 interface InvoiceDetailViewProps {
   invoice: InvoiceWithRelations;
@@ -43,10 +44,7 @@ const InvoiceDetailView: React.FC<InvoiceDetailViewProps> = ({
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = React.useState(false);
   const [invoiceItems, setInvoiceItems] = React.useState<InvoiceItem[]>([]);
   const [payments, setPayments] = React.useState<Payment[]>([]);
-
-  console.log("InvoiceDetailView: invoice prop", invoice);
-  console.log("InvoiceDetailView: isLoadingDetails", isLoadingDetails);
-  console.log("InvoiceDetailView: isPaymentDialogOpen", isPaymentDialogOpen);
+  const [companyData, setCompanyData] = React.useState<Company | null>(null); // NEW: State for company data
 
   const fetchInvoiceDetails = React.useCallback(async () => {
     setIsLoadingDetails(true);
@@ -68,8 +66,26 @@ const InvoiceDetailView: React.FC<InvoiceDetailViewProps> = ({
     } else {
       setPayments(paymentsRes.data || []);
     }
+
+    // NEW: Fetch company data
+    if (invoice.company_id) {
+      const { data: companyRes, error: companyError } = await supabase
+        .from('companies')
+        .select('*')
+        .eq('id', invoice.company_id)
+        .single();
+      if (companyError) {
+        console.error("Erro ao carregar dados da empresa para PDF:", companyError);
+        setCompanyData(null);
+      } else {
+        setCompanyData(companyRes);
+      }
+    } else {
+      setCompanyData(null);
+    }
+
     setIsLoadingDetails(false);
-  }, [invoice.id]);
+  }, [invoice.id, invoice.company_id]);
 
   React.useEffect(() => {
     fetchInvoiceDetails();
@@ -183,7 +199,7 @@ const InvoiceDetailView: React.FC<InvoiceDetailViewProps> = ({
   const isFullyPaid = remainingAmount <= 0;
   const isOverdue = new Date(invoice.due_date) < new Date() && !isFullyPaid && invoice.status !== "cancelled";
 
-  const generatePdfContent = (invoice: InvoiceWithRelations, items: InvoiceItem[], payments: Payment[]) => {
+  const generatePdfContent = (invoice: InvoiceWithRelations, items: InvoiceItem[], payments: Payment[], company: Company | null) => {
     const clientName = invoice.clients?.nome || "N/A";
     const projectName = invoice.projects?.nome || "N/A";
 
@@ -231,6 +247,7 @@ const InvoiceDetailView: React.FC<InvoiceDetailViewProps> = ({
               .status-paid { background-color: #dcfce7; color: #16a34a; }
               .status-overdue { background-color: #fee2e2; color: #ef4444; }
               .status-cancelled { background-color: #e5e7eb; color: #6b7280; }
+              .company-logo { max-height: 60px; margin-bottom: 15px; }
               @media print {
                   body { margin: 0; }
                   .no-print { display: none; }
@@ -244,6 +261,10 @@ const InvoiceDetailView: React.FC<InvoiceDetailViewProps> = ({
           </div>
           <h1>FATURA Nº ${invoice.invoice_number}</h1>
           <div class="header-info">
+              ${company?.logo_url ? `<img src="${company.logo_url}" alt="${company.name} Logo" class="company-logo" />` : ''}
+              <p><strong>Empresa:</strong> ${company?.name || 'N/A'}</p>
+              <p><strong>NIF da Empresa:</strong> ${company?.nif || 'N/A'}</p>
+              <p><strong>Endereço da Empresa:</strong> ${company?.address || 'N/A'}</p>
               <p><strong>Cliente:</strong> ${clientName}</p>
               <p><strong>Obra:</strong> ${projectName}</p>
               <p><strong>Data de Emissão:</strong> ${formatDate(invoice.issue_date)}</p>
@@ -302,7 +323,7 @@ const InvoiceDetailView: React.FC<InvoiceDetailViewProps> = ({
   };
 
   const handleGeneratePdf = () => {
-    const content = generatePdfContent(invoice, invoiceItems, payments);
+    const content = generatePdfContent(invoice, invoiceItems, payments, companyData);
     const printWindow = window.open('', '_blank');
     if (printWindow) {
       printWindow.document.write(content);
@@ -355,7 +376,7 @@ const InvoiceDetailView: React.FC<InvoiceDetailViewProps> = ({
           )}
           {invoice.status === "cancelled" && (
             <Button variant="secondary" onClick={() => handleUpdateInvoiceStatus("pending")} disabled={isProcessingAction}>
-              {isProcessingAction ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <CheckCircle className="h-4 w-4 mr-2" />} Reativar Fatura
+              {isProcessingAction ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> /> : <CheckCircle className="h-4 w-4 mr-2" />} Reativar Fatura
             </Button>
           )}
         </div>
