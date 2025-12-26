@@ -130,7 +130,7 @@ const BudgetChapterForm: React.FC<BudgetChapterFormProps> = ({
                 <FormItem className="md:col-span-2">
                   <FormLabel>Observações (opcional)</FormLabel>
                   <FormControl>
-                    <Textarea {...field} disabled={isApproved} placeholder="Notas adicionais sobre este capítulo..." className="min-h-[60px] px-3 py-2" />
+                    <Textarea {...field} value={field.value || ""} disabled={isApproved} placeholder="Notas adicionais sobre este capítulo..." className="min-h-[60px] px-3 py-2" /> {/* Adicionado value={field.value || ""} */}
                   </FormControl>
                   <FormMessage />
                 </FormItem>
