@@ -2,7 +2,7 @@
 
 import React from "react";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, Filter, Download, HardHat, CheckCircle, AlertTriangle, TrendingUp, DollarSign, BarChart3, CalendarDays, FileText, ArrowLeft, Loader2 } from "lucide-react";
+import { PlusCircle, Filter, Download, HardHat, CheckCircle, AlertTriangle, TrendingUp, DollarSign, BarChart3, CalendarDays, FileText, ArrowLeft, Loader2, Edit } from "lucide-react"; // Adicionado Edit
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import KPICard from "@/components/KPICard";
@@ -35,6 +35,9 @@ const ProjectsPage = () => {
   const [livrosObraForProject, setLivrosObraForProject] = React.useState<LivroObra[]>([]);
   const [isLoadingLivrosObraForProject, setIsLoadingLivrosObraForProject] = React.useState(false);
   const [isCreatingLivroObra, setIsCreatingLivroObra] = React.useState(false);
+
+  const [isLoadingBudgetStatus, setIsLoadingBudgetStatus] = React.useState(false); // NEW: State for budget status loading
+  const [selectedBudgetStatus, setSelectedBudgetStatus] = React.useState<string | null>(null); // NEW: State for selected budget status
 
   // Fetch user's company ID
   const fetchUserCompanyId = React.useCallback(async () => {
@@ -119,6 +122,34 @@ const ProjectsPage = () => {
       fetchLivrosObraForProject();
     }
   }, [selectedProject?.id, fetchLivrosObraForProject]);
+
+  // NEW: Fetch budget status for the selected project
+  const fetchSelectedBudgetStatus = React.useCallback(async () => {
+    if (!selectedProject?.budget_id) {
+      setSelectedBudgetStatus(null);
+      return;
+    }
+    setIsLoadingBudgetStatus(true);
+    const { data, error } = await supabase
+      .from('budgets')
+      .select('estado')
+      .eq('id', selectedProject.budget_id)
+      .single();
+
+    if (error) {
+      console.error("Error fetching selected budget status:", error);
+      setSelectedBudgetStatus(null);
+    } else if (data) {
+      setSelectedBudgetStatus(data.estado);
+    }
+    setIsLoadingBudgetStatus(false);
+  }, [selectedProject?.budget_id]);
+
+  React.useEffect(() => {
+    if (selectedProject?.budget_id) {
+      fetchSelectedBudgetStatus();
+    }
+  }, [selectedProject?.budget_id, fetchSelectedBudgetStatus]);
 
   const handleCreateLivroObraForProject = async () => {
     if (!selectedProject || !userCompanyId) {
@@ -285,7 +316,23 @@ const ProjectsPage = () => {
           </TabsContent>
           <TabsContent value="budget">
             {selectedProject.budget_id && selectedProject.id ? (
-              <ProjectBudgetDetails budgetId={selectedProject.budget_id} projectId={selectedProject.id} />
+              <>
+                <div className="flex justify-end mb-4">
+                  <Button
+                    onClick={() => navigate(`/budgeting/edit/${selectedProject.budget_id}`)}
+                    disabled={isLoadingBudgetStatus || selectedBudgetStatus === "Aprovado"}
+                    className="flex items-center gap-2"
+                  >
+                    {isLoadingBudgetStatus ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <Edit className="h-4 w-4 mr-2" />
+                    )}
+                    Editar Orçamento
+                  </Button>
+                </div>
+                <ProjectBudgetDetails budgetId={selectedProject.budget_id} projectId={selectedProject.id} />
+              </>
             ) : (
               <EmptyState
                 icon={DollarSign}
