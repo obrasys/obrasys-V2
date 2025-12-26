@@ -11,6 +11,7 @@ import { DataTable } from "@/components/work-items/data-table"; // Reusing gener
 import { createProjectColumns } from "@/components/projects/columns";
 import CreateEditProjectDialog from "@/components/projects/create-edit-project-dialog";
 import ScheduleTab from "@/components/projects/schedule-tab";
+import ProjectBudgetDetails from "@/components/projects/ProjectBudgetDetails"; // NEW: Import ProjectBudgetDetails
 import { Project } from "@/schemas/project-schema";
 import { v4 as uuidv4 } from "uuid";
 import { toast } from "sonner";
@@ -283,24 +284,15 @@ const ProjectsPage = () => {
             </Card>
           </TabsContent>
           <TabsContent value="budget">
-            <Card>
-              <CardHeader><CardTitle>Orçamento da Obra</CardTitle></CardHeader>
-              <CardContent>
-                {selectedProject.budget_id ? (
-                  <EmptyState
-                    icon={DollarSign}
-                    title="Detalhes do Orçamento (Em breve)"
-                    description="Aqui serão exibidos os detalhes do orçamento ligado a esta obra."
-                  />
-                ) : (
-                  <EmptyState
-                    icon={DollarSign}
-                    title="Nenhum orçamento associado"
-                    description="Esta obra ainda não tem um orçamento aprovado e ligado."
-                  />
-                )}
-              </CardContent>
-            </Card>
+            {selectedProject.budget_id && selectedProject.id ? (
+              <ProjectBudgetDetails budgetId={selectedProject.budget_id} projectId={selectedProject.id} />
+            ) : (
+              <EmptyState
+                icon={DollarSign}
+                title="Nenhum orçamento associado"
+                description="Esta obra ainda não tem um orçamento aprovado e ligado."
+              />
+            )}
           </TabsContent>
           <TabsContent value="schedule">
             {selectedProject.budget_id ? (
