@@ -30,6 +30,7 @@ import PriceDatabasePage from "@/pages/PriceDatabasePage";
 import ApprovalsPage from "@/pages/ApprovalsPage";
 import CollaboratorsPage from "@/pages/CollaboratorsPage";
 import ReportsPage from "@/pages/ReportsPage";
+import SchedulePage from "@/pages/SchedulePage"; // Importar SchedulePage
 
 import { Toaster } from "@/components/ui/sonner";
 
@@ -60,6 +61,7 @@ console.log("App.tsx: PriceDatabasePage is", typeof PriceDatabasePage);
 console.log("App.tsx: ApprovalsPage is", typeof ApprovalsPage);
 console.log("App.tsx: CollaboratorsPage is", typeof CollaboratorsPage);
 console.log("App.tsx: ReportsPage is", typeof ReportsPage);
+console.log("App.tsx: SchedulePage is", typeof SchedulePage); // Adicionado
 console.log("App.tsx: Toaster is", typeof Toaster);
 
 
@@ -90,6 +92,7 @@ const App = () => {
             <Route path="compliance/livro-de-obra" element={<LivroDeObraPage />} />
             <Route path="compliance/checklist" element={<ComplianceChecklistPage />} />
             <Route path="projects" element={<ProjectsPage />} />
+            <Route path="schedule" element={<SchedulePage />} /> {/* Rota adicionada aqui */}
             <Route path="finance-management" element={<FinancialDashboardsPage />} />
             <Route path="accounts" element={<AccountsPage />} />
             <Route path="finance-management/payroll-integration" element={<PayrollIntegrationPage />} />
