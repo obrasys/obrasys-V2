@@ -69,6 +69,7 @@ const ProfileCompanyTab: React.FC = () => {
       setIsAdmin(false);
       form.reset();
       setLogoPreview(null);
+      console.log("[ProfileCompanyTab] No user, resetting all company data.");
       return;
     }
     setIsLoading(true);
@@ -83,7 +84,7 @@ const ProfileCompanyTab: React.FC = () => {
       if (profileError.code === 'PGRST116') {
         console.warn("No profile found for user. Assuming trigger will handle or profile is being created.");
       } else {
-        console.error("Erro ao carregar perfil para company_id:", profileError);
+        console.error("[ProfileCompanyTab] Error fetching profile for company_id:", profileError);
         toast.error(`Erro ao carregar dados da empresa: ${profileError.message}`);
       }
       setCompanyId(null);
@@ -96,6 +97,7 @@ const ProfileCompanyTab: React.FC = () => {
 
     setCompanyId(profileData?.company_id || null);
     setIsAdmin(profileData?.role === 'admin');
+    console.log("[ProfileCompanyTab] Fetched profile. Company ID:", profileData?.company_id, "Role:", profileData?.role);
 
     if (profileData?.company_id) {
       const { data: companyData, error: companyError } = await supabase
@@ -105,11 +107,12 @@ const ProfileCompanyTab: React.FC = () => {
         .single();
 
       if (companyError) {
-        console.error("Erro ao carregar dados da empresa:", companyError);
+        console.error("[ProfileCompanyTab] Error fetching company data:", companyError);
         toast.error(`Erro ao carregar dados da empresa: ${companyError.message}`);
         form.reset();
         setLogoPreview(null);
       } else if (companyData) {
+        console.log("[ProfileCompanyTab] Fetched company data:", companyData);
         form.reset({
           name: companyData.name || "",
           nif: companyData.nif || null,
@@ -119,8 +122,11 @@ const ProfileCompanyTab: React.FC = () => {
           logo_url: companyData.logo_url || null,
         });
         setLogoPreview(companyData.logo_url);
+        console.log("[ProfileCompanyTab] Form reset with logo_url:", companyData.logo_url);
+        console.log("[ProfileCompanyTab] logoPreview set to:", companyData.logo_url);
       }
     } else {
+      console.log("[ProfileCompanyTab] No company ID found for user, resetting form.");
       form.reset();
       setLogoPreview(null);
     }
@@ -182,12 +188,14 @@ const ProfileCompanyTab: React.FC = () => {
 
     setIsSaving(true);
     let finalLogoUrl = data.logo_url;
+    console.log("[ProfileCompanyTab] onSubmit: Initial finalLogoUrl from form:", finalLogoUrl);
 
     try {
       if (logoFile) {
         setIsUploading(true);
         const fileExtension = logoFile.name.split('.').pop();
         const filePath = `${companyId}/${uuidv4()}.${fileExtension}`;
+        console.log("[ProfileCompanyTab] onSubmit: Uploading new logo to path:", filePath);
 
         const { data: uploadData, error: uploadError } = await supabase.storage
           .from('company-logos')
@@ -197,6 +205,7 @@ const ProfileCompanyTab: React.FC = () => {
           });
 
         if (uploadError) {
+          console.error("[ProfileCompanyTab] onSubmit: Supabase Storage Upload Error:", uploadError);
           throw new Error(`Erro ao carregar logótipo: ${uploadError.message}`);
         }
         
@@ -205,21 +214,27 @@ const ProfileCompanyTab: React.FC = () => {
           .getPublicUrl(filePath);
         
         if (!publicUrlData.publicUrl) {
+          console.error("[ProfileCompanyTab] onSubmit: Could not get public URL after upload.");
           throw new Error("Não foi possível obter o URL público do logótipo.");
         }
         finalLogoUrl = publicUrlData.publicUrl;
         toast.success("Logótipo carregado com sucesso!");
+        console.log("[ProfileCompanyTab] onSubmit: New logo public URL:", finalLogoUrl);
 
       } else if (data.logo_url === null && currentLogoUrlInForm) {
+        console.log("[ProfileCompanyTab] onSubmit: User requested to remove logo. Current URL:", currentLogoUrlInForm);
         const urlParts = currentLogoUrlInForm.split('/public/company-logos/');
         if (urlParts.length > 1) {
           const storagePath = urlParts[1];
+          console.log("[ProfileCompanyTab] onSubmit: Deleting old logo from storage path:", storagePath);
           const { error: deleteError } = await supabase.storage
             .from('company-logos')
             .remove([storagePath]);
 
           if (deleteError) {
-            console.warn("Erro ao remover logótipo antigo do storage:", deleteError.message);
+            console.warn("[ProfileCompanyTab] onSubmit: Error removing old logo from storage:", deleteError.message);
+          } else {
+            console.log("[ProfileCompanyTab] onSubmit: Old logo removed from storage successfully.");
           }
         }
         finalLogoUrl = null;
@@ -239,17 +254,20 @@ const ProfileCompanyTab: React.FC = () => {
         .eq('id', companyId);
 
       if (error) {
+        console.error("[ProfileCompanyTab] onSubmit: Supabase Company Update Error:", error);
         throw error;
       }
       toast.success("Dados da empresa atualizados com sucesso!");
-      fetchCompanyData(); // Re-fetch to update UI with new logo_url
+      console.log("[ProfileCompanyTab] onSubmit: Company data updated in DB. Calling fetchCompanyData to refresh.");
+      await fetchCompanyData(); // Re-fetch to update UI with new logo_url
     } catch (error: any) {
-      console.error("Erro ao atualizar dados da empresa:", error);
+      console.error("[ProfileCompanyTab] onSubmit: General error during company data update:", error);
       toast.error(`Erro ao atualizar dados da empresa: ${error.message}`);
     } finally {
       setIsSaving(false);
       setIsUploading(false);
       setLogoFile(null);
+      console.log("[ProfileCompanyTab] onSubmit: Finally block executed. isSaving:", isSaving, "isUploading:", isUploading, "logoFile:", logoFile);
     }
   };
 
