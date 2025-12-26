@@ -376,7 +376,7 @@ const InvoiceDetailView: React.FC<InvoiceDetailViewProps> = ({
           )}
           {invoice.status === "cancelled" && (
             <Button variant="secondary" onClick={() => handleUpdateInvoiceStatus("pending")} disabled={isProcessingAction}>
-              {isProcessingAction ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> /> : <CheckCircle className="h-4 w-4 mr-2" />} Reativar Fatura
+              {isProcessingAction ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <CheckCircle className="h-4 w-4 mr-2" />} Reativar Fatura
             </Button>
           )}
         </div>
