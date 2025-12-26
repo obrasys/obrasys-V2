@@ -133,39 +133,39 @@ const BudgetServiceRow: React.FC<BudgetServiceRowProps> = ({
           name={`chapters.${chapterIndex}.items.${itemIndex}.servico`}
           render={({ field }) => (
             <FormItem className="mb-0">
-              <FormControl>
-                <div className="flex items-center gap-1">
+              <div className="flex items-center gap-1">
+                <FormControl>
                   <ArticleAutocompleteInput
                     value={field.value}
                     onValueChange={field.onChange}
                     onSelectArticle={handleSelectArticle}
-                    userCompanyId={userCompanyId || ""} // Pass userCompanyId
+                    userCompanyId={userCompanyId || ""}
                     disabled={isApproved || isArticleSelected}
                     placeholder="Pesquisar ou digitar serviço..."
                   />
-                  {!isApproved && (
-                    isArticleSelected ? (
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button type="button" variant="ghost" size="icon" onClick={handleClearArticle} className="flex-shrink-0">
-                            <XCircle className="h-4 w-4 text-muted-foreground" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>Limpar artigo selecionado</TooltipContent>
-                      </Tooltip>
-                    ) : (
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button type="button" variant="ghost" size="icon" onClick={() => setIsArticleSelectDialogOpen(true)} className="flex-shrink-0">
-                            <Search className="h-4 w-4 text-muted-foreground" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>Selecionar artigo da base de dados</TooltipContent>
-                      </Tooltip>
-                    )
-                  )}
-                </div>
-              </FormControl>
+                </FormControl>
+                {!isApproved && (
+                  isArticleSelected ? (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button type="button" variant="ghost" size="icon" onClick={handleClearArticle} className="flex-shrink-0">
+                          <XCircle className="h-4 w-4 text-muted-foreground" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Limpar artigo selecionado</TooltipContent>
+                    </Tooltip>
+                  ) : (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button type="button" variant="ghost" size="icon" onClick={() => setIsArticleSelectDialogOpen(true)} className="flex-shrink-0">
+                          <Search className="h-4 w-4 text-muted-foreground" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Selecionar artigo da base de dados</TooltipContent>
+                    </Tooltip>
+                  )
+                )}
+              </div>
               <FormMessage />
             </FormItem>
           )}
