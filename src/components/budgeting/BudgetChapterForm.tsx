@@ -1,3 +1,5 @@
+"use client";
+
 import React from "react";
 import { UseFormReturn } from "react-hook-form";
 import {
@@ -99,7 +101,6 @@ const BudgetChapterForm: React.FC<BudgetChapterFormProps> = ({
 
   return (
     <AccordionItem value={chapterId}>
-      {/* 🔒 CORREÇÃO CRÍTICA */}
       <AccordionTrigger asChild>
         <div className="flex w-full items-center justify-between py-2">
           <div className="flex items-center gap-2">
@@ -132,8 +133,8 @@ const BudgetChapterForm: React.FC<BudgetChapterFormProps> = ({
               </span>
             )}
           </div>
-
-          <ChevronDown className="h-4 w-4 shrink-0 opacity-60" />
+          {/* REMOVIDO: O AccordionTrigger já adiciona o seu próprio ChevronDown */}
+          {/* <ChevronDown className="h-4 w-4 shrink-0 opacity-60" /> */}
         </div>
       </AccordionTrigger>
 
