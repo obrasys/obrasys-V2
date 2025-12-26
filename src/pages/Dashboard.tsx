@@ -19,20 +19,92 @@ import {
   Bell,
   RefreshCw,
   Settings,
+  Loader2, // Import Loader2 for loading state
 } from "lucide-react";
-import { Link, useNavigate } from "react-router-dom"; // Importar useNavigate
-import NavButton from "@/components/NavButton"; // Importar NavButton
+import { Link, useNavigate } from "react-router-dom";
+import NavButton from "@/components/NavButton";
+import { useSession } from "@/components/SessionContextProvider";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import { Project } from "@/schemas/project-schema"; // Import Project schema
+import { Skeleton } from "@/components/ui/skeleton"; // Import Skeleton for loading states
 
 const Dashboard = () => {
-  const navigate = useNavigate(); // Inicializar useNavigate
+  const navigate = useNavigate();
+  const { user, isLoading: isSessionLoading } = useSession();
+  const [userCompanyId, setUserCompanyId] = React.useState<string | null>(null);
+  const [projects, setProjects] = React.useState<Project[]>([]);
+  const [isLoadingProjects, setIsLoadingProjects] = React.useState(true);
+
+  // Fetch user's company ID
+  const fetchUserCompanyId = React.useCallback(async () => {
+    if (!user) {
+      setUserCompanyId(null);
+      return;
+    }
+    const { data: profileData, error: profileError } = await supabase
+      .from('profiles')
+      .select('company_id')
+      .eq('id', user.id)
+      .single();
+
+    if (profileError) {
+      console.error("Erro ao carregar company_id do perfil:", profileError);
+      setUserCompanyId(null);
+    } else if (profileData) {
+      setUserCompanyId(profileData.company_id);
+    }
+  }, [user]);
+
+  // Fetch projects for the current company
+  const fetchProjects = React.useCallback(async () => {
+    if (!userCompanyId) {
+      setProjects([]);
+      setIsLoadingProjects(false);
+      return;
+    }
+    setIsLoadingProjects(true);
+    const { data, error } = await supabase
+      .from('projects')
+      .select('id, nome, estado, progresso, custo_planeado, custo_real')
+      .eq('company_id', userCompanyId)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      toast.error(`Erro ao carregar obras: ${error.message}`);
+      console.error("Erro ao carregar obras:", error);
+      setProjects([]);
+    } else {
+      setProjects(data || []);
+    }
+    setIsLoadingProjects(false);
+  }, [userCompanyId]);
+
+  React.useEffect(() => {
+    if (!isSessionLoading) {
+      fetchUserCompanyId();
+    }
+  }, [isSessionLoading, fetchUserCompanyId]);
+
+  React.useEffect(() => {
+    if (userCompanyId) {
+      fetchProjects();
+    }
+  }, [userCompanyId, fetchProjects]);
+
+  const activeProjects = projects.filter(p => p.estado === "Em execução");
+  const delayedProjects = projects.filter(p => p.estado === "Atrasada");
+
+  // Placeholder for user name, replace with actual profile data if available
+  const userName = "Bezerra Cavalcanti"; // Replace with profile?.first_name + ' ' + profile?.last_name
 
   return (
-    <div className="space-y-6"> {/* Main content wrapper for Dashboard */}
+    <div className="space-y-6">
       {/* Header - now specific to Dashboard content */}
       <div className="flex flex-col md:flex-row items-center justify-between pb-4 md:pb-6 border-b border-border mb-4 md:mb-6">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold text-primary">
-            Bem-vindo, Bezerra Cavalcanti
+            Bem-vindo, {userName}
           </h1>
           <p className="text-muted-foreground text-sm">Administrador</p>
         </div>
@@ -42,15 +114,15 @@ const Dashboard = () => {
       <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 md:gap-6 mb-8">
         <KPICard
           title="Obras Ativas"
-          value="0"
-          description="+2 esta semana"
+          value={isLoadingProjects ? <Loader2 className="h-5 w-5 animate-spin" /> : activeProjects.length.toString()}
+          description="+2 esta semana" // This would need actual data to be dynamic
           icon={HardHat}
           iconColorClass="text-blue-500"
         />
         <KPICard
           title="Obras em Atraso"
-          value="0"
-          description="-1 desde ontem"
+          value={isLoadingProjects ? <Loader2 className="h-5 w-5 animate-spin" /> : delayedProjects.length.toString()}
+          description="-1 desde ontem" // This would need actual data to be dynamic
           icon={AlertTriangle}
           iconColorClass="text-orange-500"
         />
@@ -92,13 +164,38 @@ const Dashboard = () => {
               </NavButton>
             </CardHeader>
             <CardContent>
-              <EmptyState
-                icon={HardHat}
-                title="Nenhuma obra ativa encontrada"
-                description="Comece um novo projeto para ver o seu progresso aqui."
-                buttonText="Nova Obra"
-                onButtonClick={() => console.log("Nova Obra")}
-              />
+              {isLoadingProjects ? (
+                <div className="flex justify-center items-center h-32">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                </div>
+              ) : activeProjects.length > 0 ? (
+                <div className="space-y-3">
+                  {activeProjects.slice(0, 3).map(project => ( // Show up to 3 active projects
+                    <div key={project.id} className="flex items-center justify-between p-3 border rounded-md">
+                      <div className="flex flex-col">
+                        <span className="font-medium">{project.nome}</span>
+                        <span className="text-sm text-muted-foreground">Progresso: {project.progresso}%</span>
+                      </div>
+                      <NavButton to={`/projects`} onClick={() => navigate(`/projects?selected=${project.id}`)} variant="outline" size="sm">
+                        Ver Detalhes
+                      </NavButton>
+                    </div>
+                  ))}
+                  {activeProjects.length > 3 && (
+                    <p className="text-sm text-muted-foreground mt-2">
+                      E mais {activeProjects.length - 3} obras ativas.
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <EmptyState
+                  icon={HardHat}
+                  title="Nenhuma obra ativa encontrada"
+                  description="Comece um novo projeto para ver o seu progresso aqui."
+                  buttonText="Nova Obra"
+                  onButtonClick={() => navigate("/projects")}
+                />
+              )}
             </CardContent>
           </Card>
 
