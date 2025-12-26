@@ -22,6 +22,7 @@ export const companySchema = z.object({
   address: z.string().optional().nullable(),
   logo_url: z.string().url("URL do logótipo inválido.").optional().nullable(),
   created_at: z.string().optional(),
+  updated_at: z.string().optional(), // Adicionado: updated_at
 });
 
 export type Company = z.infer<typeof companySchema>;
