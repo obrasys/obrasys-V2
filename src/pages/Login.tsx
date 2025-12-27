@@ -30,6 +30,7 @@ const Login: React.FC = () => {
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = React.useState(false);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const [needsEmailConfirmation, setNeedsEmailConfirmation] = React.useState(false);
 
   // Evitar travar no estado de envio: timeout de segurança para resetar o botão
   React.useEffect(() => {
@@ -56,8 +57,11 @@ const Login: React.FC = () => {
 
       if (error) {
         const msg = error.message || "";
-        if (msg.toLowerCase().includes("confirm")) {
-          toast.error("Email não confirmado. Verifique a sua caixa de entrada para confirmar a conta.");
+        const needsConfirm = msg.toLowerCase().includes("confirm");
+        setNeedsEmailConfirmation(needsConfirm);
+
+        if (needsConfirm) {
+          toast.error("Email não confirmado. Verifique o seu email ou reenvie a confirmação abaixo.");
         } else if (msg.toLowerCase().includes("invalid") || msg.toLowerCase().includes("credentials")) {
           toast.error("Credenciais inválidas. Verifique o e-mail e a palavra-passe.");
         } else {
@@ -66,22 +70,34 @@ const Login: React.FC = () => {
         return;
       }
 
-      // Navegar imediatamente quando o signIn retornar sessão, mesmo que o listener demore
       if (signInData?.session) {
         toast.success('Sessão iniciada com sucesso!');
         navigate('/dashboard');
         return;
       }
 
-      // Caso raro: signIn sem sessão imediata, aguarda um pouco e força navegação
       toast.success('Sessão iniciada! A redirecionar...');
       setTimeout(() => navigate('/dashboard'), 500);
     } catch (error: any) {
       toast.error(`Ocorreu um erro inesperado: ${error.message}`);
     } finally {
-      // Sempre finalizar o estado de envio
       setIsSubmitting(false);
     }
+  };
+
+  const handleResendConfirmation = async () => {
+    const email = (form.getValues("email") || "").trim();
+    if (!email) {
+      toast.error("Insira o seu e-mail acima para reenviar a confirmação.");
+      return;
+    }
+    const { error } = await supabase.auth.resend({ type: "signup", email });
+    if (error) {
+      toast.error(`Falha ao reenviar confirmação: ${error.message}`);
+      return;
+    }
+    toast.success("E-mail de confirmação reenviado! Verifique a sua caixa de entrada.");
+    setNeedsEmailConfirmation(false);
   };
 
   return (
@@ -168,6 +184,11 @@ const Login: React.FC = () => {
           <Link to="/login" className="text-sm text-primary hover:underline">
             Esqueceu a palavra-passe?
           </Link>
+          {needsEmailConfirmation && (
+            <Button variant="outline" size="sm" onClick={handleResendConfirmation}>
+              Reenviar e-mail de confirmação
+            </Button>
+          )}
           <p className="text-sm text-muted-foreground">
             Ainda não tem conta?{" "}
             <Link to="/signup" className="text-primary hover:underline">
