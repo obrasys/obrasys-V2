@@ -32,6 +32,10 @@ const Login: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [needsEmailConfirmation, setNeedsEmailConfirmation] = React.useState(false);
 
+  const emailRedirectTo =
+    (import.meta.env.VITE_APP_BASE_URL as string) ||
+    (typeof window !== "undefined" ? window.location.origin : "https://app.obrasys.pt");
+
   // Evitar travar no estado de envio: timeout de segurança para resetar o botão
   React.useEffect(() => {
     if (!isSubmitting) return;
@@ -91,7 +95,13 @@ const Login: React.FC = () => {
       toast.error("Insira o seu e-mail acima para reenviar a confirmação.");
       return;
     }
-    const { error } = await supabase.auth.resend({ type: "signup", email });
+    const { error } = await supabase.auth.resend({
+      type: "signup",
+      email,
+      options: {
+        emailRedirectTo, // Garantir que o link aponte para app.obrasys.pt
+      },
+    });
     if (error) {
       toast.error(`Falha ao reenviar confirmação: ${error.message}`);
       return;

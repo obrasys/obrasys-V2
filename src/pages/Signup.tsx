@@ -56,6 +56,10 @@ const Signup: React.FC = () => {
   const [showConfirmPassword, setShowConfirmPassword] = React.useState(false);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
 
+  const emailRedirectTo =
+    (import.meta.env.VITE_APP_BASE_URL as string) ||
+    (typeof window !== "undefined" ? window.location.origin : "https://app.obrasys.pt");
+
   // Espera robusta pelo company_id criado pelo trigger, com timeout curto
   async function waitForCompanyId(userId: string, maxAttempts = 8, delayMs = 600): Promise<string | null> {
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
@@ -100,8 +104,9 @@ const Signup: React.FC = () => {
             phone: data.phone,
             company: data.company,
             nif: data.nif,
-            company_type: data.companyType,
+            company_type: data.companyType, // Pass company type to auth metadata
           },
+          emailRedirectTo, // Redirect de confirmação para app.obrasys.pt
         },
       });
 
