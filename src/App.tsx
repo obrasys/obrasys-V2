@@ -29,12 +29,12 @@ import WorkItemsPage from "@/pages/WorkItemsPage";
 import PriceDatabasePage from "@/pages/PriceDatabasePage";
 import ApprovalsPage from "@/pages/ApprovalsPage";
 import CollaboratorsPage from "@/pages/CollaboratorsPage";
-import ReportsPage from "@/pages/ReportsPage";
+import ReportsPage from "@/pages/ReportsPage"; // Importar ReportsPage
 import SchedulePage from "@/pages/SchedulePage";
 
 import { Toaster } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip"; // Import TooltipProvider
-import { NotificationProvider } from "@/contexts/NotificationContext"; // NEW: Import NotificationProvider
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { NotificationProvider } from "@/contexts/NotificationContext";
 
 const App = () => {
   return (
@@ -42,7 +42,7 @@ const App = () => {
       <SessionContextProvider>
         <Toaster richColors position="top-right" />
         <TooltipProvider>
-          <NotificationProvider> {/* Adicionado NotificationProvider aqui */}
+          <NotificationProvider>
             <Routes>
               <Route path="/login" element={<Login />} />
               <Route path="/signup" element={<Signup />} />
@@ -74,7 +74,7 @@ const App = () => {
                 <Route path="price-database" element={<PriceDatabasePage />} />
                 <Route path="approvals" element={<ApprovalsPage />} />
                 <Route path="collaborators" element={<CollaboratorsPage />} />
-                <Route path="reports" element={<ReportsPage />} />
+                <Route path="reports" element={<ReportsPage />} /> {/* Adicionado: Rota para ReportsPage */}
                 <Route path="*" element={<NotFound />} />
               </Route>
             </Routes>
