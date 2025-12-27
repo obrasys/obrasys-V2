@@ -42,38 +42,51 @@ const MainLayout = () => {
     setIsSidebarCollapsed(isMobile);
   }, [isMobile]);
 
+  // NOVO: sincronizar perfil local com o perfil do contexto
+  React.useEffect(() => {
+    if (sessionProfile) {
+      setProfile(sessionProfile);
+    }
+  }, [sessionProfile]);
+
   const fetchProfile = React.useCallback(async () => {
     if (!user) {
       setProfile(null);
       return;
     }
+    // Evitar fetch se já temos perfil do contexto
+    if (sessionProfile) {
+      setProfile(sessionProfile);
+      return;
+    }
 
     const { data: profileData, error: profileError } = await supabase
       .from('profiles')
-      .select('first_name, last_name, avatar_url, role, company_id, plan_type') // Fetch plan_type
+      .select('first_name, last_name, avatar_url, role, company_id, plan_type')
       .eq('id', user.id)
       .single();
 
     if (profileError) {
       if (profileError.code === 'PGRST116') {
-        console.warn("[MainLayout] No profile found for user. Assuming trigger will handle or profile is being created.");
-        setProfile(null);
+        console.warn("[MainLayout] No profile found for user. It may be being created; falling back to SessionContext profile.");
+        setProfile(sessionProfile ?? null);
       } else {
         console.error("[MainLayout] Erro ao carregar perfil:", profileError);
         toast.error(`Erro ao carregar dados do perfil: ${profileError.message}`);
-        setProfile(null);
+        setProfile(sessionProfile ?? null);
       }
     } else {
       setProfile(profileData);
     }
-  }, [user]);
+  }, [user, sessionProfile]);
 
   React.useEffect(() => {
-    if (!isSessionLoading && user) {
+    // Só tentar buscar do Supabase se não estiver a carregar sessão, existir utilizador e não tivermos perfil no contexto
+    if (!isSessionLoading && user && !sessionProfile) {
       fetchProfile();
     }
-    console.log("[MainLayout] User:", user, "Profile:", profile, "UserCompanyId from profile:", profile?.company_id);
-  }, [user, isSessionLoading, fetchProfile]);
+    console.log("[MainLayout] User:", user, "Profile(local):", profile, "Profile(context):", sessionProfile, "CompanyId:", (profile ?? sessionProfile)?.company_id);
+  }, [user, isSessionLoading, sessionProfile, fetchProfile]);
 
 
   // NEW: Effect to seed default articles if not already seeded for the company
