@@ -28,7 +28,7 @@ import { Link, useNavigate } from "react-router-dom";
 import NavButton from "@/components/NavButton";
 import { useSession } from "@/components/SessionContextProvider";
 import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
+import { toast } from "sonner"; // Import toast from sonner
 import { Project } from "@/schemas/project-schema"; // Import Project schema
 import { Skeleton } from "@/components/ui/skeleton"; // Import Skeleton for loading states
 import { Profile } from "@/schemas/profile-schema"; // Import Profile schema
@@ -38,6 +38,7 @@ import { format, parseISO } from "date-fns"; // Import format and parseISO for d
 import { pt } from "date-fns/locale"; // Import pt locale for date formatting
 import { formatCurrency } from "@/utils/formatters"; // Import formatCurrency
 import { cn } from "@/lib/utils"; // Import cn for conditional classNames
+import NotificationToastContent from "@/components/NotificationToastContent"; // NEW: Import the new component
 
 interface DashboardNotification {
   id: string;
@@ -65,6 +66,9 @@ const Dashboard = () => {
   const [isLoadingPendingApprovals, setIsLoadingPendingApprovals] = React.useState(true);
   const [notifications, setNotifications] = React.useState<DashboardNotification[]>([]);
   const [isLoadingNotifications, setIsLoadingNotifications] = React.useState(true);
+
+  // NEW: Set to keep track of displayed notification IDs to avoid duplicate toasts
+  const displayedNotificationIds = React.useRef(new Set<string>());
 
   // Fetch user's company ID and profile data
   const fetchUserProfileAndCompanyId = React.useCallback(async () => {
@@ -310,6 +314,32 @@ const Dashboard = () => {
       fetchNotifications();
     }
   }, [userCompanyId, projects, isLoadingProjects, fetchNotifications]);
+
+  // NEW: Effect to display notifications as toasts
+  React.useEffect(() => {
+    if (!isLoadingNotifications && notifications.length > 0) {
+      notifications.forEach(notification => {
+        if (!displayedNotificationIds.current.has(notification.id)) {
+          toast.custom((t) => (
+            <NotificationToastContent
+              id={notification.id}
+              title={notification.title}
+              message={notification.message}
+              date={notification.date}
+              icon={notification.icon}
+              iconColorClass={notification.iconColorClass}
+              link={notification.link}
+              dismiss={() => toast.dismiss(t)}
+            />
+          ), {
+            id: notification.id, // Use notification ID for sonner to manage
+            duration: 10000, // Keep toast visible for 10 seconds
+          });
+          displayedNotificationIds.current.add(notification.id);
+        }
+      });
+    }
+  }, [notifications, isLoadingNotifications]);
 
 
   const activeProjects = projects.filter(p => p.estado === "Em execução" || p.estado === "Planeada");
