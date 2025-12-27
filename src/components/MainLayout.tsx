@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Outlet, useNavigate } from "react-router-dom";
+import { Outlet, useNavigate, Navigate } from "react-router-dom";
 import { Navigate } from "react-router-dom";
 import { Bell, Settings, Menu, LogOut, User, Building2 } from "lucide-react";
 

@@ -76,7 +76,7 @@ export const SessionContextProvider: React.FC<{ children: React.ReactNode }> = (
 
     const { data: authListener } = supabase.auth.onAuthStateChange(
       async (event, currentSession) => {
-        // Evita duplicidade: já tratamos sessão inicial acima
+        // Evita duplicidade: sessão inicial já tratada acima
         if (event === "INITIAL_SESSION") return;
 
         if (!mounted) return;
