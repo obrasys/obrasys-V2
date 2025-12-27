@@ -27,60 +27,70 @@ const PlansPage: React.FC = () => {
   // Buscar empresa e plano atual (com possível fim do trial)
   React.useEffect(() => {
     let cancelled = false;
+    const timeoutId = setTimeout(() => {
+      // Fallback: se algo travar, garantimos que o loading termina
+      if (!cancelled) setIsLoadingPlans(false);
+    }, 4000);
 
     const fetchUserData = async () => {
-      // Se não houver utilizador, termina carregamento
-      if (!user) {
-        if (!cancelled) {
-          setUserCompanyId(null);
-          setCurrentPlan(null);
-          setTrialEnd(null);
-          setIsLoadingPlans(false);
-        }
-        return;
-      }
-
-      // Carregar dados do perfil
-      const { data: profileData, error: profileError } = await supabase
-        .from("profiles")
-        .select("company_id, plan_type")
-        .eq("id", user.id)
-        .single();
-
-      if (profileError) {
-        console.error("Erro ao carregar dados do perfil:", profileError);
-        toast.error(`Erro ao carregar dados do perfil: ${profileError.message}`);
-        if (!cancelled) {
-          setUserCompanyId(null);
-          setCurrentPlan(null);
-        }
-      } else if (profileData) {
-        if (!cancelled) {
-          setUserCompanyId(profileData.company_id);
-          setCurrentPlan((profileData.plan_type || "trialing") as PlanType);
+      try {
+        // Se não houver utilizador, termina carregamento
+        if (!user) {
+          if (!cancelled) {
+            setUserCompanyId(null);
+            setCurrentPlan(null);
+            setTrialEnd(null);
+            setIsLoadingPlans(false);
+          }
+          return;
         }
 
-        // Ler assinatura filtrando pela empresa
-        if (profileData.company_id) {
-          const { data: sub, error: subError } = await supabase
-            .from("subscriptions")
-            .select("trial_end, status, plan_type, company_id, created_at")
-            .eq("company_id", profileData.company_id)
-            .order("created_at", { ascending: false })
-            .limit(1);
+        // Carregar dados do perfil
+        const { data: profileData, error: profileError } = await supabase
+          .from("profiles")
+          .select("company_id, plan_type")
+          .eq("id", user.id)
+          .single();
 
-          if (!subError && sub && sub.length > 0) {
-            const s = sub[0] as { trial_end: string | null; plan_type: PlanType | null };
-            if (!cancelled) {
-              if (s?.plan_type) setCurrentPlan((s.plan_type || "trialing") as PlanType);
-              setTrialEnd(s?.trial_end || null);
+        if (profileError) {
+          console.error("Erro ao carregar dados do perfil:", profileError);
+          toast.error(`Erro ao carregar dados do perfil: ${profileError.message}`);
+          if (!cancelled) {
+            setUserCompanyId(null);
+            setCurrentPlan(null);
+          }
+        } else if (profileData) {
+          if (!cancelled) {
+            setUserCompanyId(profileData.company_id);
+            setCurrentPlan((profileData.plan_type || "trialing") as PlanType);
+          }
+
+          // Ler assinatura filtrando pela empresa
+          if (profileData.company_id) {
+            const { data: sub, error: subError } = await supabase
+              .from("subscriptions")
+              .select("trial_end, status, plan_type, company_id, created_at")
+              .eq("company_id", profileData.company_id)
+              .order("created_at", { ascending: false })
+              .limit(1);
+
+            if (subError) {
+              console.error("Erro ao ler assinatura:", subError);
+            } else if (sub && sub.length > 0) {
+              const s = sub[0] as { trial_end: string | null; plan_type: PlanType | null };
+              if (!cancelled) {
+                if (s?.plan_type) setCurrentPlan((s.plan_type || "trialing") as PlanType);
+                setTrialEnd(s?.trial_end || null);
+              }
             }
           }
         }
-      }
-
-      if (!cancelled) {
-        setIsLoadingPlans(false);
+      } catch (err) {
+        console.error("Erro inesperado ao buscar dados de planos:", err);
+        // Notificar sem bloquear a UI
+        toast.error("Falha ao carregar informações de planos. Usando valores padrão.");
+      } finally {
+        if (!cancelled) setIsLoadingPlans(false);
       }
     };
 
@@ -88,6 +98,7 @@ const PlansPage: React.FC = () => {
 
     return () => {
       cancelled = true;
+      clearTimeout(timeoutId);
     };
   }, [user]);
 
