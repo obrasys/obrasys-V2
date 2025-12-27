@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 
 interface KPICardProps {
   title: string;
-  value: string;
+  value: React.ReactNode; // Alterado de 'string' para 'React.ReactNode'
   description: string;
   icon: LucideIcon;
   iconColorClass?: string;

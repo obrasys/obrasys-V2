@@ -128,7 +128,7 @@ const ProjectBudgetDetails: React.FC<ProjectBudgetDetailsProps> = ({ budgetId, p
         </CardHeader>
         <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div><span className="font-semibold">Nome do Orçamento:</span> {budget.nome}</div>
-          <div><span className="font-semibold">Cliente:</span> {budget.clients?.nome || "N/A"}</div>
+          <div><span className="font-semibold">Cliente:</span> {budget.clients?.[0]?.nome || "N/A"}</div> {/* Corrigido aqui */}
           <div><span className="font-semibold">Localização:</span> {budget.localizacao || "N/A"}</div>
           <div><span className="font-semibold">Tipo de Obra:</span> {budget.tipo_obra || "N/A"}</div>
           <div><span className="font-semibold">Data do Orçamento:</span> {budget.data_orcamento ? formatDate(budget.data_orcamento) : "N/A"}</div>
