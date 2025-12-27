@@ -6,6 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { toast } from 'sonner';
 import { Profile } from '@/schemas/profile-schema'; // Import Profile schema
+import { addDays, formatISO } from 'date-fns';
 
 interface SessionContextType {
   session: Session | null;
@@ -24,6 +25,39 @@ export const SessionContextProvider: React.FC<{ children: React.ReactNode }> = (
   const navigate = useNavigate();
   const location = useLocation();
 
+  async function ensureTrialSubscription(companyId: string | null | undefined) {
+    if (!companyId) return;
+    const { data: sub, error: subError } = await supabase
+      .from('subscriptions')
+      .select('id, status, plan_type, trial_end, created_at')
+      .eq('company_id', companyId)
+      .order('created_at', { ascending: false })
+      .limit(1);
+
+    if (subError) {
+      console.warn("[SessionContext] Falha ao verificar subscrição:", subError.message);
+      return;
+    }
+    const hasSub = Array.isArray(sub) && sub.length > 0;
+    if (!hasSub) {
+      const trialEndDate = addDays(new Date(), 30);
+      const { error: insertErr } = await supabase
+        .from('subscriptions')
+        .insert({
+          company_id: companyId,
+          status: 'trialing',
+          plan_type: 'trialing',
+          trial_start: formatISO(new Date()),
+          trial_end: formatISO(trialEndDate),
+        });
+      if (insertErr) {
+        console.warn("[SessionContext] Falha ao criar subscrição de trial:", insertErr.message);
+      } else {
+        toast.success("Subscrição de trial criada com sucesso!");
+      }
+    }
+  }
+
   useEffect(() => {
     const { data: authListener } = supabase.auth.onAuthStateChange(
       async (event, currentSession) => {
@@ -40,27 +74,17 @@ export const SessionContextProvider: React.FC<{ children: React.ReactNode }> = (
           if (profileError && profileError.code !== 'PGRST116') {
             console.error("Error fetching profile on auth state change:", profileError);
           } else if (profileData) {
-            fetchedProfile = profileData as Profile;
-          }
-
-          // Override: garantir admin e plano empresa para o e-mail especificado
-          if ((currentSession.user.email || '').toLowerCase() === 'snapimoveis@gmail.com') {
-            fetchedProfile = {
-              id: fetchedProfile?.id || currentSession.user.id,
-              first_name: fetchedProfile?.first_name || 'Admin',
-              last_name: fetchedProfile?.last_name || 'Geral',
-              phone: fetchedProfile?.phone || null,
-              avatar_url: fetchedProfile?.avatar_url || null,
-              role: 'admin',
-              company_id: fetchedProfile?.company_id || null,
-              plan_type: 'empresa',
-              updated_at: fetchedProfile?.updated_at || new Date().toISOString(),
-            };
+            fetchedProfile = profileData;
           }
         }
         setProfile(fetchedProfile); // Set profile data
 
         setIsLoading(false);
+
+        // Após login, garantir subscrição de trial para a empresa
+        if (currentSession?.user) {
+          await ensureTrialSubscription(fetchedProfile?.company_id);
+        }
 
         const currentPath = location.pathname;
         const isAuthPage = currentPath === '/login' || currentPath === '/signup';
@@ -96,27 +120,17 @@ export const SessionContextProvider: React.FC<{ children: React.ReactNode }> = (
         if (profileError && profileError.code !== 'PGRST116') {
           console.error("Error fetching profile on initial session load:", profileError);
         } else if (profileData) {
-          fetchedProfile = profileData as Profile;
-        }
-
-        // Override também no carregamento inicial
-        if ((session.user.email || '').toLowerCase() === 'snapimoveis@gmail.com') {
-          fetchedProfile = {
-            id: fetchedProfile?.id || session.user.id,
-            first_name: fetchedProfile?.first_name || 'Admin',
-            last_name: fetchedProfile?.last_name || 'Geral',
-            phone: fetchedProfile?.phone || null,
-            avatar_url: fetchedProfile?.avatar_url || null,
-            role: 'admin',
-            company_id: fetchedProfile?.company_id || null,
-            plan_type: 'empresa',
-            updated_at: fetchedProfile?.updated_at || new Date().toISOString(),
-          };
+          fetchedProfile = profileData;
         }
       }
       setProfile(fetchedProfile);
 
       setIsLoading(false);
+
+      // Garantir subscrição também no carregamento inicial, quando já autenticado
+      if (session?.user) {
+        await ensureTrialSubscription(fetchedProfile?.company_id);
+      }
 
       const currentPath = location.pathname;
       const isAuthPage = currentPath === '/login' || currentPath === '/signup';

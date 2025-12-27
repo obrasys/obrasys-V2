@@ -117,35 +117,8 @@ const Signup: React.FC = () => {
         return;
       }
 
-      // Tentar obter company_id com polling (trigger handle_new_user_and_company)
-      let companyId: string | null = null;
-      if (authData.user) {
-        companyId = await waitForCompanyId(authData.user.id);
-      }
-
-      // Criar subscrição de trial — apenas se company_id existir; caso contrário, seguir fluxo
-      if (companyId) {
-        const trialEndDate = addDays(new Date(), 30);
-        const { error: subscriptionError } = await supabase
-          .from('subscriptions')
-          .insert({
-            company_id: companyId,
-            status: 'trialing',
-            plan_type: 'trialing',
-            trial_start: formatISO(new Date()),
-            trial_end: formatISO(trialEndDate),
-          });
-
-        if (subscriptionError) {
-          console.warn("Falha ao criar subscrição de trial:", subscriptionError?.message);
-          toast.info("Conta criada. A subscrição de trial será provisionada em breve.");
-        } else {
-          toast.success("Trial de 30 dias criado com sucesso!");
-        }
-      } else {
-        toast.info("Conta criada. Vamos concluir a configuração da empresa e subscrição em breve.");
-      }
-
+      // NÃO tentar ler profile/company_id nem criar subscrição aqui.
+      // O utilizador ainda não tem sessão e o trigger pode demorar.
       toast.success('Registo efetuado com sucesso! Verifique o seu email para confirmar a conta.');
       navigate('/login');
     } catch (error: any) {
