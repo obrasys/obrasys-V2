@@ -29,12 +29,13 @@ import WorkItemsPage from "@/pages/WorkItemsPage";
 import PriceDatabasePage from "@/pages/PriceDatabasePage";
 import ApprovalsPage from "@/pages/ApprovalsPage";
 import CollaboratorsPage from "@/pages/CollaboratorsPage";
-import ReportsPage from "@/pages/ReportsPage"; // Importar ReportsPage
+import ReportsPage from "@/pages/ReportsPage";
 import SchedulePage from "@/pages/SchedulePage";
 
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { NotificationProvider } from "@/contexts/NotificationContext";
+import FinanceManagement from "@/pages/FinanceManagement"; // Importar FinanceManagement
 
 const App = () => {
   return (
@@ -66,7 +67,7 @@ const App = () => {
                 <Route path="compliance/checklist" element={<ComplianceChecklistPage />} />
                 <Route path="projects" element={<ProjectsPage />} />
                 <Route path="schedule" element={<SchedulePage />} />
-                <Route path="finance-management" element={<FinancialDashboardsPage />} />
+                <Route path="finance-management" element={<FinanceManagement />} /> {/* Rota corrigida */}
                 <Route path="accounts" element={<AccountsPage />} />
                 <Route path="finance-management/payroll-integration" element={<PayrollIntegrationPage />} />
                 <Route path="finance-management/dashboards" element={<FinancialDashboardsPage />} />
@@ -74,7 +75,7 @@ const App = () => {
                 <Route path="price-database" element={<PriceDatabasePage />} />
                 <Route path="approvals" element={<ApprovalsPage />} />
                 <Route path="collaborators" element={<CollaboratorsPage />} />
-                <Route path="reports" element={<ReportsPage />} /> {/* Adicionado: Rota para ReportsPage */}
+                <Route path="reports" element={<ReportsPage />} />
                 <Route path="*" element={<NotFound />} />
               </Route>
             </Routes>
