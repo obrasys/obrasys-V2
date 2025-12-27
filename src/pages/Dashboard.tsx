@@ -20,6 +20,9 @@ import {
   RefreshCw,
   Settings,
   Loader2, // Import Loader2 for loading state
+  DollarSign, // For financial alerts
+  ReceiptText, // For overdue invoices
+  Wallet, // For overdue expenses
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import NavButton from "@/components/NavButton";
@@ -29,20 +32,38 @@ import { toast } from "sonner";
 import { Project } from "@/schemas/project-schema"; // Import Project schema
 import { Skeleton } from "@/components/ui/skeleton"; // Import Skeleton for loading states
 import { Profile } from "@/schemas/profile-schema"; // Import Profile schema
+import { AiAlert } from "@/schemas/ai-alert-schema"; // Import AiAlert schema
+import { Invoice, Expense } from "@/schemas/invoicing-schema"; // Import Invoice and Expense schemas
+import { format, parseISO } from "date-fns"; // Import format and parseISO for date formatting
+import { pt } from "date-fns/locale"; // Import pt locale for date formatting
+import { formatCurrency } from "@/utils/formatters"; // Import formatCurrency
+
+interface DashboardNotification {
+  id: string;
+  type: 'project_delay' | 'financial_alert' | 'overdue_invoice' | 'overdue_expense';
+  title: string;
+  message: string;
+  date: string; // ISO string
+  icon: React.ElementType;
+  iconColorClass: string;
+  link?: string;
+}
 
 const Dashboard = () => {
   const navigate = useNavigate();
   const { user, isLoading: isSessionLoading } = useSession();
   const [userCompanyId, setUserCompanyId] = React.useState<string | null>(null);
-  const [profileData, setProfileData] = React.useState<Profile | null>(null); // NEW: State for profile data
+  const [profileData, setProfileData] = React.useState<Profile | null>(null);
   const [projects, setProjects] = React.useState<Project[]>([]);
   const [isLoadingProjects, setIsLoadingProjects] = React.useState(true);
-  const [pendingReportsCount, setPendingReportsCount] = React.useState(0); // NEW: State for pending reports
-  const [isLoadingPendingReports, setIsLoadingPendingReports] = React.useState(true); // NEW: Loading state
-  const [scheduledTasksCount, setScheduledTasksCount] = React.useState(0); // NEW: State for scheduled tasks
-  const [isLoadingScheduledTasks, setIsLoadingScheduledTasks] = React.useState(true); // NEW: Loading state
-  const [pendingApprovalsCount, setPendingApprovalsCount] = React.useState(0); // NEW: State for pending approvals
-  const [isLoadingPendingApprovals, setIsLoadingPendingApprovals] = React.useState(true); // NEW: Loading state
+  const [pendingReportsCount, setPendingReportsCount] = React.useState(0);
+  const [isLoadingPendingReports, setIsLoadingPendingReports] = React.useState(true);
+  const [scheduledTasksCount, setScheduledTasksCount] = React.useState(0);
+  const [isLoadingScheduledTasks, setIsLoadingScheduledTasks] = React.useState(true);
+  const [pendingApprovalsCount, setPendingApprovalsCount] = React.useState(0);
+  const [isLoadingPendingApprovals, setIsLoadingPendingApprovals] = React.useState(true);
+  const [notifications, setNotifications] = React.useState<DashboardNotification[]>([]); // NEW: State for notifications
+  const [isLoadingNotifications, setIsLoadingNotifications] = React.useState(true); // NEW: Loading state for notifications
 
   // Fetch user's company ID and profile data
   const fetchUserProfileAndCompanyId = React.useCallback(async () => {
@@ -91,7 +112,7 @@ const Dashboard = () => {
     setIsLoadingProjects(false);
   }, [userCompanyId]);
 
-  // NEW: Fetch pending Livros de Obra (reports)
+  // Fetch pending Livros de Obra (reports)
   const fetchPendingReports = React.useCallback(async () => {
     if (!userCompanyId) {
       setPendingReportsCount(0);
@@ -103,7 +124,7 @@ const Dashboard = () => {
       .from('livros_obra')
       .select('id', { count: 'exact' })
       .eq('company_id', userCompanyId)
-      .eq('estado', 'em_preparacao'); // Assuming 'em_preparacao' means pending
+      .eq('estado', 'em_preparacao');
 
     if (error) {
       console.error("Erro ao carregar relatórios pendentes:", error);
@@ -114,7 +135,7 @@ const Dashboard = () => {
     setIsLoadingPendingReports(false);
   }, [userCompanyId]);
 
-  // NEW: Fetch scheduled tasks
+  // Fetch scheduled tasks
   const fetchScheduledTasks = React.useCallback(async () => {
     if (!userCompanyId) {
       setScheduledTasksCount(0);
@@ -122,7 +143,6 @@ const Dashboard = () => {
       return;
     }
     setIsLoadingScheduledTasks(true);
-    // Fetch tasks that are 'Planeado' or 'Em execução'
     const { count, error } = await supabase
       .from('schedule_tasks')
       .select('id', { count: 'exact' })
@@ -138,7 +158,7 @@ const Dashboard = () => {
     setIsLoadingScheduledTasks(false);
   }, [userCompanyId]);
 
-  // NEW: Fetch pending approvals
+  // Fetch pending approvals
   const fetchPendingApprovals = React.useCallback(async () => {
     if (!userCompanyId) {
       setPendingApprovalsCount(0);
@@ -161,6 +181,113 @@ const Dashboard = () => {
     setIsLoadingPendingApprovals(false);
   }, [userCompanyId]);
 
+  // NEW: Fetch all notifications (delays, financial alerts, overdue invoices/expenses)
+  const fetchNotifications = React.useCallback(async () => {
+    if (!userCompanyId) {
+      setNotifications([]);
+      setIsLoadingNotifications(false);
+      return;
+    }
+    setIsLoadingNotifications(true);
+    let fetchedNotifications: DashboardNotification[] = [];
+
+    // 1. Project Delays (using already fetched projects)
+    projects.filter(p => p.estado === "Atrasada").forEach(project => {
+      fetchedNotifications.push({
+        id: `project-delay-${project.id}`,
+        type: 'project_delay',
+        title: `Obra Atrasada: ${project.nome}`,
+        message: `O projeto "${project.nome}" está marcado como atrasado.`,
+        date: new Date().toISOString(), // Use current date for simplicity
+        icon: AlertTriangle,
+        iconColorClass: "text-orange-500",
+        link: `/projects?selected=${project.id}`,
+      });
+    });
+
+    // 2. AI Alerts (Cost Deviation, Margin Risk)
+    const { data: aiAlerts, error: aiAlertsError } = await supabase
+      .from('ai_alerts')
+      .select('id, title, message, severity, created_at, projects(nome)')
+      .eq('company_id', userCompanyId)
+      .in('severity', ['critical', 'warning'])
+      .in('type', ['Cost Deviation', 'Margin Risk'])
+      .eq('resolved', false) // Only show unresolved alerts
+      .order('created_at', { ascending: false });
+
+    if (aiAlertsError) {
+      console.error("Erro ao carregar alertas de IA:", aiAlertsError);
+    } else {
+      (aiAlerts || []).forEach((alert: any) => {
+        fetchedNotifications.push({
+          id: `ai-alert-${alert.id}`,
+          type: 'financial_alert',
+          title: alert.title,
+          message: `${alert.message} (Projeto: ${alert.projects?.nome || 'N/A'})`,
+          date: alert.created_at,
+          icon: Bell,
+          iconColorClass: alert.severity === 'critical' ? 'text-red-500' : 'text-orange-500',
+          link: `/automation-intelligence/ai-alerts`, // Link to AI alerts page
+        });
+      });
+    }
+
+    // 3. Overdue Invoices
+    const { data: overdueInvoices, error: invoicesError } = await supabase
+      .from('invoices')
+      .select('id, invoice_number, total_amount, due_date, projects(nome)')
+      .eq('company_id', userCompanyId)
+      .eq('status', 'overdue')
+      .order('due_date', { ascending: true });
+
+    if (invoicesError) {
+      console.error("Erro ao carregar faturas atrasadas:", invoicesError);
+    } else {
+      (overdueInvoices || []).forEach((invoice: any) => {
+        fetchedNotifications.push({
+          id: `overdue-invoice-${invoice.id}`,
+          type: 'overdue_invoice',
+          title: `Fatura Atrasada: ${invoice.invoice_number}`,
+          message: `A fatura Nº ${invoice.invoice_number} (${formatCurrency(invoice.total_amount)}) está atrasada desde ${format(parseISO(invoice.due_date), 'dd/MM/yyyy', { locale: pt })}. (Obra: ${invoice.projects?.nome || 'N/A'})`,
+          date: invoice.due_date,
+          icon: ReceiptText,
+          iconColorClass: "text-red-500",
+          link: `/accounts`, // Link to accounts page
+        });
+      });
+    }
+
+    // 4. Overdue Expenses
+    const { data: overdueExpenses, error: expensesError } = await supabase
+      .from('expenses')
+      .select('id, description, amount, due_date')
+      .eq('company_id', userCompanyId)
+      .eq('status', 'overdue')
+      .order('due_date', { ascending: true });
+
+    if (expensesError) {
+      console.error("Erro ao carregar despesas atrasadas:", expensesError);
+    } else {
+      (overdueExpenses || []).forEach((expense: any) => {
+        fetchedNotifications.push({
+          id: `overdue-expense-${expense.id}`,
+          type: 'overdue_expense',
+          title: `Despesa Atrasada: ${expense.description}`,
+          message: `A despesa "${expense.description}" (${formatCurrency(expense.amount)}) está atrasada desde ${format(parseISO(expense.due_date), 'dd/MM/yyyy', { locale: pt })}.`,
+          date: expense.due_date,
+          icon: Wallet,
+          iconColorClass: "text-red-500",
+          link: `/accounts`, // Link to accounts page
+        });
+      });
+    }
+
+    // Sort all notifications by date (most recent first)
+    fetchedNotifications.sort((a, b) => parseISO(b.date).getTime() - parseISO(a.date).getTime());
+
+    setNotifications(fetchedNotifications);
+    setIsLoadingNotifications(false);
+  }, [userCompanyId, projects]); // Added projects as dependency for project delays
 
   React.useEffect(() => {
     if (!isSessionLoading) {
@@ -171,13 +298,20 @@ const Dashboard = () => {
   React.useEffect(() => {
     if (userCompanyId) {
       fetchProjects();
-      fetchPendingReports(); // NEW: Call new fetch functions
-      fetchScheduledTasks(); // NEW: Call new fetch functions
-      fetchPendingApprovals(); // NEW: Call new fetch functions
+      fetchPendingReports();
+      fetchScheduledTasks();
+      fetchPendingApprovals();
     }
   }, [userCompanyId, fetchProjects, fetchPendingReports, fetchScheduledTasks, fetchPendingApprovals]);
 
-  // Modificado para incluir 'Planeada' como obra ativa
+  // NEW: Call fetchNotifications whenever projects or userCompanyId changes
+  React.useEffect(() => {
+    if (userCompanyId && !isLoadingProjects) { // Ensure projects are loaded before fetching notifications that depend on them
+      fetchNotifications();
+    }
+  }, [userCompanyId, projects, isLoadingProjects, fetchNotifications]);
+
+
   const activeProjects = projects.filter(p => p.estado === "Em execução" || p.estado === "Planeada");
   const delayedProjects = projects.filter(p => p.estado === "Atrasada");
 
@@ -352,16 +486,39 @@ const Dashboard = () => {
               <CardTitle className="text-xl font-semibold flex items-center gap-2">
                 <Bell className="h-5 w-5 text-primary" /> Notificações
               </CardTitle>
-              <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
-                <RefreshCw className="h-4 w-4" />
+              <Button variant="ghost" size="icon" onClick={fetchNotifications} disabled={isLoadingNotifications}>
+                {isLoadingNotifications ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
               </Button>
             </CardHeader>
             <CardContent>
-              <EmptyState
-                icon={Bell}
-                title="Não há notificações"
-                description="As suas notificações aparecerão aqui."
-              />
+              {isLoadingNotifications ? (
+                <div className="flex justify-center items-center h-32">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                </div>
+              ) : notifications.length > 0 ? (
+                <div className="space-y-3">
+                  {notifications.map(notification => (
+                    <Link key={notification.id} to={notification.link || "#"} className="block">
+                      <div className="flex items-start p-3 border rounded-md hover:bg-muted/50 transition-colors">
+                        <notification.icon className={`h-5 w-5 mr-3 mt-1 flex-shrink-0 ${notification.iconColorClass}`} />
+                        <div>
+                          <p className="font-medium text-sm">{notification.title}</p>
+                          <p className="text-xs text-muted-foreground">{notification.message}</p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {format(parseISO(notification.date), "dd/MM/yyyy HH:mm", { locale: pt })}
+                          </p>
+                        </div>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              ) : (
+                <EmptyState
+                  icon={Bell}
+                  title="Não há notificações"
+                  description="As suas notificações aparecerão aqui."
+                />
+              )}
             </CardContent>
           </Card>
 
