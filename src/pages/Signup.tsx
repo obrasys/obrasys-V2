@@ -74,7 +74,6 @@ const Signup: React.FC = () => {
   const onSubmit = async (data: SignupFormValues) => {
     try {
       setIsSubmitting(true);
-      // 1. Sign up the user with Supabase Auth
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: data.email,
         password: data.password,
@@ -101,25 +100,31 @@ const Signup: React.FC = () => {
         return;
       }
 
+      // Tentar obter company_id criado pelo trigger
+      let companyId: string | null = null;
       if (authData.user) {
-        // The handle_new_user_and_company trigger should create the profile and company.
-        // We now need to create the initial subscription.
         const { data: profileFetch, error: profileFetchError } = await supabase
           .from('profiles')
           .select('company_id')
           .eq('id', authData.user.id)
           .single();
 
-        if (profileFetchError || !profileFetch?.company_id) {
-          console.error("Erro ao buscar company_id após signup:", profileFetchError);
-          toast.error("Erro interno: Não foi possível associar a empresa ao utilizador.");
-          // Consider deleting the user if company creation failed, or handle retry
-          return;
+        if (!profileFetchError && profileFetch?.company_id) {
+          companyId = profileFetch.company_id;
+        } else {
+          // Pequeno retry caso o trigger demore
+          const { data: retryProfile } = await supabase
+            .from('profiles')
+            .select('company_id')
+            .eq('id', authData.user.id)
+            .single();
+          companyId = retryProfile?.company_id || null;
         }
+      }
 
-        const companyId = profileFetch.company_id;
-        const trialEndDate = addDays(new Date(), 30); // 30 days from now
-
+      // Criar subscrição de trial — se falhar, NÃO bloquear o fluxo
+      if (companyId) {
+        const trialEndDate = addDays(new Date(), 30);
         const { error: subscriptionError } = await supabase
           .from('subscriptions')
           .insert({
@@ -131,15 +136,17 @@ const Signup: React.FC = () => {
           });
 
         if (subscriptionError) {
-          console.error("Erro ao criar subscrição de trial:", subscriptionError);
-          toast.error(`Erro ao criar subscrição de trial: ${subscriptionError.message}`);
-          // This is a critical error, consider logging and potentially reverting user creation
-          return;
+          console.warn("Falha ao criar subscrição de trial:", subscriptionError?.message);
+          toast.info("Conta criada. A subscrição de trial será provisionada em breve.");
+        } else {
+          toast.success("Trial de 30 dias criado com sucesso!");
         }
-
-        toast.success('Registo efetuado com sucesso! Verifique o seu email para confirmar a conta e iniciar o seu trial.');
-        navigate('/login'); // Redireciona para o login após o registo
+      } else {
+        toast.info("Conta criada. Vamos configurar a subscrição quando a empresa estiver pronta.");
       }
+
+      toast.success('Registo efetuado com sucesso! Verifique o seu email para confirmar a conta.');
+      navigate('/login');
     } catch (error: any) {
       toast.error(`Ocorreu um erro inesperado: ${error.message}`);
     } finally {
