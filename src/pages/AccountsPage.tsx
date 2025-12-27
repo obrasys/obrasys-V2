@@ -525,6 +525,7 @@ const AccountsPage: React.FC = () => {
         onClose={() => setIsExpenseDialogOpen(false)}
         onSave={handleSaveExpense}
         expenseToEdit={expenseToEdit}
+        userCompanyId={userCompanyId} {/* Adicionado: Passando userCompanyId */}
       />
     </div>
   );
