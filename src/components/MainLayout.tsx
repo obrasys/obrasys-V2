@@ -22,6 +22,7 @@ import EditProfileModal from "@/components/profile/EditProfileModal";
 import { seedDefaultArticles } from "@/utils/initial-data";
 import { useNotification } from "@/contexts/NotificationContext";
 import { Profile } from "@/schemas/profile-schema"; // Import Profile schema
+import MobileSidebar from "@/components/MobileSidebar";
 
 interface SidebarProps {
   isCollapsed: boolean;
@@ -126,25 +127,31 @@ const MainLayout = () => {
 
   return (
     <div className="flex min-h-screen bg-background text-foreground">
-      <Sidebar
-        isCollapsed={isSidebarCollapsed}
-        toggleSidebar={toggleSidebar}
-        profile={profile}
-      />
+      <div className="hidden md:block">
+        <Sidebar
+          isCollapsed={isSidebarCollapsed}
+          toggleSidebar={toggleSidebar}
+          profile={profile}
+        />
+      </div>
       <main
         className={`flex-1 p-4 md:p-6 transition-all duration-300 ease-in-out ${
           isSidebarCollapsed ? "ml-0" : "ml-0"
         }`}
       >
         <header className="flex items-center justify-between pb-4 md:pb-6 border-b border-border mb-4 md:mb-6">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={toggleSidebar}
-            className="md:hidden text-muted-foreground hover:text-foreground"
-          >
-            <Menu className="h-5 w-5" />
-          </Button>
+          {/* Mobile menu trigger: abre a navegação em formato Sheet */}
+          <div className="md:hidden">
+            <MobileSidebar profile={profile}>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="text-muted-foreground hover:text-foreground"
+              >
+                <Menu className="h-5 w-5" />
+              </Button>
+            </MobileSidebar>
+          </div>
 
           <div className="flex-grow">
             {/* O título da página será renderizado pelo conteúdo do Outlet */}
