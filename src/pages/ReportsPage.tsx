@@ -254,7 +254,7 @@ const ReportsPage = () => {
   };
 
   const handleGenerateReportClick = (reportName: string) => {
-    handleGenerateReport(reportName, {}); // Pass empty data for now
+    generateReportContent(reportName, {}); // Corrigido: Chamar generateReportContent
   };
 
   return (
