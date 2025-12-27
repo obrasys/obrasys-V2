@@ -2,8 +2,30 @@
 
 import React from "react";
 import { Button } from "@/components/ui/button";
+import EmptyState from "@/components/EmptyState";
+import { Users } from "lucide-react";
+import { useSession } from "@/components/SessionContextProvider";
+import { useNavigate } from "react-router-dom";
 
 const CollaboratorsPage = () => {
+  const navigate = useNavigate();
+  const { profile } = useSession();
+
+  const userPlanType = profile?.plan_type || 'trialing';
+  const isInitiantePlan = userPlanType === 'iniciante' || userPlanType === 'trialing';
+
+  if (isInitiantePlan) {
+    return (
+      <EmptyState
+        icon={Users}
+        title="Funcionalidade não disponível no seu plano"
+        description="A gestão de colaboradores está disponível apenas para planos Profissional e Empresa. Faça upgrade para aceder a esta funcionalidade."
+        buttonText="Ver Planos"
+        onButtonClick={() => navigate("/plans")}
+      />
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row items-center justify-between gap-4 pb-4 md:pb-6">
