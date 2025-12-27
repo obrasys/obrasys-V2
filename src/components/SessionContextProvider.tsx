@@ -34,7 +34,7 @@ export const SessionContextProvider: React.FC<{ children: React.ReactNode }> = (
         if (currentSession?.user) {
           const { data: profileData, error: profileError } = await supabase
             .from('profiles')
-            .select('*') // Select all profile data
+            .select('*')
             .eq('id', currentSession.user.id)
             .single();
           if (profileError && profileError.code !== 'PGRST116') {
@@ -43,20 +43,23 @@ export const SessionContextProvider: React.FC<{ children: React.ReactNode }> = (
             fetchedProfile = profileData;
           }
         }
-        setProfile(fetchedProfile); // Set profile data
+        setProfile(fetchedProfile);
 
-        setIsLoading(false); // Definir loading como falso após o estado de autenticação ser determinado
+        // Evitar prender a UI: sempre terminar loading neste ponto
+        setIsLoading(false);
 
         const currentPath = location.pathname;
         const isAuthPage = currentPath === '/login' || currentPath === '/signup';
 
-        if (currentSession) { // Utilizador autenticado
-          if (isAuthPage) { // Redirecionar apenas se estiver numa página de autenticação
+        if (currentSession) {
+          // Redirecionar para dashboard somente se estiver em página de auth
+          if (isAuthPage) {
             navigate('/dashboard');
             toast.success('Sessão iniciada com sucesso!');
           }
-        } else { // Utilizador NÃO autenticado
-          if (!isAuthPage && currentPath !== '/login') { // Redirecionar apenas se estiver numa página protegida E não estiver já no login
+        } else {
+          // Apenas força login em páginas protegidas
+          if (!isAuthPage && currentPath !== '/login') {
             navigate('/login');
             if (event === 'SIGNED_OUT') {
               toast.info('Sessão terminada.');
@@ -66,7 +69,7 @@ export const SessionContextProvider: React.FC<{ children: React.ReactNode }> = (
       }
     );
 
-    // Buscar sessão inicial
+    // Buscar sessão inicial com timeout defensivo
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       setSession(session);
       setUser(session?.user || null);
@@ -84,16 +87,17 @@ export const SessionContextProvider: React.FC<{ children: React.ReactNode }> = (
           fetchedProfile = profileData;
         }
       }
-      setProfile(fetchedProfile); // Set profile data
+      setProfile(fetchedProfile);
 
-      setIsLoading(false); // Definir loading como falso após a sessão inicial ser determinada
+      // Terminamos loading mesmo que algo falhe
+      setIsLoading(false);
 
       const currentPath = location.pathname;
       const isAuthPage = currentPath === '/login' || currentPath === '/signup';
 
-      if (!session && !isAuthPage && currentPath !== '/login') { // Redirecionar utilizadores não autenticados de páginas protegidas no carregamento inicial
+      if (!session && !isAuthPage && currentPath !== '/login') {
         navigate('/login');
-      } else if (session && isAuthPage) { // Redirecionar utilizadores autenticados de páginas de autenticação no carregamento inicial
+      } else if (session && isAuthPage) {
         navigate('/dashboard');
       }
     });
@@ -101,7 +105,7 @@ export const SessionContextProvider: React.FC<{ children: React.ReactNode }> = (
     return () => {
       authListener.subscription.unsubscribe();
     };
-  }, [navigate]); // Removido location.pathname das dependências
+  }, [navigate]);
 
   return (
     <SessionContext.Provider value={{ session, user, profile, isLoading }}>

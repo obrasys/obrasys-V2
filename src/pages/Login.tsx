@@ -31,6 +31,13 @@ const Login: React.FC = () => {
   const [showPassword, setShowPassword] = React.useState(false);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
 
+  // Evitar travar no estado de envio: timeout de segurança para resetar o botão
+  React.useEffect(() => {
+    if (!isSubmitting) return;
+    const t = setTimeout(() => setIsSubmitting(false), 8000);
+    return () => clearTimeout(t);
+  }, [isSubmitting]);
+
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
@@ -40,28 +47,39 @@ const Login: React.FC = () => {
   });
 
   const onSubmit = async (data: LoginFormValues) => {
+    setIsSubmitting(true);
     try {
-      setIsSubmitting(true);
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data: signInData, error } = await supabase.auth.signInWithPassword({
         email: data.email,
         password: data.password,
       });
 
       if (error) {
         const msg = error.message || "";
-        // Se o email não estiver confirmado, informar o utilizador
         if (msg.toLowerCase().includes("confirm")) {
           toast.error("Email não confirmado. Verifique a sua caixa de entrada para confirmar a conta.");
+        } else if (msg.toLowerCase().includes("invalid") || msg.toLowerCase().includes("credentials")) {
+          toast.error("Credenciais inválidas. Verifique o e-mail e a palavra-passe.");
         } else {
           toast.error(`Erro ao iniciar sessão: ${msg}`);
         }
-      } else {
+        return;
+      }
+
+      // Navegar imediatamente quando o signIn retornar sessão, mesmo que o listener demore
+      if (signInData?.session) {
         toast.success('Sessão iniciada com sucesso!');
         navigate('/dashboard');
+        return;
       }
+
+      // Caso raro: signIn sem sessão imediata, aguarda um pouco e força navegação
+      toast.success('Sessão iniciada! A redirecionar...');
+      setTimeout(() => navigate('/dashboard'), 500);
     } catch (error: any) {
       toast.error(`Ocorreu um erro inesperado: ${error.message}`);
     } finally {
+      // Sempre finalizar o estado de envio
       setIsSubmitting(false);
     }
   };
