@@ -48,36 +48,34 @@ export const SessionContextProvider: React.FC<{ children: React.ReactNode }> = (
     let mounted = true;
 
     const init = async () => {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!mounted) return;
+        setSession(session ?? null);
+        setUser(session?.user ?? null);
 
-      if (!mounted) return;
-
-      setSession(session ?? null);
-      setUser(session?.user ?? null);
-
-      if (session?.user) {
-        if (lastLoadedUserIdRef.current !== session.user.id || profile === null) {
-          const profileData = await loadProfile(session.user);
-          if (mounted) {
-            setProfile(profileData);
-            lastLoadedUserIdRef.current = session.user.id;
+        if (session?.user) {
+          if (lastLoadedUserIdRef.current !== session.user.id || profile === null) {
+            const profileData = await loadProfile(session.user);
+            if (mounted) {
+              setProfile(profileData);
+              lastLoadedUserIdRef.current = session.user.id;
+            }
           }
+        } else {
+          setProfile(null);
         }
-      } else {
-        setProfile(null);
+      } catch (err) {
+        console.error("[SessionContext] getSession falhou:", err);
+      } finally {
+        if (mounted) setIsLoading(false);
       }
-
-      setIsLoading(false);
     };
 
     init();
 
     const { data: authListener } = supabase.auth.onAuthStateChange(
-      async (event, currentSession) => {
-        // Já tratamos a sessão inicial; evita duplicidade e concorrência
-        if (event === "INITIAL_SESSION") return;
+      async (_event, currentSession) => {
 
         if (!mounted) return;
 
@@ -96,6 +94,7 @@ export const SessionContextProvider: React.FC<{ children: React.ReactNode }> = (
           setProfile(null);
         }
 
+        // Qualquer evento de auth deve garantir fim do loading
         setIsLoading(false);
       }
     );
@@ -104,6 +103,14 @@ export const SessionContextProvider: React.FC<{ children: React.ReactNode }> = (
       mounted = false;
       authListener.subscription.unsubscribe();
     };
+  }, []);
+
+  // Failsafe: caso algo trave, garantir que loading termina
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setIsLoading(false);
+    }, 7000);
+    return () => clearTimeout(t);
   }, []);
 
   return (
