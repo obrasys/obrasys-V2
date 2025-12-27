@@ -48,6 +48,7 @@ interface CreateEditExpenseDialogProps {
   onClose: () => void;
   onSave: (expense: Expense) => void;
   expenseToEdit?: Expense | null;
+  userCompanyId: string | null; // Adicionado userCompanyId prop
 }
 
 const CreateEditExpenseDialog: React.FC<CreateEditExpenseDialogProps> = ({
@@ -55,6 +56,7 @@ const CreateEditExpenseDialog: React.FC<CreateEditExpenseDialogProps> = ({
   onClose,
   onSave,
   expenseToEdit,
+  userCompanyId, // Destructured prop
 }) => {
   const { user } = useSession();
   const [isSaving, setIsSaving] = React.useState(false);
@@ -85,15 +87,15 @@ const CreateEditExpenseDialog: React.FC<CreateEditExpenseDialogProps> = ({
   }, [isOpen, expenseToEdit, form]);
 
   const onSubmit = async (data: Expense) => {
-    if (!user) {
-      toast.error("Utilizador não autenticado.");
+    if (!user || !userCompanyId) { // Check for userCompanyId
+      toast.error("Utilizador não autenticado ou ID da empresa não encontrado.");
       return;
     }
     setIsSaving(true);
     try {
       const expenseDataToSave: Expense = {
         ...data,
-        company_id: user.id, // Assuming user.id is the company_id for simplicity, or fetch from profile
+        company_id: userCompanyId, // Use userCompanyId here
         id: data.id || uuidv4(),
       };
 

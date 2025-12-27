@@ -159,7 +159,7 @@ const FinancialDashboardsPage = () => {
       fetchUserCompanyId();
     }
     console.log("[FinancialDashboardsPage] isSessionLoading:", isSessionLoading, "userCompanyId:", userCompanyId);
-  }, [isSessionLoading, fetchUserCompanyId, userCompanyId]);
+  }, [isSessionLoading, fetchUserCompanyId]); // Removido userCompanyId das dependências
 
   useEffect(() => {
     if (userCompanyId) {

@@ -126,7 +126,7 @@ const AccountsPage: React.FC = () => {
       fetchUserCompanyId();
     }
     console.log("[AccountsPage] isSessionLoading:", isSessionLoading, "userCompanyId:", userCompanyId);
-  }, [isSessionLoading, fetchUserCompanyId, userCompanyId]);
+  }, [isSessionLoading, fetchUserCompanyId]); // Removido userCompanyId das dependências
 
   React.useEffect(() => {
     if (userCompanyId) {
@@ -174,8 +174,12 @@ const AccountsPage: React.FC = () => {
     setIsInvoiceDialogOpen(true);
   };
 
-  const handleDeleteInvoice = async (id: string) => {
+  const handleDeleteInvoice = React.useCallback(async (id: string) => {
     if (!window.confirm("Tem certeza que deseja eliminar esta fatura e todos os seus itens e pagamentos?")) return;
+    if (!userCompanyId) {
+      toast.error("ID da empresa não encontrado. Não é possível eliminar a fatura.");
+      return;
+    }
     try {
       const { error } = await supabase
         .from('invoices')
@@ -194,7 +198,7 @@ const AccountsPage: React.FC = () => {
       toast.error(`Erro ao eliminar fatura: ${error.message}`);
       console.error("Erro ao eliminar fatura:", error);
     }
-  };
+  }, [userCompanyId, fetchInvoices, selectedInvoice]);
 
   const handleRecordPayment = (invoice: InvoiceWithRelations) => {
     setSelectedInvoice(invoice);
@@ -224,8 +228,12 @@ const AccountsPage: React.FC = () => {
     setIsExpenseDialogOpen(true);
   };
 
-  const handleMarkExpenseAsPaid = async (expense: Expense) => {
+  const handleMarkExpenseAsPaid = React.useCallback(async (expense: Expense) => {
     if (!window.confirm(`Tem certeza que deseja marcar a despesa "${expense.description}" como paga?`)) return;
+    if (!userCompanyId) {
+      toast.error("ID da empresa não encontrado. Não é possível marcar a despesa como paga.");
+      return;
+    }
     try {
       const { error } = await supabase
         .from('expenses')
@@ -241,10 +249,14 @@ const AccountsPage: React.FC = () => {
       toast.error(`Erro ao marcar despesa como paga: ${error.message}`);
       console.error("Erro ao marcar despesa como paga:", error);
     }
-  };
+  }, [userCompanyId, fetchExpenses]);
 
-  const handleDeleteExpense = async (id: string) => {
+  const handleDeleteExpense = React.useCallback(async (id: string) => {
     if (!window.confirm("Tem certeza que deseja eliminar esta despesa?")) return;
+    if (!userCompanyId) {
+      toast.error("ID da empresa não encontrado. Não é possível eliminar a despesa.");
+      return;
+    }
     try {
       const { error } = await supabase
         .from('expenses')
@@ -263,7 +275,7 @@ const AccountsPage: React.FC = () => {
       toast.error(`Erro ao eliminar despesa: ${error.message}`);
       console.error("Erro ao eliminar despesa:", error);
     }
-  };
+  }, [userCompanyId, fetchExpenses, selectedExpense]);
 
   const expenseColumns = createExpenseColumns({
     onView: handleViewExpense,
