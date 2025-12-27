@@ -44,6 +44,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Label } from "@/components/ui/label"; // Adicionado: Importação do componente Label
 
 const ReportsPage = () => {
   const { user, isLoading: isSessionLoading } = useSession();
