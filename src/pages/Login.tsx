@@ -29,6 +29,7 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 const Login: React.FC = () => {
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = React.useState(false);
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -40,19 +41,28 @@ const Login: React.FC = () => {
 
   const onSubmit = async (data: LoginFormValues) => {
     try {
+      setIsSubmitting(true);
       const { error } = await supabase.auth.signInWithPassword({
         email: data.email,
         password: data.password,
       });
 
       if (error) {
-        toast.error(`Erro ao iniciar sessão: ${error.message}`);
+        const msg = error.message || "";
+        // Se o email não estiver confirmado, informar o utilizador
+        if (msg.toLowerCase().includes("confirm")) {
+          toast.error("Email não confirmado. Verifique a sua caixa de entrada para confirmar a conta.");
+        } else {
+          toast.error(`Erro ao iniciar sessão: ${msg}`);
+        }
       } else {
         toast.success('Sessão iniciada com sucesso!');
         navigate('/dashboard');
       }
     } catch (error: any) {
       toast.error(`Ocorreu um erro inesperado: ${error.message}`);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -75,11 +85,11 @@ const Login: React.FC = () => {
               name="email"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>E-mail</FormLabel>
+                  <FormLabel htmlFor="login-email">E-mail</FormLabel>
                   <FormControl>
                     <div className="relative">
                       <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input placeholder="email@exemplo.com" {...field} className="pl-10" />
+                      <Input id="login-email" autoComplete="email" placeholder="email@exemplo.com" {...field} className="pl-10" />
                     </div>
                   </FormControl>
                   <FormMessage />
@@ -91,12 +101,14 @@ const Login: React.FC = () => {
               name="password"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Palavra-passe</FormLabel>
+                  <FormLabel htmlFor="login-password">Palavra-passe</FormLabel>
                   <FormControl>
                     <div className="relative">
                       <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                       <Input
+                        id="login-password"
                         type={showPassword ? "text" : "password"}
+                        autoComplete="current-password"
                         placeholder="••••••••"
                         {...field}
                         className="pl-10 pr-10"
@@ -120,8 +132,17 @@ const Login: React.FC = () => {
                 </FormItem>
               )}
             />
-            <Button type="submit" className="w-full flex items-center gap-2">
-              Entrar <ArrowRight className="h-4 w-4" />
+            <Button type="submit" className="w-full flex items-center gap-2" disabled={isSubmitting}>
+              {isSubmitting ? (
+                <>
+                  Entrando...
+                  <ArrowRight className="h-4 w-4" />
+                </>
+              ) : (
+                <>
+                  Entrar <ArrowRight className="h-4 w-4" />
+                </>
+              )}
             </Button>
           </form>
         </Form>

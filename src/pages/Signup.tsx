@@ -54,6 +54,7 @@ const Signup: React.FC = () => {
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = React.useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = React.useState(false);
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
 
   const form = useForm<SignupFormValues>({
     resolver: zodResolver(signupSchema),
@@ -72,6 +73,7 @@ const Signup: React.FC = () => {
 
   const onSubmit = async (data: SignupFormValues) => {
     try {
+      setIsSubmitting(true);
       // 1. Sign up the user with Supabase Auth
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: data.email,
@@ -82,13 +84,20 @@ const Signup: React.FC = () => {
             phone: data.phone,
             company: data.company,
             nif: data.nif,
-            company_type: data.companyType, // Pass company type to auth metadata
+            company_type: data.companyType,
           },
         },
       });
 
       if (authError) {
-        toast.error(`Erro ao registar: ${authError.message}`);
+        const msg = authError.message || "";
+        if (typeof (authError as any)?.status === "number" && (authError as any).status === 429) {
+          toast.error("Muitas tentativas. Aguarde alguns segundos e tente novamente.");
+        } else if (msg.toLowerCase().includes("already")) {
+          toast.error("Este email já está registado. Tente iniciar sessão.");
+        } else {
+          toast.error(`Erro ao registar: ${msg}`);
+        }
         return;
       }
 
@@ -133,6 +142,8 @@ const Signup: React.FC = () => {
       }
     } catch (error: any) {
       toast.error(`Ocorreu um erro inesperado: ${error.message}`);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -336,8 +347,8 @@ const Signup: React.FC = () => {
                 </FormItem>
               )}
             />
-            <Button type="submit" className="w-full flex items-center gap-2">
-              <UserPlus className="h-4 w-4" /> Criar Conta
+            <Button type="submit" className="w-full flex items-center gap-2" disabled={isSubmitting}>
+              <UserPlus className="h-4 w-4" /> {isSubmitting ? "A criar..." : "Criar Conta"}
             </Button>
           </form>
         </Form>
