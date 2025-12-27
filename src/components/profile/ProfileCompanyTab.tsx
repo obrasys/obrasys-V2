@@ -45,7 +45,7 @@ const ProfileCompanyTab: React.FC = () => {
   const [isAdmin, setIsAdmin] = React.useState(false);
   const [companyId, setCompanyId] = React.useState<string | null>(null);
   const [logoFile, setLogoFile] = React.useState<File | null>(null);
-  const [logoPreview, setLogoPreview] = React.useState<string | null>(null);
+  const [logoPreview, setLogoPreview] = React.useState<string | null>(null); // Only for temporary file preview
   const [isUploading, setIsUploading] = React.useState(false);
 
   const form = useForm<CompanyProfileFormValues>({
@@ -60,7 +60,8 @@ const ProfileCompanyTab: React.FC = () => {
     },
   });
 
-  const currentLogoUrlInForm = form.watch("logo_url");
+  // Use form.watch directly for the persisted logo URL
+  const persistedLogoUrl = form.watch("logo_url");
 
   const fetchCompanyData = React.useCallback(async () => {
     if (!user) {
@@ -68,7 +69,7 @@ const ProfileCompanyTab: React.FC = () => {
       setCompanyId(null);
       setIsAdmin(false);
       form.reset();
-      setLogoPreview(null);
+      setLogoPreview(null); // Clear temporary preview
       console.log("[ProfileCompanyTab] No user, resetting all company data.");
       return;
     }
@@ -90,7 +91,7 @@ const ProfileCompanyTab: React.FC = () => {
       setCompanyId(null);
       setIsAdmin(false);
       form.reset();
-      setLogoPreview(null);
+      setLogoPreview(null); // Clear temporary preview
       setIsLoading(false);
       return;
     }
@@ -110,7 +111,7 @@ const ProfileCompanyTab: React.FC = () => {
         console.error("[ProfileCompanyTab] Error fetching company data:", companyError);
         toast.error(`Erro ao carregar dados da empresa: ${companyError.message}`);
         form.reset();
-        setLogoPreview(null);
+        setLogoPreview(null); // Clear temporary preview
       } else if (companyData) {
         console.log("[ProfileCompanyTab] Fetched company data:", companyData);
         form.reset({
@@ -121,14 +122,13 @@ const ProfileCompanyTab: React.FC = () => {
           address: companyData.address || null,
           logo_url: companyData.logo_url || null,
         });
-        setLogoPreview(companyData.logo_url);
+        setLogoPreview(null); // Ensure temporary preview is cleared when loading persisted data
         console.log("[ProfileCompanyTab] Form reset with logo_url:", companyData.logo_url);
-        console.log("[ProfileCompanyTab] logoPreview set to:", companyData.logo_url);
       }
     } else {
       console.log("[ProfileCompanyTab] No company ID found for user, resetting form.");
       form.reset();
-      setLogoPreview(null);
+      setLogoPreview(null); // Clear temporary preview
     }
     setIsLoading(false);
   }, [user, form]);
@@ -140,12 +140,13 @@ const ProfileCompanyTab: React.FC = () => {
   }, [user, isSessionLoading, fetchCompanyData]);
 
   React.useEffect(() => {
+    // Cleanup preview URL when component unmounts or file changes
     return () => {
-      if (logoPreview && logoFile) {
+      if (logoPreview) {
         URL.revokeObjectURL(logoPreview);
       }
     };
-  }, [logoPreview, logoFile]);
+  }, [logoPreview]);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -153,27 +154,27 @@ const ProfileCompanyTab: React.FC = () => {
       if (!ACCEPTED_IMAGE_TYPES.includes(file.type)) {
         toast.error("Formato de imagem inválido. Apenas JPG, PNG ou WEBP são permitidos.");
         setLogoFile(null);
-        setLogoPreview(currentLogoUrlInForm);
+        setLogoPreview(null);
         return;
       }
       if (file.size > MAX_FILE_SIZE) {
         toast.error("O tamanho da imagem excede o limite de 5MB.");
         setLogoFile(null);
-        setLogoPreview(currentLogoUrlInForm);
+        setLogoPreview(null);
         return;
       }
       setLogoFile(file);
-      setLogoPreview(URL.createObjectURL(file));
+      setLogoPreview(URL.createObjectURL(file)); // Set temporary preview
     } else {
       setLogoFile(null);
-      setLogoPreview(currentLogoUrlInForm);
+      setLogoPreview(null); // Clear temporary preview if no file selected
     }
   };
 
   const handleRemoveLogo = () => {
     setLogoFile(null);
-    setLogoPreview(null);
-    form.setValue("logo_url", null);
+    setLogoPreview(null); // Clear temporary preview
+    form.setValue("logo_url", null); // Clear logo_url in form state
   };
 
   const onSubmit = async (data: CompanyProfileFormValues) => {
@@ -187,8 +188,8 @@ const ProfileCompanyTab: React.FC = () => {
     }
 
     setIsSaving(true);
-    let finalLogoUrl = data.logo_url;
-    console.log("[ProfileCompanyTab] onSubmit: Initial finalLogoUrl from form:", finalLogoUrl);
+    let finalLogoUrl = data.logo_url; // Start with current form value (could be existing URL or null if removed)
+    console.log("[ProfileCompanyTab] onSubmit: Initial finalLogoUrl from form data:", finalLogoUrl);
 
     try {
       if (logoFile) {
@@ -217,13 +218,13 @@ const ProfileCompanyTab: React.FC = () => {
           console.error("[ProfileCompanyTab] onSubmit: Could not get public URL after upload.");
           throw new Error("Não foi possível obter o URL público do logótipo.");
         }
-        finalLogoUrl = publicUrlData.publicUrl;
+        finalLogoUrl = publicUrlData.publicUrl; // This line correctly updates finalLogoUrl
         toast.success("Logótipo carregado com sucesso!");
         console.log("[ProfileCompanyTab] onSubmit: New logo public URL:", finalLogoUrl);
 
-      } else if (data.logo_url === null && currentLogoUrlInForm) {
-        console.log("[ProfileCompanyTab] onSubmit: User requested to remove logo. Current URL:", currentLogoUrlInForm);
-        const urlParts = currentLogoUrlInForm.split('/public/company-logos/');
+      } else if (data.logo_url === null && persistedLogoUrl) { // Check against persistedLogoUrl for deletion
+        console.log("[ProfileCompanyTab] onSubmit: User requested to remove logo. Current persisted URL:", persistedLogoUrl);
+        const urlParts = persistedLogoUrl.split('/public/company-logos/');
         if (urlParts.length > 1) {
           const storagePath = urlParts[1];
           console.log("[ProfileCompanyTab] onSubmit: Deleting old logo from storage path:", storagePath);
@@ -237,7 +238,7 @@ const ProfileCompanyTab: React.FC = () => {
             console.log("[ProfileCompanyTab] onSubmit: Old logo removed from storage successfully.");
           }
         }
-        finalLogoUrl = null;
+        finalLogoUrl = null; // Ensure logo_url is null in DB
       }
 
       const { error } = await supabase
@@ -248,7 +249,7 @@ const ProfileCompanyTab: React.FC = () => {
           email: data.email,
           phone: data.phone,
           address: data.address,
-          logo_url: finalLogoUrl,
+          logo_url: finalLogoUrl, // Use the new URL or null
           updated_at: new Date().toISOString(),
         })
         .eq('id', companyId);
@@ -258,12 +259,10 @@ const ProfileCompanyTab: React.FC = () => {
         throw error;
       }
       toast.success("Dados da empresa atualizados com sucesso!");
-      console.log("[ProfileCompanyTab] onSubmit: Company data updated in DB. Directly updating UI state.");
-      // Directly update the form state and preview state for immediate visual feedback
-      form.setValue('logo_url', finalLogoUrl);
-      setLogoPreview(finalLogoUrl);
-      // No need to call fetchCompanyData() here, as the state is already updated.
-      // The useEffect will eventually re-fetch, ensuring consistency.
+      // After successful DB update, re-fetch all company data to ensure consistency
+      await fetchCompanyData(); 
+      console.log("[ProfileCompanyTab] onSubmit: Company data updated in DB. Re-fetching data.");
+
     } catch (error: any) {
       console.error("[ProfileCompanyTab] onSubmit: General error during company data update:", error);
       toast.error(`Erro ao atualizar dados da empresa: ${error.message}`);
@@ -271,6 +270,7 @@ const ProfileCompanyTab: React.FC = () => {
       setIsSaving(false);
       setIsUploading(false);
       setLogoFile(null);
+      setLogoPreview(null); // Clear temporary preview
       console.log("[ProfileCompanyTab] onSubmit: Finally block executed. isSaving:", isSaving, "isUploading:", isUploading, "logoFile:", logoFile);
     }
   };
@@ -305,7 +305,8 @@ const ProfileCompanyTab: React.FC = () => {
         <div className="flex items-center space-x-4">
           <div className="relative">
             <Avatar className="h-24 w-24">
-              <AvatarImage key={logoPreview || 'default-company-logo'} src={logoPreview || undefined} alt="Logótipo da Empresa" />
+              {/* Use logoPreview for temporary file, fallback to persistedLogoUrl from form */}
+              <AvatarImage key={logoPreview || persistedLogoUrl || 'default-company-logo'} src={logoPreview || persistedLogoUrl || undefined} alt="Logótipo da Empresa" />
               <AvatarFallback className="text-3xl">{companyInitials}</AvatarFallback>
             </Avatar>
             <label htmlFor="logo-upload" className="absolute bottom-0 right-0 h-8 w-8 rounded-full bg-background flex items-center justify-center border border-input cursor-pointer hover:bg-accent">
@@ -319,7 +320,7 @@ const ProfileCompanyTab: React.FC = () => {
                 disabled={!isAdmin || isUploading || isSaving}
               />
             </label>
-            {(logoPreview || currentLogoUrlInForm) && isAdmin && (
+            {(logoPreview || persistedLogoUrl) && isAdmin && ( // Check against both for showing remove button
               <Button
                 type="button"
                 variant="ghost"
