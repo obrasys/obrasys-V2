@@ -27,18 +27,47 @@ export const SessionContextProvider: React.FC<{ children: React.ReactNode }> = (
   /* 🔐 Função única para carregar profile                               */
   /* ------------------------------------------------------------------ */
   const loadProfile = async (currentUser: User) => {
+    // Tenta obter perfil
     const { data, error } = await supabase
       .from("profiles")
       .select("*")
       .eq("id", currentUser.id)
-      .maybeSingle(); // ✅ nunca lança 406
+      .maybeSingle();
 
-    if (error) {
+    // Se encontrou, devolve
+    if (!error && data) {
+      return data as Profile;
+    }
+
+    // Se houve erro inesperado, regista e devolve null
+    if (error && error.code !== "PGRST116") {
       console.error("[SessionContext] Erro ao carregar profile:", error);
       return null;
     }
 
-    return data as Profile | null;
+    // Não existe perfil: criar um mínimo para o utilizador atual
+    const email = currentUser.email ?? "";
+    const namePart = email.split("@")[0] || "Utilizador";
+    const firstName = namePart.charAt(0).toUpperCase() + namePart.slice(1);
+
+    const { data: created, error: insertErr } = await supabase
+      .from("profiles")
+      .insert({
+        id: currentUser.id,
+        first_name: firstName,
+        last_name: "",
+        role: "cliente",
+        plan_type: "trialing",
+      })
+      .select("*")
+      .single();
+
+    if (insertErr) {
+      console.error("[SessionContext] Falha ao criar perfil:", insertErr);
+      return null;
+    }
+
+    return created as Profile;
   };
 
   /* ------------------------------------------------------------------ */
