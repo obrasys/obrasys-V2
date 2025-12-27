@@ -108,19 +108,28 @@ const PlansPage: React.FC = () => {
       return;
     }
 
+    const normalizedPlan = planName.toLowerCase().replace(" ", "_");
+    // Não iniciar checkout para o plano Empresa
+    if (normalizedPlan === "empresa") {
+      toast.info("Para o plano Empresa, por favor contacte as vendas para uma proposta personalizada.");
+      return;
+    }
+
     setIsProcessingCheckout(true);
     try {
       const { data, error } = await supabase.functions.invoke("create-checkout-session", {
         body: {
           company_id: userCompanyId,
-          plan_type: planName.toLowerCase().replace(" ", "_"),
+          plan_type: normalizedPlan,
           customer_email: user.email,
         },
       });
 
       if (error) {
-        console.error("Erro ao criar sessão de checkout:", error);
-        toast.error(`Erro ao iniciar pagamento: ${error.message}`);
+        // Mostrar detalhe do erro vindo da função, se existir
+        const fnMessage = (data && (data as any).error) ? (data as any).error : error.message;
+        console.error("Erro ao criar sessão de checkout:", error, data);
+        toast.error(`Erro ao iniciar pagamento: ${fnMessage}`);
         return;
       }
 
