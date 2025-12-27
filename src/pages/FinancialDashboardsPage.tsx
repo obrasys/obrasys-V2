@@ -51,7 +51,7 @@ const FinancialDashboardsPage = () => {
       .single();
 
     if (profileError) {
-      console.error("Erro ao carregar company_id do perfil:", profileError);
+      console.error("[FinancialDashboardsPage] Erro ao carregar company_id do perfil:", profileError);
       setUserCompanyId(null);
     } else if (profileData) {
       setUserCompanyId(profileData.company_id);
@@ -63,9 +63,11 @@ const FinancialDashboardsPage = () => {
     if (!userCompanyId) {
       setProjects([]);
       setIsLoadingProjects(false);
+      console.log("[FinancialDashboardsPage] fetchProjects: userCompanyId is null, skipping fetch.");
       return;
     }
     setIsLoadingProjects(true);
+    console.log("[FinancialDashboardsPage] fetchProjects: Fetching for companyId:", userCompanyId);
     const { data, error } = await supabase
       .from('projects')
       .select('id, nome, custo_planeado, custo_real, budget_id')
@@ -74,13 +76,14 @@ const FinancialDashboardsPage = () => {
 
     if (error) {
       toast.error(`Erro ao carregar obras: ${error.message}`);
-      console.error("Erro ao carregar obras:", error);
+      console.error("[FinancialDashboardsPage] Erro ao carregar obras:", error);
       setProjects([]);
     } else {
       setProjects(data || []);
       if (data && data.length > 0 && !selectedProjectId) {
         setSelectedProjectId(data[0].id); // Select the first project by default
       }
+      console.log("[FinancialDashboardsPage] fetchProjects: Data fetched:", data);
     }
     setIsLoadingProjects(false);
   }, [userCompanyId, selectedProjectId]);
@@ -91,10 +94,12 @@ const FinancialDashboardsPage = () => {
       setProjectBudget(null);
       setProjectInvoices([]);
       setProjectExpenses([]);
+      console.log("[FinancialDashboardsPage] fetchFinancialData: selectedProjectId or userCompanyId is null, skipping fetch.");
       return;
     }
 
     setIsLoadingFinancialData(true);
+    console.log("[FinancialDashboardsPage] fetchFinancialData: Fetching for projectId:", selectedProjectId, "companyId:", userCompanyId);
 
     // Fetch Budget
     const { data: budgetData, error: budgetError } = await supabase
@@ -105,11 +110,12 @@ const FinancialDashboardsPage = () => {
       .single();
 
     if (budgetError && budgetError.code !== 'PGRST116') {
-      console.error("Erro ao carregar orçamento do projeto:", budgetError);
+      console.error("[FinancialDashboardsPage] Erro ao carregar orçamento do projeto:", budgetError);
       toast.error(`Erro ao carregar orçamento: ${budgetError.message}`);
       setProjectBudget(null);
     } else {
       setProjectBudget(budgetData || null);
+      console.log("[FinancialDashboardsPage] fetchFinancialData: Budget data:", budgetData);
     }
 
     // Fetch Invoices
@@ -121,11 +127,12 @@ const FinancialDashboardsPage = () => {
       .order('issue_date', { ascending: true });
 
     if (invoicesError) {
-      console.error("Erro ao carregar faturas do projeto:", invoicesError);
+      console.error("[FinancialDashboardsPage] Erro ao carregar faturas do projeto:", invoicesError);
       toast.error(`Erro ao carregar faturas: ${invoicesError.message}`);
       setProjectInvoices([]);
     } else {
       setProjectInvoices(invoicesData || []);
+      console.log("[FinancialDashboardsPage] fetchFinancialData: Invoices data:", invoicesData);
     }
 
     // Fetch Expenses
@@ -136,13 +143,12 @@ const FinancialDashboardsPage = () => {
       .order('due_date', { ascending: true });
 
     if (expensesError) {
-      console.error("Erro ao carregar despesas da empresa:", expensesError);
+      console.error("[FinancialDashboardsPage] Erro ao carregar despesas da empresa:", expensesError);
       toast.error(`Erro ao carregar despesas: ${expensesError.message}`);
       setProjectExpenses([]);
     } else {
-      // Filter expenses that might be related to the project if a project_id column existed in expenses
-      // For now, we'll just show all company expenses, or filter by project if a link is added later.
       setProjectExpenses(expensesData || []);
+      console.log("[FinancialDashboardsPage] fetchFinancialData: Expenses data:", expensesData);
     }
 
     setIsLoadingFinancialData(false);
@@ -152,17 +158,24 @@ const FinancialDashboardsPage = () => {
     if (!isSessionLoading) {
       fetchUserCompanyId();
     }
-  }, [isSessionLoading, fetchUserCompanyId]);
+    console.log("[FinancialDashboardsPage] isSessionLoading:", isSessionLoading, "userCompanyId:", userCompanyId);
+  }, [isSessionLoading, fetchUserCompanyId, userCompanyId]);
 
   useEffect(() => {
     if (userCompanyId) {
+      console.log("[FinancialDashboardsPage] userCompanyId is available, triggering project fetch.");
       fetchProjects();
+    } else {
+      console.log("[FinancialDashboardsPage] userCompanyId is null, skipping project fetch.");
     }
   }, [userCompanyId, fetchProjects]);
 
   useEffect(() => {
     if (selectedProjectId && userCompanyId) {
+      console.log("[FinancialDashboardsPage] selectedProjectId and userCompanyId are available, triggering financial data fetch.");
       fetchFinancialData();
+    } else {
+      console.log("[FinancialDashboardsPage] selectedProjectId or userCompanyId is null, skipping financial data fetch.");
     }
   }, [selectedProjectId, userCompanyId, fetchFinancialData]);
 

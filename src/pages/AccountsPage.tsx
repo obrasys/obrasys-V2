@@ -5,7 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, Filter, Download, ReceiptText, RefreshCw, ArrowLeft, Loader2, CheckCircle, DollarSign, XCircle, Scale, Wallet, Edit, Trash2 } from "lucide-react"; // Adicionado Edit e Trash2
+import { PlusCircle, Filter, Download, ReceiptText, RefreshCw, ArrowLeft, Loader2, CheckCircle, DollarSign, XCircle, Scale, Wallet, Edit, Trash2 } from "lucide-react";
 import EmptyState from "@/components/EmptyState";
 import { useSession } from "@/components/SessionContextProvider";
 import { supabase } from "@/integrations/supabase/client";
@@ -13,14 +13,14 @@ import { toast } from "sonner";
 import { Invoice, InvoiceWithRelations, Expense } from "@/schemas/invoicing-schema";
 import { DataTable } from "@/components/work-items/data-table";
 import { createInvoiceColumns } from "@/components/invoicing/InvoiceColumns";
-import { createExpenseColumns } from "@/components/invoicing/ExpenseColumns"; // Import new expense columns
+import { createExpenseColumns } from "@/components/invoicing/ExpenseColumns";
 import CreateEditInvoiceDialog from "@/components/invoicing/CreateEditInvoiceDialog";
-import CreateEditExpenseDialog from "@/components/invoicing/CreateEditExpenseDialog"; // Import new expense dialog
+import CreateEditExpenseDialog from "@/components/invoicing/CreateEditExpenseDialog";
 import InvoiceDetailView from "@/components/invoicing/InvoiceDetailView";
 import KPICard from "@/components/KPICard";
-import { formatCurrency, formatDate } from "@/utils/formatters"; // Importado formatDate
+import { formatCurrency, formatDate } from "@/utils/formatters";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"; // Import Tabs
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const AccountsPage: React.FC = () => {
   const navigate = useNavigate();
@@ -56,7 +56,7 @@ const AccountsPage: React.FC = () => {
       .single();
 
     if (profileError) {
-      console.error("Erro ao carregar company_id do perfil:", profileError);
+      console.error("[AccountsPage] Erro ao carregar company_id do perfil:", profileError);
       setUserCompanyId(null);
     } else if (profileData) {
       setUserCompanyId(profileData.company_id);
@@ -68,9 +68,11 @@ const AccountsPage: React.FC = () => {
     if (!userCompanyId) {
       setInvoices([]);
       setIsLoadingInvoices(false);
+      console.log("[AccountsPage] fetchInvoices: userCompanyId is null, skipping fetch.");
       return;
     }
     setIsLoadingInvoices(true);
+    console.log("[AccountsPage] fetchInvoices: Fetching for companyId:", userCompanyId);
     const { data: invoicesData, error: invoicesError } = await supabase
       .from('invoices')
       .select(`
@@ -83,10 +85,11 @@ const AccountsPage: React.FC = () => {
 
     if (invoicesError) {
       toast.error(`Erro ao carregar faturas: ${invoicesError.message}`);
-      console.error("Erro ao carregar faturas:", invoicesError);
+      console.error("[AccountsPage] Erro ao carregar faturas:", invoicesError);
       setInvoices([]);
     } else {
       setInvoices(invoicesData || []);
+      console.log("[AccountsPage] fetchInvoices: Data fetched:", invoicesData);
     }
     setIsLoadingInvoices(false);
   }, [userCompanyId]);
@@ -96,9 +99,11 @@ const AccountsPage: React.FC = () => {
     if (!userCompanyId) {
       setExpenses([]);
       setIsLoadingExpenses(false);
+      console.log("[AccountsPage] fetchExpenses: userCompanyId is null, skipping fetch.");
       return;
     }
     setIsLoadingExpenses(true);
+    console.log("[AccountsPage] fetchExpenses: Fetching for companyId:", userCompanyId);
     const { data: expensesData, error: expensesError } = await supabase
       .from('expenses')
       .select('*')
@@ -107,12 +112,11 @@ const AccountsPage: React.FC = () => {
 
     if (expensesError) {
       toast.error(`Erro ao carregar despesas: ${expensesError.message}`);
-      console.error("Erro ao carregar despesas:", expensesError);
+      console.error("[AccountsPage] Erro ao carregar despesas:", expensesError);
       setExpenses([]);
     } else {
-      // Filter expenses that might be related to the project if a project_id column existed in expenses
-      // For now, we'll just show all company expenses, or filter by project if a link is added later.
       setExpenses(expensesData || []);
+      console.log("[AccountsPage] fetchExpenses: Data fetched:", expensesData);
     }
     setIsLoadingExpenses(false);
   }, [userCompanyId]);
@@ -121,12 +125,16 @@ const AccountsPage: React.FC = () => {
     if (!isSessionLoading) {
       fetchUserCompanyId();
     }
-  }, [isSessionLoading, fetchUserCompanyId]);
+    console.log("[AccountsPage] isSessionLoading:", isSessionLoading, "userCompanyId:", userCompanyId);
+  }, [isSessionLoading, fetchUserCompanyId, userCompanyId]);
 
   React.useEffect(() => {
     if (userCompanyId) {
+      console.log("[AccountsPage] userCompanyId is available, triggering invoice/expense fetch.");
       fetchInvoices();
-      fetchExpenses(); // Fetch expenses when company ID is available
+      fetchExpenses();
+    } else {
+      console.log("[AccountsPage] userCompanyId is null, skipping invoice/expense fetch.");
     }
   }, [userCompanyId, fetchInvoices, fetchExpenses]);
 

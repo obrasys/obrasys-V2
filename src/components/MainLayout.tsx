@@ -20,7 +20,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import EditProfileModal from "@/components/profile/EditProfileModal";
 import { seedDefaultArticles } from "@/utils/initial-data";
-import { useNotification } from "@/contexts/NotificationContext"; // NEW: Import useNotification
+import { useNotification } from "@/contexts/NotificationContext";
 
 interface SidebarProps {
   isCollapsed: boolean;
@@ -54,10 +54,10 @@ const MainLayout = () => {
 
     if (profileError) {
       if (profileError.code === 'PGRST116') {
-        console.warn("No profile found for user. Assuming trigger will handle or profile is being created.");
+        console.warn("[MainLayout] No profile found for user. Assuming trigger will handle or profile is being created.");
         setProfile(null);
       } else {
-        console.error("Erro ao carregar perfil:", profileError);
+        console.error("[MainLayout] Erro ao carregar perfil:", profileError);
         toast.error(`Erro ao carregar dados do perfil: ${profileError.message}`);
         setProfile(null);
       }
@@ -70,7 +70,9 @@ const MainLayout = () => {
     if (!isSessionLoading && user) {
       fetchProfile();
     }
-  }, [user, isSessionLoading, fetchProfile]);
+    console.log("[MainLayout] User:", user, "Profile:", profile, "UserCompanyId from profile:", profile?.company_id);
+  }, [user, isSessionLoading, fetchProfile, profile]);
+
 
   // NEW: Effect to seed default articles if not already seeded for the company
   React.useEffect(() => {
@@ -83,12 +85,12 @@ const MainLayout = () => {
           .single();
 
         if (companyError) {
-          console.error("Erro ao verificar estado de seeding da empresa:", companyError);
+          console.error("[MainLayout] Erro ao verificar estado de seeding da empresa:", companyError);
           return;
         }
 
         if (!companyData?.default_articles_seeded) {
-          console.log("Seeding default articles for new company:", profile.company_id);
+          console.log("[MainLayout] Seeding default articles for new company:", profile.company_id);
           await seedDefaultArticles(profile.company_id);
           // After seeding, refetch profile to update the company_id (if it was just created)
           // and ensure the `default_articles_seeded` flag is recognized.
@@ -190,7 +192,6 @@ const MainLayout = () => {
             </DropdownMenu>
           </div>
         </header>
-        {/* Removed NotificationProvider from here */}
         <Outlet />
       </main>
 
