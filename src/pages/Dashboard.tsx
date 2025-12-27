@@ -28,31 +28,42 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Project } from "@/schemas/project-schema"; // Import Project schema
 import { Skeleton } from "@/components/ui/skeleton"; // Import Skeleton for loading states
+import { Profile } from "@/schemas/profile-schema"; // Import Profile schema
 
 const Dashboard = () => {
   const navigate = useNavigate();
   const { user, isLoading: isSessionLoading } = useSession();
   const [userCompanyId, setUserCompanyId] = React.useState<string | null>(null);
+  const [profileData, setProfileData] = React.useState<Profile | null>(null); // NEW: State for profile data
   const [projects, setProjects] = React.useState<Project[]>([]);
   const [isLoadingProjects, setIsLoadingProjects] = React.useState(true);
+  const [pendingReportsCount, setPendingReportsCount] = React.useState(0); // NEW: State for pending reports
+  const [isLoadingPendingReports, setIsLoadingPendingReports] = React.useState(true); // NEW: Loading state
+  const [scheduledTasksCount, setScheduledTasksCount] = React.useState(0); // NEW: State for scheduled tasks
+  const [isLoadingScheduledTasks, setIsLoadingScheduledTasks] = React.useState(true); // NEW: Loading state
+  const [pendingApprovalsCount, setPendingApprovalsCount] = React.useState(0); // NEW: State for pending approvals
+  const [isLoadingPendingApprovals, setIsLoadingPendingApprovals] = React.useState(true); // NEW: Loading state
 
-  // Fetch user's company ID
-  const fetchUserCompanyId = React.useCallback(async () => {
+  // Fetch user's company ID and profile data
+  const fetchUserProfileAndCompanyId = React.useCallback(async () => {
     if (!user) {
       setUserCompanyId(null);
+      setProfileData(null);
       return;
     }
-    const { data: profileData, error: profileError } = await supabase
+    const { data: profile, error: profileError } = await supabase
       .from('profiles')
-      .select('company_id')
+      .select('company_id, first_name, last_name, role')
       .eq('id', user.id)
       .single();
 
     if (profileError) {
-      console.error("Erro ao carregar company_id do perfil:", profileError);
+      console.error("Erro ao carregar company_id e perfil:", profileError);
       setUserCompanyId(null);
-    } else if (profileData) {
-      setUserCompanyId(profileData.company_id);
+      setProfileData(null);
+    } else if (profile) {
+      setUserCompanyId(profile.company_id);
+      setProfileData(profile);
     }
   }, [user]);
 
@@ -80,23 +91,99 @@ const Dashboard = () => {
     setIsLoadingProjects(false);
   }, [userCompanyId]);
 
+  // NEW: Fetch pending Livros de Obra (reports)
+  const fetchPendingReports = React.useCallback(async () => {
+    if (!userCompanyId) {
+      setPendingReportsCount(0);
+      setIsLoadingPendingReports(false);
+      return;
+    }
+    setIsLoadingPendingReports(true);
+    const { count, error } = await supabase
+      .from('livros_obra')
+      .select('id', { count: 'exact' })
+      .eq('company_id', userCompanyId)
+      .eq('estado', 'em_preparacao'); // Assuming 'em_preparacao' means pending
+
+    if (error) {
+      console.error("Erro ao carregar relatórios pendentes:", error);
+      setPendingReportsCount(0);
+    } else {
+      setPendingReportsCount(count || 0);
+    }
+    setIsLoadingPendingReports(false);
+  }, [userCompanyId]);
+
+  // NEW: Fetch scheduled tasks
+  const fetchScheduledTasks = React.useCallback(async () => {
+    if (!userCompanyId) {
+      setScheduledTasksCount(0);
+      setIsLoadingScheduledTasks(false);
+      return;
+    }
+    setIsLoadingScheduledTasks(true);
+    // Fetch tasks that are 'Planeado' or 'Em execução'
+    const { count, error } = await supabase
+      .from('schedule_tasks')
+      .select('id', { count: 'exact' })
+      .eq('company_id', userCompanyId)
+      .in('estado', ['Planeado', 'Em execução']);
+
+    if (error) {
+      console.error("Erro ao carregar tarefas agendadas:", error);
+      setScheduledTasksCount(0);
+    } else {
+      setScheduledTasksCount(count || 0);
+    }
+    setIsLoadingScheduledTasks(false);
+  }, [userCompanyId]);
+
+  // NEW: Fetch pending approvals
+  const fetchPendingApprovals = React.useCallback(async () => {
+    if (!userCompanyId) {
+      setPendingApprovalsCount(0);
+      setIsLoadingPendingApprovals(false);
+      return;
+    }
+    setIsLoadingPendingApprovals(true);
+    const { count, error } = await supabase
+      .from('approvals')
+      .select('id', { count: 'exact' })
+      .eq('company_id', userCompanyId)
+      .eq('status', 'pending');
+
+    if (error) {
+      console.error("Erro ao carregar aprovações pendentes:", error);
+      setPendingApprovalsCount(0);
+    } else {
+      setPendingApprovalsCount(count || 0);
+    }
+    setIsLoadingPendingApprovals(false);
+  }, [userCompanyId]);
+
+
   React.useEffect(() => {
     if (!isSessionLoading) {
-      fetchUserCompanyId();
+      fetchUserProfileAndCompanyId();
     }
-  }, [isSessionLoading, fetchUserCompanyId]);
+  }, [isSessionLoading, fetchUserProfileAndCompanyId]);
 
   React.useEffect(() => {
     if (userCompanyId) {
       fetchProjects();
+      fetchPendingReports(); // NEW: Call new fetch functions
+      fetchScheduledTasks(); // NEW: Call new fetch functions
+      fetchPendingApprovals(); // NEW: Call new fetch functions
     }
-  }, [userCompanyId, fetchProjects]);
+  }, [userCompanyId, fetchProjects, fetchPendingReports, fetchScheduledTasks, fetchPendingApprovals]);
 
   const activeProjects = projects.filter(p => p.estado === "Em execução");
   const delayedProjects = projects.filter(p => p.estado === "Atrasada");
 
-  // Placeholder for user name, replace with actual profile data if available
-  const userName = "Bezerra Cavalcanti"; // Replace with profile?.first_name + ' ' + profile?.last_name
+  const userName = profileData?.first_name && profileData?.last_name
+    ? `${profileData.first_name} ${profileData.last_name}`
+    : user?.email || 'Utilizador';
+  const userRole = profileData?.role || 'Cliente';
 
   return (
     <div className="space-y-6">
@@ -106,7 +193,7 @@ const Dashboard = () => {
           <h1 className="text-2xl md:text-3xl font-bold text-primary">
             Bem-vindo, {userName}
           </h1>
-          <p className="text-muted-foreground text-sm">Administrador</p>
+          <p className="text-muted-foreground text-sm capitalize">{userRole}</p>
         </div>
       </div>
 
@@ -128,21 +215,21 @@ const Dashboard = () => {
         />
         <KPICard
           title="Relatórios Pendentes"
-          value="0"
-          description="+5 hoje"
+          value={isLoadingPendingReports ? <Loader2 className="h-5 w-5 animate-spin" /> : pendingReportsCount.toString()}
+          description="requerem atenção"
           icon={FileText}
           iconColorClass="text-purple-500"
         />
         <KPICard
           title="Tarefas Agendadas"
-          value="0"
+          value={isLoadingScheduledTasks ? <Loader2 className="h-5 w-5 animate-spin" /> : scheduledTasksCount.toString()}
           description="esta semana"
           icon={CalendarDays}
           iconColorClass="text-green-500"
         />
         <KPICard
           title="Aprovações Pendentes"
-          value="0"
+          value={isLoadingPendingApprovals ? <Loader2 className="h-5 w-5 animate-spin" /> : pendingApprovalsCount.toString()}
           description="requer ação"
           icon={CheckSquare}
           iconColorClass="text-red-500"
