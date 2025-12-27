@@ -56,6 +56,23 @@ const Signup: React.FC = () => {
   const [showConfirmPassword, setShowConfirmPassword] = React.useState(false);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
 
+  // Espera robusta pelo company_id criado pelo trigger, com timeout curto
+  async function waitForCompanyId(userId: string, maxAttempts = 8, delayMs = 600): Promise<string | null> {
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('company_id')
+        .eq('id', userId)
+        .single();
+      if (!error && data?.company_id) {
+        return data.company_id as string;
+      }
+      // Pequena espera antes da próxima tentativa
+      await new Promise((res) => setTimeout(res, delayMs));
+    }
+    return null;
+  }
+
   const form = useForm<SignupFormValues>({
     resolver: zodResolver(signupSchema),
     defaultValues: {
@@ -100,29 +117,13 @@ const Signup: React.FC = () => {
         return;
       }
 
-      // Tentar obter company_id criado pelo trigger
+      // Tentar obter company_id com polling (trigger handle_new_user_and_company)
       let companyId: string | null = null;
       if (authData.user) {
-        const { data: profileFetch, error: profileFetchError } = await supabase
-          .from('profiles')
-          .select('company_id')
-          .eq('id', authData.user.id)
-          .single();
-
-        if (!profileFetchError && profileFetch?.company_id) {
-          companyId = profileFetch.company_id;
-        } else {
-          // Pequeno retry caso o trigger demore
-          const { data: retryProfile } = await supabase
-            .from('profiles')
-            .select('company_id')
-            .eq('id', authData.user.id)
-            .single();
-          companyId = retryProfile?.company_id || null;
-        }
+        companyId = await waitForCompanyId(authData.user.id);
       }
 
-      // Criar subscrição de trial — se falhar, NÃO bloquear o fluxo
+      // Criar subscrição de trial — apenas se company_id existir; caso contrário, seguir fluxo
       if (companyId) {
         const trialEndDate = addDays(new Date(), 30);
         const { error: subscriptionError } = await supabase
@@ -142,7 +143,7 @@ const Signup: React.FC = () => {
           toast.success("Trial de 30 dias criado com sucesso!");
         }
       } else {
-        toast.info("Conta criada. Vamos configurar a subscrição quando a empresa estiver pronta.");
+        toast.info("Conta criada. Vamos concluir a configuração da empresa e subscrição em breve.");
       }
 
       toast.success('Registo efetuado com sucesso! Verifique o seu email para confirmar a conta.');
