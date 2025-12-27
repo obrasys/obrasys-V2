@@ -896,7 +896,7 @@ export function useReportGeneration(): UseReportGenerationResult {
         const totalEntries = (currentMonthPayments || []).reduce((sum, p) => sum + p.amount, 0);
         const entries = (currentMonthPayments || []).map(p => ({
           date: p.payment_date,
-          origin: `Pagamento Fatura ${p.invoices?.invoice_number || 'N/A'}`,
+          origin: `Pagamento Fatura ${p.invoices?.[0]?.invoice_number || 'N/A'}`, // Corrected access
           amount: p.amount,
         }));
 
