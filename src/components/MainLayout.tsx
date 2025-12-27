@@ -54,14 +54,6 @@ const MainLayout = () => {
     return <Navigate to="/login" replace />;
   }
 
-  if (!profile) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        A preparar o teu perfil…
-      </div>
-    );
-  }
-
   /* ------------------------------------------------------------------ */
 
   const toggleSidebar = () => {
@@ -78,9 +70,11 @@ const MainLayout = () => {
     }
   };
 
+  const firstName = profile?.first_name || "";
+  const lastName = profile?.last_name || "";
   const userInitials =
-    profile.first_name && profile.last_name
-      ? `${profile.first_name[0]}${profile.last_name[0]}`.toUpperCase()
+    firstName && lastName
+      ? `${firstName[0]}${lastName[0]}`.toUpperCase()
       : user.email?.charAt(0).toUpperCase() ?? "U";
 
   return (
@@ -90,7 +84,7 @@ const MainLayout = () => {
         <Sidebar
           isCollapsed={isSidebarCollapsed}
           toggleSidebar={toggleSidebar}
-          profile={profile}
+          profile={profile ?? null}
         />
       </div>
 
@@ -99,7 +93,7 @@ const MainLayout = () => {
         <header className="flex items-center justify-between pb-4 border-b mb-4">
           {/* Mobile menu */}
           <div className="md:hidden">
-            <MobileSidebar profile={profile}>
+            <MobileSidebar profile={profile ?? null}>
               <Button variant="ghost" size="icon">
                 <Menu className="h-5 w-5" />
               </Button>
@@ -119,7 +113,7 @@ const MainLayout = () => {
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="h-8 w-8 rounded-full">
                   <Avatar className="h-8 w-8">
-                    <AvatarImage src={profile.avatar_url ?? undefined} />
+                    <AvatarImage src={profile?.avatar_url ?? undefined} />
                     <AvatarFallback>{userInitials}</AvatarFallback>
                   </Avatar>
                 </Button>
@@ -129,7 +123,7 @@ const MainLayout = () => {
                 <DropdownMenuLabel>
                   <div className="flex flex-col space-y-1">
                     <span className="text-sm font-medium">
-                      {profile.first_name} {profile.last_name}
+                      {firstName} {lastName}
                     </span>
                     <span className="text-xs text-muted-foreground">
                       {user.email}
