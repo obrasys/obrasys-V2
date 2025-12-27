@@ -28,6 +28,10 @@ import { pt } from "date-fns/locale";
 const ReportsPage = () => {
   const generateReportContent = (reportName: string, data: any) => {
     const currentDate = format(new Date(), "dd/MM/yyyy HH:mm", { locale: pt });
+    const currentMonthYear = format(new Date(), "MMMM yyyy", { locale: pt });
+    const companyName = "Obra Sys Construções"; // Placeholder
+    const financialResponsible = "João Silva"; // Placeholder
+
     let content = `
       <!DOCTYPE html>
       <html lang="pt">
@@ -49,6 +53,9 @@ const ReportsPage = () => {
               .summary p { margin: 5px 0; font-weight: 500; }
               .footer { margin-top: 50px; font-size: 0.75em; text-align: center; color: #777; border-top: 1px solid #eee; padding-top: 20px; }
               .no-print { position: fixed; top: 20px; right: 20px; z-index: 1000; }
+              .cover-page { text-align: center; page-break-after: always; height: 100vh; display: flex; flex-direction: column; justify-content: center; align-items: center; }
+              .cover-page h1 { font-size: 3em; margin-bottom: 20px; }
+              .cover-page p { font-size: 1.5em; margin-bottom: 10px; }
               @media print {
                   .no-print { display: none; }
               }
@@ -59,16 +66,91 @@ const ReportsPage = () => {
             <button onclick="window.print()" style="padding: 10px 20px; background-color: #00679d; color: white; border: none; border-radius: 5px; cursor: pointer; margin-right: 10px;">Imprimir</button>
             <button onclick="window.close()" style="padding: 10px 20px; background-color: #ccc; color: #333; border: none; border-radius: 5px; cursor: pointer;">Fechar</button>
           </div>
-          <h1>Relatório de ${reportName}</h1>
-          <div class="header-info">
-              <p><strong>Data de Geração:</strong> ${currentDate}</p>
-              <p><strong>Empresa:</strong> Obra Sys Construções</p>
-              <p><strong>Período:</strong> Últimos 30 dias (Exemplo)</p>
-          </div>
     `;
 
-    if (reportName === "Faturas") {
+    if (reportName === "Relatório Financeiro Mensal") {
       content += `
+        <div class="cover-page">
+            <h1>Relatório Financeiro Mensal</h1>
+            <p><strong>${companyName}</strong></p>
+            <p>Mês / Ano: ${currentMonthYear}</p>
+            <p>Responsável Financeiro: ${financialResponsible}</p>
+        </div>
+
+        <h1>Relatório Financeiro Mensal</h1>
+        <div class="header-info">
+            <p><strong>Data de Geração:</strong> ${currentDate}</p>
+            <p><strong>Empresa:</strong> ${companyName}</p>
+            <p><strong>Mês / Ano:</strong> ${currentMonthYear}</p>
+        </div>
+
+        <h2>Resumo Executivo</h2>
+        <div class="summary">
+            <p><strong>Receita total do mês:</strong> 15.000,00 €</p>
+            <p><strong>Despesas totais:</strong> 10.000,00 €</p>
+            <p><strong>Resultado (Lucro / Prejuízo):</strong> 5.000,00 € (Lucro)</p>
+            <p><strong>Comparação com mês anterior:</strong> +10%</p>
+        </div>
+
+        <h2>Receitas</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Fonte</th>
+                    <th style="text-align: right;">Valor (€)</th>
+                    <th style="text-align: right;">%</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr><td>Serviços</td><td style="text-align: right;">12.000,00 €</td><td style="text-align: right;">80%</td></tr>
+                <tr><td>Produtos</td><td style="text-align: right;">2.000,00 €</td><td style="text-align: right;">13.3%</td></tr>
+                <tr><td>Assinaturas</td><td style="text-align: right;">1.000,00 €</td><td style="text-align: right;">6.7%</td></tr>
+                <tr><td><strong>Total</strong></td><td style="text-align: right;"><strong>15.000,00 €</strong></td><td style="text-align: right;"><strong>100%</strong></td></tr>
+            </tbody>
+        </table>
+
+        <h2>Despesas</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Categoria</th>
+                    <th style="text-align: right;">Valor (€)</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr><td>Pessoal</td><td style="text-align: right;">5.000,00 €</td></tr>
+                <tr><td>Marketing</td><td style="text-align: right;">1.000,00 €</td></tr>
+                <tr><td>Tecnologia</td><td style="text-align: right;">1.500,00 €</td></tr>
+                <tr><td>Operacionais</td><td style="text-align: right;">2.000,00 €</td></tr>
+                <tr><td>Impostos</td><td style="text-align: right;">500,00 €</td></tr>
+                <tr><td><strong>Total</strong></td><td style="text-align: right;"><strong>10.000,00 €</strong></td></tr>
+            </tbody>
+        </table>
+
+        <h2>Resultado Financeiro</h2>
+        <div class="summary">
+            <p><strong>Lucro bruto:</strong> 7.000,00 €</p>
+            <p><strong>Lucro líquido:</strong> 5.000,00 €</p>
+            <p><strong>Margem (%):</strong> 33.3%</p>
+        </div>
+
+        <h2>Observações</h2>
+        <p>
+            <ul>
+                <li>Custos fora do padrão: Aumento de 20% em despesas operacionais devido a manutenção inesperada de equipamento.</li>
+                <li>Receitas extraordinárias: Nenhuma.</li>
+                <li>Alertas: A margem de lucro está estável, mas o aumento das despesas operacionais deve ser monitorizado.</li>
+            </ul>
+        </p>
+      `;
+    } else if (reportName === "Faturas") {
+      content += `
+        <h1>Relatório de Faturas</h1>
+        <div class="header-info">
+            <p><strong>Data de Geração:</strong> ${currentDate}</p>
+            <p><strong>Empresa:</strong> Obra Sys Construções</p>
+            <p><strong>Período:</strong> Últimos 30 dias (Exemplo)</p>
+        </div>
         <h2>Visão Geral das Faturas</h2>
         <table>
             <thead>
@@ -95,6 +177,12 @@ const ReportsPage = () => {
       `;
     } else if (reportName === "Despesas") {
       content += `
+        <h1>Relatório de Despesas</h1>
+        <div class="header-info">
+            <p><strong>Data de Geração:</strong> ${currentDate}</p>
+            <p><strong>Empresa:</strong> Obra Sys Construções</p>
+            <p><strong>Período:</strong> Últimos 30 dias (Exemplo)</p>
+        </div>
         <h2>Análise Detalhada das Despesas</h2>
         <table>
             <thead>
@@ -120,6 +208,12 @@ const ReportsPage = () => {
       `;
     } else if (reportName === "Folha de Pagamento") {
       content += `
+        <h1>Relatório de Folha de Pagamento</h1>
+        <div class="header-info">
+            <p><strong>Data de Geração:</strong> ${currentDate}</p>
+            <p><strong>Empresa:</strong> Obra Sys Construções</p>
+            <p><strong>Período:</strong> Últimos 30 dias (Exemplo)</p>
+        </div>
         <h2>Custos de Mão de Obra</h2>
         <table>
             <thead>
@@ -146,6 +240,12 @@ const ReportsPage = () => {
       `;
     } else if (reportName === "Fluxo de Caixa") {
       content += `
+        <h1>Relatório de Fluxo de Caixa</h1>
+        <div class="header-info">
+            <p><strong>Data de Geração:</strong> ${currentDate}</p>
+            <p><strong>Empresa:</strong> Obra Sys Construções</p>
+            <p><strong>Período:</strong> Últimos 30 dias (Exemplo)</p>
+        </div>
         <h2>Projeções e Histórico de Fluxo de Caixa</h2>
         <p>Este relatório apresentaria um gráfico de fluxo de caixa (entradas vs saídas) ao longo do tempo, com projeções futuras.</p>
         <div class="summary">
@@ -155,6 +255,12 @@ const ReportsPage = () => {
       `;
     } else if (reportName === "Progresso da Obra") {
       content += `
+        <h1>Relatório de Progresso da Obra</h1>
+        <div class="header-info">
+            <p><strong>Data de Geração:</strong> ${currentDate}</p>
+            <p><strong>Empresa:</strong> Obra Sys Construções</p>
+            <p><strong>Período:</strong> Últimos 30 dias (Exemplo)</p>
+        </div>
         <h2>Acompanhamento de Progresso Físico e Financeiro</h2>
         <table>
             <thead>
@@ -179,6 +285,12 @@ const ReportsPage = () => {
       `;
     } else if (reportName === "Orçamento da Obra") {
       content += `
+        <h1>Relatório de Orçamento da Obra</h1>
+        <div class="header-info">
+            <p><strong>Data de Geração:</strong> ${currentDate}</p>
+            <p><strong>Empresa:</strong> Obra Sys Construções</p>
+            <p><strong>Período:</strong> Últimos 30 dias (Exemplo)</p>
+        </div>
         <h2>Comparativo de Orçamento (Planeado vs Real)</h2>
         <table>
             <thead>
@@ -201,6 +313,11 @@ const ReportsPage = () => {
       `;
     } else if (reportName === "Catálogo de Artigos") {
       content += `
+        <h1>Relatório de Catálogo de Artigos</h1>
+        <div class="header-info">
+            <p><strong>Data de Geração:</strong> ${currentDate}</p>
+            <p><strong>Empresa:</strong> Obra Sys Construções</p>
+        </div>
         <h2>Lista Completa de Artigos de Trabalho</h2>
         <table>
             <thead>
@@ -226,6 +343,11 @@ const ReportsPage = () => {
       `;
     } else if (reportName === "Histórico de Preços") {
       content += `
+        <h1>Relatório de Histórico de Preços</h1>
+        <div class="header-info">
+            <p><strong>Data de Geração:</strong> ${currentDate}</p>
+            <p><strong>Empresa:</strong> Obra Sys Construções</p>
+        </div>
         <h2>Evolução dos Preços dos Artigos</h2>
         <p>Este relatório apresentaria gráficos e tabelas mostrando a variação de preços de artigos selecionados ao longo do tempo.</p>
         <div class="summary">
@@ -254,7 +376,7 @@ const ReportsPage = () => {
   };
 
   const handleGenerateReportClick = (reportName: string) => {
-    generateReportContent(reportName, {}); // Corrigido: Chamar generateReportContent
+    generateReportContent(reportName, {}); // Pass empty data for now
   };
 
   return (
@@ -276,6 +398,21 @@ const ReportsPage = () => {
       {/* Relatórios Financeiros */}
       <h2 className="text-xl font-semibold mb-4 text-primary">Relatórios Financeiros</h2>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-8">
+        <Card className="hover:shadow-xl transition-shadow duration-300 ease-in-out bg-card text-card-foreground border border-border">
+          <CardHeader className="flex flex-row items-center space-x-4 pb-2">
+            <Scale className="h-8 w-8 text-blue-500 dark:text-blue-400" />
+            <CardTitle className="text-xl font-semibold">Relatório Financeiro Mensal</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground mt-2">
+              Acompanhe a saúde financeira mês a mês e apoie decisões rápidas.
+            </p>
+            <Button className="mt-6 w-full" onClick={() => handleGenerateReportClick("Relatório Financeiro Mensal")}>
+              <Printer className="h-4 w-4 mr-2" /> Gerar Relatório
+            </Button>
+          </CardContent>
+        </Card>
+
         <Card className="hover:shadow-xl transition-shadow duration-300 ease-in-out bg-card text-card-foreground border border-border">
           <CardHeader className="flex flex-row items-center space-x-4 pb-2">
             <ReceiptText className="h-8 w-8 text-blue-500 dark:text-blue-400" />
