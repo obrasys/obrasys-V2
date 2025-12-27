@@ -2,6 +2,7 @@
 
 import React from "react";
 import { useNavigate } from "react-router-dom";
+import { toast } from "sonner"; // Importar toast
 
 import { LivroObra } from "@/schemas/compliance-schema";
 import { Project } from "@/schemas/project-schema";
@@ -27,6 +28,7 @@ const LivroDeObraPage = () => {
   const navigate = useNavigate();
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
   const [isManualRdoDialogOpen, setIsManualRdoDialogOpen] = React.useState(false);
+  const [isCreatingLivroObra, setIsCreatingLivroObra] = React.useState(false); // Declarar estado local
   const { profile } = useSession(); // Get profile from session
 
   const userPlanType = profile?.plan_type || 'trialing';

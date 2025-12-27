@@ -102,6 +102,7 @@ export const budgetItemDBSchema = z.object({
   custo_real_mao_obra: z.number().optional().nullable(),
   estado: z.enum(["Em andamento", "Concluído", "Atrasado", "Planeado"]),
   article_id: z.string().uuid().optional().nullable(),
+  tipo: z.enum(["servico", "material", "equipe"]), // NEW: Adicionado o campo 'tipo'
 });
 export type BudgetItemDB = z.infer<typeof budgetItemDBSchema>;
 

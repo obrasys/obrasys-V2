@@ -33,6 +33,14 @@ const ProjectsPage = () => {
   const { user, profile, isLoading: isSessionLoading } = useSession(); // Obter user e profile da sessão
   const [userCompanyId, setUserCompanyId] = React.useState<string | null>(null);
 
+  // Estados locais para Livro de Obra e status do orçamento
+  const [livrosObraForProject, setLivrosObraForProject] = React.useState<LivroObra[]>([]);
+  const [isLoadingLivrosObraForProject, setIsLoadingLivrosObraForProject] = React.useState(true);
+  const [selectedBudgetStatus, setSelectedBudgetStatus] = React.useState<string | null>(null);
+  const [isLoadingBudgetStatus, setIsLoadingBudgetStatus] = React.useState(true);
+  const [isCreatingLivroObra, setIsCreatingLivroObra] = React.useState(false);
+
+
   const userPlanType = profile?.plan_type || 'trialing';
   const isInitiantePlan = userPlanType === 'iniciante' || userPlanType === 'trialing';
   const isProfessionalPlan = userPlanType === 'profissional' || userPlanType === 'empresa';

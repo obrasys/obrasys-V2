@@ -8,7 +8,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/components/SessionContextProvider";
 import { Project } from "@/schemas/project-schema";
-import { Invoice, Expense, Payment } from "@/schemas/invoicing-schema";
+import { Invoice, Expense, Payment, InvoiceWithRelations } from "@/schemas/invoicing-schema"; // Import InvoiceWithRelations
 import { BudgetDB, BudgetItemDB, BudgetChapterDB } from "@/schemas/budget-schema";
 import { AiAlert } from "@/schemas/ai-alert-schema";
 import { formatCurrency, formatDate } from "@/utils/formatters";
@@ -97,7 +97,7 @@ export function useReportGeneration(): UseReportGenerationResult {
     const financialResponsible = "João Silva"; // Placeholder for now
     const projectName = reportData.project?.nome || 'N/A';
     const clientName = reportData.project?.client_name || 'N/A';
-    const projectPeriod = reportData.project?.prazo ? `${format(parseISO(reportData.project.created_at), "dd/MM/yyyy")} - ${format(parseISO(reportData.project.prazo), "dd/MM/yyyy")}` : 'N/A';
+    const projectPeriod = reportData.project?.created_at && reportData.project?.prazo ? `${format(parseISO(reportData.project.created_at), "dd/MM/yyyy")} - ${format(parseISO(reportData.project.prazo), "dd/MM/yyyy")}` : 'N/A';
     const reportMonthYear = reportData.monthYear ? format(parseISO(reportData.monthYear), "MMMM yyyy", { locale: pt }) : 'N/A';
 
     let content = `
@@ -367,8 +367,8 @@ export function useReportGeneration(): UseReportGenerationResult {
       `;
     } else if (reportName === "Faturas") {
       const { invoices } = reportData;
-      const totalInvoiced = invoices.reduce((sum: number, inv: Invoice) => sum + inv.total_amount, 0);
-      const totalPaidInvoices = invoices.reduce((sum: number, inv: Invoice) => sum + (inv.paid_amount || 0), 0);
+      const totalInvoiced = invoices.reduce((sum: number, inv: InvoiceWithRelations) => sum + inv.total_amount, 0);
+      const totalPaidInvoices = invoices.reduce((sum: number, inv: InvoiceWithRelations) => sum + (inv.paid_amount || 0), 0);
       const totalPendingInvoices = totalInvoiced - totalPaidInvoices;
 
       content += `
@@ -391,7 +391,7 @@ export function useReportGeneration(): UseReportGenerationResult {
                 </tr>
             </thead>
             <tbody>
-                ${invoices.map((inv: Invoice) => `
+                ${invoices.map((inv: InvoiceWithRelations) => `
                   <tr>
                     <td>${inv.invoice_number}</td>
                     <td>${inv.clients?.nome || 'N/A'}</td>
@@ -705,7 +705,7 @@ export function useReportGeneration(): UseReportGenerationResult {
             <tbody>
                 ${alerts.map((alert: AiAlert) => `
                   <tr>
-                    <td>${alert.projects?.nome || 'N/A'}</td>
+                    <td>${alert.project_name || 'N/A'}</td>
                     <td>${alert.title}</td>
                     <td>${alert.message}</td>
                     <td>${alert.severity?.replace('_', ' ') || 'N/A'}</td>
@@ -994,7 +994,7 @@ export function useReportGeneration(): UseReportGenerationResult {
           budgetItems,
           projectInvoices,
           projectAlerts: projectAlerts || [],
-          period: `${format(parseISO(project.created_at), "dd/MM/yyyy")} - ${project.prazo ? format(parseISO(project.prazo), "dd/MM/yyyy") : 'N/A'}`,
+          period: `${format(parseISO(project.created_at!), "dd/MM/yyyy")} - ${project.prazo ? format(parseISO(project.prazo), "dd/MM/yyyy") : 'N/A'}`,
         };
 
       } else if (reportName === "Faturas") {
@@ -1077,7 +1077,7 @@ export function useReportGeneration(): UseReportGenerationResult {
           ...reportData,
           project,
           scheduleTasks,
-          period: `${format(parseISO(project.created_at), "dd/MM/yyyy")} - ${project.prazo ? format(parseISO(project.prazo), "dd/MM/yyyy") : 'N/A'}`,
+          period: `${format(parseISO(project.created_at!), "dd/MM/yyyy")} - ${project.prazo ? format(parseISO(project.prazo), "dd/MM/yyyy") : 'N/A'}`,
         };
 
       } else if (reportName === "Orçamento da Obra") {
@@ -1116,7 +1116,7 @@ export function useReportGeneration(): UseReportGenerationResult {
           project,
           budget,
           budgetItems,
-          period: `${format(parseISO(project.created_at), "dd/MM/yyyy")} - ${project.prazo ? format(parseISO(project.prazo), "dd/MM/yyyy") : 'N/A'}`,
+          period: `${format(parseISO(project.created_at!), "dd/MM/yyyy")} - ${project.prazo ? format(parseISO(project.prazo), "dd/MM/yyyy") : 'N/A'}`,
         };
 
       } else if (reportName === "Catálogo de Artigos") {

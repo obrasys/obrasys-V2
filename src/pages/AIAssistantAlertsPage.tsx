@@ -22,13 +22,20 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { MoreHorizontal } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton"; // Importado Skeleton
+import { Profile } from "@/schemas/profile-schema"; // Import Profile schema
+import { useNavigate } from "react-router-dom"; // Import useNavigate
 
 const AIAssistantAlertsPage = () => {
-  const { user, isLoading: isSessionLoading } = useSession();
+  const navigate = useNavigate();
+  const { user, profile, isLoading: isSessionLoading } = useSession(); // Get profile from session
   const [userCompanyId, setUserCompanyId] = useState<string | null>(null);
   const [alerts, setAlerts] = useState<AiAlert[]>([]);
   const [isLoadingAlerts, setIsLoadingAlerts] = useState(true);
   const [isUpdatingAlert, setIsUpdatingAlert] = useState(false);
+
+  const userPlanType = profile?.plan_type || 'trialing';
+  const isInitiantePlan = userPlanType === 'iniciante' || userPlanType === 'trialing';
+  const isProfessionalPlan = userPlanType === 'profissional' || userPlanType === 'empresa';
 
   // Fetch user's company ID
   const fetchUserCompanyId = useCallback(async () => {
@@ -168,6 +175,18 @@ const AIAssistantAlertsPage = () => {
           <Skeleton className="h-24 w-full" />
         </div>
       </div>
+    );
+  }
+
+  if (isInitiantePlan) {
+    return (
+      <EmptyState
+        icon={BellRing}
+        title="Funcionalidade não disponível no seu plano"
+        description="Os Alertas de IA estão disponíveis apenas para planos Profissional e Empresa. Faça upgrade para aceder a esta funcionalidade."
+        buttonText="Ver Planos"
+        onButtonClick={() => navigate("/plans")}
+      />
     );
   }
 

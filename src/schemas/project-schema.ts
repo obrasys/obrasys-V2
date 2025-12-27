@@ -13,6 +13,7 @@ export const projectSchema = z.object({
   custo_planeado: z.coerce.number().min(0),
   custo_real: z.coerce.number().min(0),
   budget_id: z.string().uuid().optional().nullable(), // Adicionado para ligar ao orçamento
+  created_at: z.string().optional(), // NEW: Adicionado created_at
 });
 
 export type Project = z.infer<typeof projectSchema> & {
