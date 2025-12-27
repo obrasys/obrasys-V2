@@ -2,7 +2,6 @@
 
 import React from "react";
 import { Outlet, useNavigate, Navigate } from "react-router-dom";
-import { Navigate } from "react-router-dom";
 import { Bell, Settings, Menu, LogOut, User, Building2 } from "lucide-react";
 
 import Sidebar from "@/components/Sidebar";
