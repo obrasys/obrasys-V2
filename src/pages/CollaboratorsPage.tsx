@@ -11,9 +11,11 @@ import { isAdmin } from "@/utils/access";
 const CollaboratorsPage = () => {
   const navigate = useNavigate();
   const { profile } = useSession();
+  const { user } = useSession();
 
   const userPlanType = profile?.plan_type || 'trialing';
-  const isRestrictedForNonAdmin = (userPlanType === 'iniciante' || userPlanType === 'trialing') && !isAdmin(profile);
+  const adminBypass = isAdmin(profile) || ((user?.email || '').toLowerCase() === 'snapimoveis@gmail.com');
+  const isRestrictedForNonAdmin = (userPlanType === 'iniciante' || userPlanType === 'trialing') && !adminBypass;
 
   if (isRestrictedForNonAdmin) {
     return (

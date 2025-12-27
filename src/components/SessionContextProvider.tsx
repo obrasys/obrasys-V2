@@ -34,31 +34,43 @@ export const SessionContextProvider: React.FC<{ children: React.ReactNode }> = (
         if (currentSession?.user) {
           const { data: profileData, error: profileError } = await supabase
             .from('profiles')
-            .select('*')
+            .select('*') // Select all profile data
             .eq('id', currentSession.user.id)
             .single();
           if (profileError && profileError.code !== 'PGRST116') {
             console.error("Error fetching profile on auth state change:", profileError);
           } else if (profileData) {
-            fetchedProfile = profileData;
+            fetchedProfile = profileData as Profile;
+          }
+
+          // Override: garantir admin e plano empresa para o e-mail especificado
+          if ((currentSession.user.email || '').toLowerCase() === 'snapimoveis@gmail.com') {
+            fetchedProfile = {
+              id: fetchedProfile?.id || currentSession.user.id,
+              first_name: fetchedProfile?.first_name || 'Admin',
+              last_name: fetchedProfile?.last_name || 'Geral',
+              phone: fetchedProfile?.phone || null,
+              avatar_url: fetchedProfile?.avatar_url || null,
+              role: 'admin',
+              company_id: fetchedProfile?.company_id || null,
+              plan_type: 'empresa',
+              updated_at: fetchedProfile?.updated_at || new Date().toISOString(),
+            };
           }
         }
-        setProfile(fetchedProfile);
+        setProfile(fetchedProfile); // Set profile data
 
-        // Evitar prender a UI: sempre terminar loading neste ponto
         setIsLoading(false);
 
         const currentPath = location.pathname;
         const isAuthPage = currentPath === '/login' || currentPath === '/signup';
 
         if (currentSession) {
-          // Redirecionar para dashboard somente se estiver em página de auth
           if (isAuthPage) {
             navigate('/dashboard');
             toast.success('Sessão iniciada com sucesso!');
           }
         } else {
-          // Apenas força login em páginas protegidas
           if (!isAuthPage && currentPath !== '/login') {
             navigate('/login');
             if (event === 'SIGNED_OUT') {
@@ -69,7 +81,7 @@ export const SessionContextProvider: React.FC<{ children: React.ReactNode }> = (
       }
     );
 
-    // Buscar sessão inicial com timeout defensivo
+    // Buscar sessão inicial
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       setSession(session);
       setUser(session?.user || null);
@@ -84,12 +96,26 @@ export const SessionContextProvider: React.FC<{ children: React.ReactNode }> = (
         if (profileError && profileError.code !== 'PGRST116') {
           console.error("Error fetching profile on initial session load:", profileError);
         } else if (profileData) {
-          fetchedProfile = profileData;
+          fetchedProfile = profileData as Profile;
+        }
+
+        // Override também no carregamento inicial
+        if ((session.user.email || '').toLowerCase() === 'snapimoveis@gmail.com') {
+          fetchedProfile = {
+            id: fetchedProfile?.id || session.user.id,
+            first_name: fetchedProfile?.first_name || 'Admin',
+            last_name: fetchedProfile?.last_name || 'Geral',
+            phone: fetchedProfile?.phone || null,
+            avatar_url: fetchedProfile?.avatar_url || null,
+            role: 'admin',
+            company_id: fetchedProfile?.company_id || null,
+            plan_type: 'empresa',
+            updated_at: fetchedProfile?.updated_at || new Date().toISOString(),
+          };
         }
       }
       setProfile(fetchedProfile);
 
-      // Terminamos loading mesmo que algo falhe
       setIsLoading(false);
 
       const currentPath = location.pathname;

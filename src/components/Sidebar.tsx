@@ -44,7 +44,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, toggleSidebar, profile }
   const { user } = useSession();
 
   const userPlanType = profile?.plan_type || 'trialing'; // Default to 'trialing' if not set
-  const adminBypass = isAdmin(profile);
+  const adminBypass = isAdmin(profile) || ((user?.email || '').toLowerCase() === 'snapimoveis@gmail.com');
 
   const navItems = [
     {
