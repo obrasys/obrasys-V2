@@ -71,7 +71,7 @@ const MainLayout = () => {
       fetchProfile();
     }
     console.log("[MainLayout] User:", user, "Profile:", profile, "UserCompanyId from profile:", profile?.company_id);
-  }, [user, isSessionLoading, fetchProfile]); // Removido 'profile' das dependências
+  }, [user, isSessionLoading, fetchProfile]);
 
 
   // NEW: Effect to seed default articles if not already seeded for the company
@@ -158,7 +158,7 @@ const MainLayout = () => {
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="relative h-8 w-8 rounded-full">
                   <Avatar className="h-8 w-8">
-                    <AvatarImage src={profile?.avatar_url || undefined} alt="User Avatar" />
+                    <AvatarImage key={profile?.avatar_url || 'default-user-avatar'} src={profile?.avatar_url || undefined} alt="User Avatar" />
                     <AvatarFallback>{userInitials}</AvatarFallback>
                   </Avatar>
                 </Button>

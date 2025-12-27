@@ -305,7 +305,7 @@ const ProfileCompanyTab: React.FC = () => {
         <div className="flex items-center space-x-4">
           <div className="relative">
             <Avatar className="h-24 w-24">
-              <AvatarImage src={logoPreview || undefined} alt="Logótipo da Empresa" />
+              <AvatarImage key={logoPreview || 'default-company-logo'} src={logoPreview || undefined} alt="Logótipo da Empresa" />
               <AvatarFallback className="text-3xl">{companyInitials}</AvatarFallback>
             </Avatar>
             <label htmlFor="logo-upload" className="absolute bottom-0 right-0 h-8 w-8 rounded-full bg-background flex items-center justify-center border border-input cursor-pointer hover:bg-accent">
