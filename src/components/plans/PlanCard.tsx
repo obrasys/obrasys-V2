@@ -44,7 +44,6 @@ const PlanCard: React.FC<PlanCardProps> = ({
         <p className="text-muted-foreground text-sm">{description}</p>
         <p className="text-4xl font-extrabold mt-4">
           {price}
-          {price !== "Personalizado" && <span className="text-lg font-medium text-muted-foreground">/mês</span>}
         </p>
       </CardHeader>
       <CardContent className="flex-grow">
