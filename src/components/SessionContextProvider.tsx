@@ -23,7 +23,6 @@ export const SessionContextProvider: React.FC<{ children: React.ReactNode }> = (
   const [profile, setProfile] = useState<Profile | null>(null); // NEW: State for profile
   const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
-  const location = useLocation();
 
   async function ensureTrialSubscription(companyId: string | null | undefined) {
     if (!companyId) return;
@@ -59,6 +58,42 @@ export const SessionContextProvider: React.FC<{ children: React.ReactNode }> = (
   }
 
   useEffect(() => {
+    // Processa Magic Link: tokens no hash da URL (#access_token, #refresh_token, type=magiclink)
+    const handleMagicLink = async () => {
+      const hash = window.location.hash || "";
+      if (!hash) return;
+
+      const params = new URLSearchParams(hash.replace(/^#/, ""));
+      const error = params.get("error");
+      const errorCode = params.get("error_code");
+      const accessToken = params.get("access_token");
+      const refreshToken = params.get("refresh_token");
+      const typeParam = params.get("type");
+
+      // Se o link trouxe erro (ex.: otp_expired), informar e limpar hash
+      if (error || errorCode) {
+        toast.error("Link de confirmação inválido ou expirado. Reenvie a confirmação a partir da página de Login.");
+        // Limpa o hash sem recarregar a página
+        window.history.replaceState({}, document.title, window.location.pathname + window.location.search);
+        return;
+      }
+
+      // Se for Magic Link com tokens válidos, criar sessão imediatamente
+      if (typeParam === "magiclink" && accessToken && refreshToken) {
+        await supabase.auth.setSession({
+          access_token: accessToken,
+          refresh_token: refreshToken,
+        });
+        // Limpa o hash da URL após criar a sessão
+        window.history.replaceState({}, document.title, window.location.pathname + window.location.search);
+        toast.success("Conta confirmada! Sessão iniciada.");
+        navigate("/dashboard");
+      }
+    };
+
+    // Executa processamento de Magic Link antes de configurar o listener
+    void handleMagicLink();
+
     const { data: authListener } = supabase.auth.onAuthStateChange(
       async (event, currentSession) => {
         setSession(currentSession);
@@ -79,23 +114,18 @@ export const SessionContextProvider: React.FC<{ children: React.ReactNode }> = (
         }
         setProfile(fetchedProfile); // Set profile data
 
-        setIsLoading(false);
-
-        // Após login, garantir subscrição de trial para a empresa
-        if (currentSession?.user) {
-          await ensureTrialSubscription(fetchedProfile?.company_id);
-        }
+        setIsLoading(false); // Definir loading como falso após o estado de autenticação ser determinado
 
         const currentPath = location.pathname;
         const isAuthPage = currentPath === '/login' || currentPath === '/signup';
 
-        if (currentSession) {
-          if (isAuthPage) {
+        if (currentSession) { // Utilizador autenticado
+          if (isAuthPage) { // Redirecionar apenas se estiver numa página de autenticação
             navigate('/dashboard');
             toast.success('Sessão iniciada com sucesso!');
           }
-        } else {
-          if (!isAuthPage && currentPath !== '/login') {
+        } else { // Utilizador NÃO autenticado
+          if (!isAuthPage && currentPath !== '/login') { // Redirecionar apenas se estiver numa página protegida E não estiver já no login
             navigate('/login');
             if (event === 'SIGNED_OUT') {
               toast.info('Sessão terminada.');
@@ -123,21 +153,16 @@ export const SessionContextProvider: React.FC<{ children: React.ReactNode }> = (
           fetchedProfile = profileData;
         }
       }
-      setProfile(fetchedProfile);
+      setProfile(fetchedProfile); // Set profile data
 
-      setIsLoading(false);
-
-      // Garantir subscrição também no carregamento inicial, quando já autenticado
-      if (session?.user) {
-        await ensureTrialSubscription(fetchedProfile?.company_id);
-      }
+      setIsLoading(false); // Definir loading como falso após a sessão inicial ser determinada
 
       const currentPath = location.pathname;
       const isAuthPage = currentPath === '/login' || currentPath === '/signup';
 
-      if (!session && !isAuthPage && currentPath !== '/login') {
+      if (!session && !isAuthPage && currentPath !== '/login') { // Redirecionar utilizadores não autenticados de páginas protegidas no carregamento inicial
         navigate('/login');
-      } else if (session && isAuthPage) {
+      } else if (session && isAuthPage) { // Redirecionar utilizadores autenticados de páginas de autenticação no carregamento inicial
         navigate('/dashboard');
       }
     });
