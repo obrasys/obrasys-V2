@@ -318,6 +318,18 @@ const Dashboard = () => {
     }
   }, [userCompanyId, projects, isLoadingProjects, fetchNotifications]);
 
+  // Fallback: finaliza estados de loading se algo travar
+  React.useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      setIsLoadingProjects(false);
+      setIsLoadingPendingReports(false);
+      setIsLoadingScheduledTasks(false);
+      setIsLoadingPendingApprovals(false);
+      setIsLoadingNotifications(false);
+    }, 5000);
+    return () => clearTimeout(timeoutId);
+  }, [userCompanyId]);
+
   // NEW: Effect to display notifications as toasts and update context
   React.useEffect(() => {
     if (!isLoadingNotifications) {
