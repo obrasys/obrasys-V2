@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, { createContext, useContext, useEffect, useRef, useState } from "react";
 import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { Profile } from "@/schemas/profile-schema";
@@ -21,6 +21,7 @@ export const SessionContextProvider: React.FC<{ children: React.ReactNode }> = (
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const lastLoadedUserIdRef = useRef<string | null>(null);
 
   /* ------------------------------------------------------------------ */
   /* 🔐 Função única para carregar profile                               */
@@ -57,8 +58,13 @@ export const SessionContextProvider: React.FC<{ children: React.ReactNode }> = (
       setUser(session?.user ?? null);
 
       if (session?.user) {
-        const profileData = await loadProfile(session.user);
-        if (mounted) setProfile(profileData);
+        if (lastLoadedUserIdRef.current !== session.user.id || profile === null) {
+          const profileData = await loadProfile(session.user);
+          if (mounted) {
+            setProfile(profileData);
+            lastLoadedUserIdRef.current = session.user.id;
+          }
+        }
       } else {
         setProfile(null);
       }
@@ -69,15 +75,23 @@ export const SessionContextProvider: React.FC<{ children: React.ReactNode }> = (
     init();
 
     const { data: authListener } = supabase.auth.onAuthStateChange(
-      async (_event, currentSession) => {
+      async (event, currentSession) => {
+        // Evita duplicidade: já tratamos sessão inicial acima
+        if (event === "INITIAL_SESSION") return;
+
         if (!mounted) return;
 
         setSession(currentSession ?? null);
         setUser(currentSession?.user ?? null);
 
         if (currentSession?.user) {
-          const profileData = await loadProfile(currentSession.user);
-          if (mounted) setProfile(profileData);
+          if (lastLoadedUserIdRef.current !== currentSession.user.id || profile === null) {
+            const profileData = await loadProfile(currentSession.user);
+            if (mounted) {
+              setProfile(profileData);
+              lastLoadedUserIdRef.current = currentSession.user.id;
+            }
+          }
         } else {
           setProfile(null);
         }

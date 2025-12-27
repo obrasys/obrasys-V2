@@ -2,6 +2,7 @@
 
 import React from "react";
 import { Outlet, useNavigate } from "react-router-dom";
+import { Navigate } from "react-router-dom";
 import { Bell, Settings, Menu, LogOut, User, Building2 } from "lucide-react";
 
 import Sidebar from "@/components/Sidebar";
@@ -51,8 +52,7 @@ const MainLayout = () => {
   }
 
   if (!user) {
-    navigate("/login");
-    return null;
+    return <Navigate to="/login" replace />;
   }
 
   if (!profile) {
