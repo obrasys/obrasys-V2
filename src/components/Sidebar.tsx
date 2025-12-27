@@ -30,6 +30,7 @@ import { Separator } from "@/components/ui/separator";
 import NavButton from "@/components/NavButton";
 import { useSession } from "@/components/SessionContextProvider";
 import { Profile } from "@/schemas/profile-schema"; // Import Profile schema
+import { isAdmin, hasPlan } from "@/utils/access";
 
 interface SidebarProps {
   isCollapsed: boolean;
@@ -43,6 +44,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, toggleSidebar, profile }
   const { user } = useSession();
 
   const userPlanType = profile?.plan_type || 'trialing'; // Default to 'trialing' if not set
+  const adminBypass = isAdmin(profile);
 
   const navItems = [
     {
@@ -100,6 +102,12 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, toggleSidebar, profile }
       minPlan: "trialing",
     },
     {
+      name: "Nossos Planos",
+      icon: Settings,
+      href: "/plans",
+      minPlan: "trialing",
+    },
+    {
       name: "Base de Preços",
       icon: Scale,
       href: "/price-database",
@@ -121,8 +129,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, toggleSidebar, profile }
 
   // Helper to determine if a plan is sufficient
   const isPlanSufficient = (requiredPlan: string) => {
-    const planOrder = ["trialing", "iniciante", "profissional", "empresa"];
-    return planOrder.indexOf(userPlanType) >= planOrder.indexOf(requiredPlan);
+    return adminBypass || hasPlan(userPlanType, requiredPlan);
   };
 
   const handleLogout = () => {
@@ -207,7 +214,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, toggleSidebar, profile }
                 : "text-sidebar-foreground",
               isCollapsed && "justify-center px-0",
             )}
-            disabled={!isPlanSufficient(item.minPlan)} // Disable if plan is not sufficient
+            disabled={!isPlanSufficient(item.minPlan)} // Disable if plan is not sufficient (admins sempre têm acesso)
           >
             <item.icon className="h-5 w-5" />
             {!isCollapsed && <span>{item.name}</span>}

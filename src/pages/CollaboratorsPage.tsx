@@ -6,15 +6,16 @@ import EmptyState from "@/components/EmptyState";
 import { Users } from "lucide-react";
 import { useSession } from "@/components/SessionContextProvider";
 import { useNavigate } from "react-router-dom";
+import { isAdmin } from "@/utils/access";
 
 const CollaboratorsPage = () => {
   const navigate = useNavigate();
   const { profile } = useSession();
 
   const userPlanType = profile?.plan_type || 'trialing';
-  const isInitiantePlan = userPlanType === 'iniciante' || userPlanType === 'trialing';
+  const isRestrictedForNonAdmin = (userPlanType === 'iniciante' || userPlanType === 'trialing') && !isAdmin(profile);
 
-  if (isInitiantePlan) {
+  if (isRestrictedForNonAdmin) {
     return (
       <EmptyState
         icon={Users}
