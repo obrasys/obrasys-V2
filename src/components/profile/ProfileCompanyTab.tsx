@@ -23,6 +23,13 @@ import { toast } from "sonner";
 import { Company, companySchema } from "@/schemas/profile-schema";
 import { Skeleton } from "@/components/ui/skeleton";
 import { v4 as uuidv4 } from "uuid";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
@@ -34,6 +41,7 @@ const companyProfileSchema = companySchema.pick({
   phone: true,
   address: true,
   logo_url: true,
+  company_type: true, // NEW: company_type
 });
 
 type CompanyProfileFormValues = z.infer<typeof companyProfileSchema>;
@@ -57,6 +65,7 @@ const ProfileCompanyTab: React.FC = () => {
       phone: "",
       address: "",
       logo_url: null,
+      company_type: "Empresa", // Default value
     },
   });
 
@@ -121,6 +130,7 @@ const ProfileCompanyTab: React.FC = () => {
           phone: companyData.phone || null,
           address: companyData.address || null,
           logo_url: companyData.logo_url || null,
+          company_type: companyData.company_type || "Empresa", // Set company_type
         });
         setLogoPreview(null); // Ensure temporary preview is cleared when loading persisted data
         console.log("[ProfileCompanyTab] Form reset with logo_url:", companyData.logo_url);
@@ -250,6 +260,7 @@ const ProfileCompanyTab: React.FC = () => {
           phone: data.phone,
           address: data.address,
           logo_url: finalLogoUrl, // Use the new URL or null
+          company_type: data.company_type, // NEW: Update company_type
           updated_at: new Date().toISOString(),
         })
         .eq('id', companyId);
@@ -405,6 +416,28 @@ const ProfileCompanyTab: React.FC = () => {
               <FormControl>
                 <Input {...field} disabled={!isAdmin} />
               </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="company_type"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Tipo de Cliente</FormLabel>
+              <Select onValueChange={field.onChange} defaultValue={field.value} disabled={!isAdmin}>
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o tipo de cliente" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  <SelectItem value="Empresa">Empresa</SelectItem>
+                  <SelectItem value="Profissional independente">Profissional independente</SelectItem>
+                  <SelectItem value="Entidade pública">Entidade pública</SelectItem>
+                </SelectContent>
+              </Select>
               <FormMessage />
             </FormItem>
           )}

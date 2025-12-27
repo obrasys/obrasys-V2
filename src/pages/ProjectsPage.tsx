@@ -23,21 +23,19 @@ import NavButton from "@/components/NavButton"; // Importar NavButton
 import { useSession } from "@/components/SessionContextProvider"; // Importar useSession
 import { LivroObra } from "@/schemas/compliance-schema"; // Importar LivroObra
 import { format, parseISO } from "date-fns"; // Importar format e parseISO
+import { Profile } from "@/schemas/profile-schema"; // Import Profile schema
 
 const ProjectsPage = () => {
   const [projects, setProjects] = React.useState<Project[]>([]);
   const [selectedProject, setSelectedProject] = React.useState<Project | null>(null);
   const [isProjectDialogOpen, setIsProjectDialogOpen] = React.useState(false);
   const navigate = useNavigate();
-  const { user, isLoading: isSessionLoading } = useSession(); // Obter user e isLoading da sessão
+  const { user, profile, isLoading: isSessionLoading } = useSession(); // Obter user e profile da sessão
   const [userCompanyId, setUserCompanyId] = React.useState<string | null>(null);
 
-  const [livrosObraForProject, setLivrosObraForProject] = React.useState<LivroObra[]>([]);
-  const [isLoadingLivrosObraForProject, setIsLoadingLivrosObraForProject] = React.useState(false);
-  const [isCreatingLivroObra, setIsCreatingLivroObra] = React.useState(false);
-
-  const [isLoadingBudgetStatus, setIsLoadingBudgetStatus] = React.useState(false); // NEW: State for budget status loading
-  const [selectedBudgetStatus, setSelectedBudgetStatus] = React.useState<string | null>(null); // NEW: State for selected budget status
+  const userPlanType = profile?.plan_type || 'trialing';
+  const isInitiantePlan = userPlanType === 'iniciante' || userPlanType === 'trialing';
+  const isProfessionalPlan = userPlanType === 'profissional' || userPlanType === 'empresa';
 
   // Fetch user's company ID
   const fetchUserCompanyId = React.useCallback(async () => {
@@ -157,6 +155,12 @@ const ProjectsPage = () => {
       return;
     }
 
+    if (isInitiantePlan && livrosObraForProject.length >= 1) {
+      toast.error("O seu plano 'Iniciante' permite um máximo de 1 Livro de Obra por projeto. Faça upgrade para criar mais.");
+      navigate("/plans");
+      return;
+    }
+
     setIsCreatingLivroObra(true);
     try {
       const today = new Date();
@@ -194,6 +198,12 @@ const ProjectsPage = () => {
   const handleSaveProject = async (newProject: Project) => {
     try {
       if (!user || !userCompanyId) throw new Error("Utilizador não autenticado ou ID da empresa não encontrado.");
+
+      if (isInitiantePlan && !newProject.id && projects.filter(p => p.estado !== 'Concluída').length >= 5) {
+        toast.error("O seu plano 'Iniciante' permite um máximo de 5 obras ativas. Faça upgrade para criar mais.");
+        navigate("/plans");
+        return;
+      }
 
       const { data, error } = await supabase
         .from('projects')
@@ -297,7 +307,7 @@ const ProjectsPage = () => {
           <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4"> {/* Ajustado para 2 colunas em mobile, 4 em sm+ */}
             <TabsTrigger value="overview">Visão Geral</TabsTrigger>
             <TabsTrigger value="budget">Orçamento</TabsTrigger>
-            <TabsTrigger value="schedule" disabled={!selectedProject.budget_id}>Cronograma</TabsTrigger>
+            <TabsTrigger value="schedule" disabled={!selectedProject.budget_id || isInitiantePlan}>Cronograma</TabsTrigger>
             <TabsTrigger value="rdo">RDO</TabsTrigger>
           </TabsList>
           <TabsContent value="overview">
@@ -342,7 +352,15 @@ const ProjectsPage = () => {
             )}
           </TabsContent>
           <TabsContent value="schedule">
-            {selectedProject.budget_id ? (
+            {isInitiantePlan ? (
+              <EmptyState
+                icon={CalendarDays}
+                title="Funcionalidade não disponível no seu plano"
+                description="A gestão de cronogramas está disponível apenas para planos Profissional e Empresa. Faça upgrade para aceder a esta funcionalidade."
+                buttonText="Ver Planos"
+                onButtonClick={() => navigate("/plans")}
+              />
+            ) : selectedProject.budget_id ? (
               <ScheduleTab
                 projectId={selectedProject.id}
                 budgetId={selectedProject.budget_id}
@@ -358,44 +376,54 @@ const ProjectsPage = () => {
             )}
           </TabsContent>
           <TabsContent value="rdo">
-            <Card>
-              <CardHeader><CardTitle>Diários de Obra (RDO)</CardTitle></CardHeader>
-              <CardContent>
-                {isLoadingLivrosObraForProject ? (
-                  <div className="flex justify-center items-center h-32">
-                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                  </div>
-                ) : (
-                  livrosObraForProject.length > 0 ? (
-                    <div className="space-y-4">
-                      <p className="text-sm text-muted-foreground">
-                        Existem {livrosObraForProject.length} Livro(s) de Obra associado(s) a este projeto.
-                      </p>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {livrosObraForProject.slice(0, 2).map(livro => ( // Show up to 2 recent ones
-                          <Card key={livro.id} className="p-4">
-                            <h4 className="font-semibold">Livro de Obra: {formatDate(livro.periodo_inicio)} - {formatDate(livro.periodo_fim)}</h4>
-                            <p className="text-sm text-muted-foreground">Estado: {livro.estado}</p>
-                          </Card>
-                        ))}
-                      </div>
-                      <Button onClick={() => navigate(`/compliance/livro-de-obra?projectId=${selectedProject.id}`)} className="w-full mt-4">
-                        <FileText className="h-4 w-4 mr-2" /> Ver Todos os Livros de Obra
-                      </Button>
+            {isInitiantePlan ? (
+              <EmptyState
+                icon={FileText}
+                title="Funcionalidade não disponível no seu plano"
+                description="A gestão de RDOs está disponível apenas para planos Profissional e Empresa. Faça upgrade para aceder a esta funcionalidade."
+                buttonText="Ver Planos"
+                onButtonClick={() => navigate("/plans")}
+              />
+            ) : (
+              <Card>
+                <CardHeader><CardTitle>Diários de Obra (RDO)</CardTitle></CardHeader>
+                <CardContent>
+                  {isLoadingLivrosObraForProject ? (
+                    <div className="flex justify-center items-center h-32">
+                      <Loader2 className="h-8 w-8 animate-spin text-primary" />
                     </div>
                   ) : (
-                    <EmptyState
-                      icon={FileText}
-                      title="Nenhum Livro de Obra encontrado"
-                      description="Crie o primeiro Livro de Obra para este projeto para começar a gerir os registos diários."
-                      buttonText="Criar Livro de Obra"
-                      onButtonClick={handleCreateLivroObraForProject}
-                      buttonDisabled={isCreatingLivroObra}
-                    />
-                  )
-                )}
-              </CardContent>
-            </Card>
+                    livrosObraForProject.length > 0 ? (
+                      <div className="space-y-4">
+                        <p className="text-sm text-muted-foreground">
+                          Existem {livrosObraForProject.length} Livro(s) de Obra associado(s) a este projeto.
+                        </p>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {livrosObraForProject.slice(0, 2).map(livro => ( // Show up to 2 recent ones
+                            <Card key={livro.id} className="p-4">
+                              <h4 className="font-semibold">Livro de Obra: {formatDate(livro.periodo_inicio)} - {formatDate(livro.periodo_fim)}</h4>
+                              <p className="text-sm text-muted-foreground">Estado: {livro.estado}</p>
+                            </Card>
+                          ))}
+                        </div>
+                        <Button onClick={() => navigate(`/compliance/livro-de-obra?projectId=${selectedProject.id}`)} className="w-full mt-4">
+                          <FileText className="h-4 w-4 mr-2" /> Ver Todos os Livros de Obra
+                        </Button>
+                      </div>
+                    ) : (
+                      <EmptyState
+                        icon={FileText}
+                        title="Nenhum Livro de Obra encontrado"
+                        description="Crie o primeiro Livro de Obra para este projeto para começar a gerir os registos diários."
+                        buttonText="Criar Livro de Obra"
+                        onButtonClick={handleCreateLivroObraForProject}
+                        buttonDisabled={isCreatingLivroObra}
+                      />
+                    )
+                  )}
+                </CardContent>
+              </Card>
+            )}
           </TabsContent>
         </Tabs>
 
@@ -421,7 +449,15 @@ const ProjectsPage = () => {
           </p>
         </div>
         <div className="flex flex-wrap gap-2 mt-2 md:mt-0">
-          <Button onClick={() => { setSelectedProject(null); setIsProjectDialogOpen(true); }} className="flex items-center gap-2">
+          <Button onClick={() => {
+            if (isInitiantePlan && projects.filter(p => p.estado !== 'Concluída').length >= 5) {
+              toast.error("O seu plano 'Iniciante' permite um máximo de 5 obras ativas. Faça upgrade para criar mais.");
+              navigate("/plans");
+            } else {
+              setSelectedProject(null);
+              setIsProjectDialogOpen(true);
+            }
+          }} className="flex items-center gap-2">
             <PlusCircle className="h-4 w-4" /> Nova Obra
           </Button>
           <Button variant="outline" className="flex items-center gap-2" disabled>
@@ -491,7 +527,15 @@ const ProjectsPage = () => {
               title="Nenhuma obra encontrada"
               description="Comece por criar uma nova obra para gerir os seus projetos."
               buttonText="Nova Obra"
-              onButtonClick={() => { setSelectedProject(null); setIsProjectDialogOpen(true); }}
+              onButtonClick={() => {
+                if (isInitiantePlan && projects.filter(p => p.estado !== 'Concluída').length >= 5) {
+                  toast.error("O seu plano 'Iniciante' permite um máximo de 5 obras ativas. Faça upgrade para criar mais.");
+                  navigate("/plans");
+                } else {
+                  setSelectedProject(null);
+                  setIsProjectDialogOpen(true);
+                }
+              }}
             />
           )}
         </CardContent>
@@ -532,11 +576,21 @@ const ProjectsPage = () => {
             <CardTitle className="text-xl font-semibold">Ligação com Cronograma</CardTitle>
           </CardHeader>
           <CardContent>
-            <EmptyState
-              icon={CalendarDays}
-              title="Cronogramas Detalhados (Em breve)"
-              description="Visualize e gere o cronograma de cada obra."
-            />
+            {isInitiantePlan ? (
+              <EmptyState
+                icon={CalendarDays}
+                title="Funcionalidade não disponível"
+                description="A gestão de cronogramas está disponível apenas para planos Profissional e Empresa."
+                buttonText="Ver Planos"
+                onButtonClick={() => navigate("/plans")}
+              />
+            ) : (
+              <EmptyState
+                icon={CalendarDays}
+                title="Cronogramas Detalhados (Em breve)"
+                description="Visualize e gere o cronograma de cada obra."
+              />
+            )}
           </CardContent>
         </Card>
         <Card className="bg-card text-card-foreground border border-border">
@@ -544,11 +598,21 @@ const ProjectsPage = () => {
             <CardTitle className="text-xl font-semibold">Ligação com RDO</CardTitle>
           </CardHeader>
           <CardContent>
-            <EmptyState
-              icon={FileText}
-              title="Diários de Obra (Em breve)"
-              description="Aceda aos diários de obra e relatórios de progresso."
-            />
+            {isInitiantePlan ? (
+              <EmptyState
+                icon={FileText}
+                title="Funcionalidade não disponível"
+                description="A gestão de RDOs está disponível apenas para planos Profissional e Empresa."
+                buttonText="Ver Planos"
+                onButtonClick={() => navigate("/plans")}
+              />
+            ) : (
+              <EmptyState
+                icon={FileText}
+                title="Diários de Obra (Em breve)"
+                description="Aceda aos diários de obra e relatórios de progresso."
+              />
+            )}
           </CardContent>
         </Card>
       </div>

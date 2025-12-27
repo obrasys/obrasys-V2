@@ -25,6 +25,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Category, categorySchema } from "@/schemas/article-schema";
 import { toast } from "sonner";
+import { useSession } from "@/components/SessionContextProvider"; // Import useSession
+import { useNavigate } from "react-router-dom"; // Import useNavigate
 
 interface CreateEditCategoryDialogProps {
   isOpen: boolean;
@@ -39,6 +41,12 @@ const CreateEditCategoryDialog: React.FC<CreateEditCategoryDialogProps> = ({
   onSave,
   categoryToEdit,
 }) => {
+  const navigate = useNavigate();
+  const { profile } = useSession(); // Get profile from session
+
+  const userPlanType = profile?.plan_type || 'trialing';
+  const isInitiantePlan = userPlanType === 'iniciante' || userPlanType === 'trialing';
+
   const form = useForm<Category>({
     resolver: zodResolver(categorySchema),
     defaultValues: categoryToEdit || {
@@ -59,6 +67,13 @@ const CreateEditCategoryDialog: React.FC<CreateEditCategoryDialogProps> = ({
   }, [categoryToEdit, form]);
 
   const onSubmit = (data: Category) => {
+    // This check is also in CategoryManagementSection, but good to have here too
+    if (isInitiantePlan && !categoryToEdit && (form.formState.isDirty || !data.id)) { // Check if creating new category
+      toast.error("O seu plano 'Iniciante' permite um máximo de 10 categorias. Faça upgrade para criar mais.");
+      navigate("/plans");
+      return;
+    }
+
     const newCategory: Category = {
       ...data,
       id: data.id || uuidv4(), // Generate ID if new category
@@ -86,7 +101,7 @@ const CreateEditCategoryDialog: React.FC<CreateEditCategoryDialogProps> = ({
                 <FormItem>
                   <FormLabel>Nome da Categoria *</FormLabel>
                   <FormControl>
-                    <Input placeholder="Ex: 01 – Trabalhos Preparatórios" {...field} />
+                    <Input {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -99,7 +114,7 @@ const CreateEditCategoryDialog: React.FC<CreateEditCategoryDialogProps> = ({
                 <FormItem>
                   <FormLabel>Descrição (opcional)</FormLabel>
                   <FormControl>
-                    <Textarea placeholder="Breve descrição da categoria..." {...field} />
+                    <Textarea {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

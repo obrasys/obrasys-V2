@@ -25,6 +25,7 @@ import {
 import { MoreHorizontal } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Profile } from "@/schemas/profile-schema"; // Import Profile schema
 
 // Components for this module
 import ApprovalsDashboard from "@/components/approvals/ApprovalsDashboard";
@@ -32,12 +33,16 @@ import ApprovalDetailView from "@/components/approvals/ApprovalDetailView";
 
 const ApprovalsPage: React.FC = () => {
   const navigate = useNavigate();
-  const { user, isLoading: isSessionLoading } = useSession();
+  const { user, profile, isLoading: isSessionLoading } = useSession(); // Get profile from session
   const [userCompanyId, setUserCompanyId] = React.useState<string | null>(null);
   const [approvals, setApprovals] = React.useState<ApprovalWithRelations[]>([]);
   const [selectedApproval, setSelectedApproval] = React.useState<ApprovalWithRelations | null>(null);
   const [isLoadingApprovals, setIsLoadingApprovals] = React.useState(true);
   const [isProcessingApproval, setIsProcessingApproval] = React.useState(false); // State for processing status
+
+  const userPlanType = profile?.plan_type || 'trialing';
+  const isInitiantePlan = userPlanType === 'iniciante' || userPlanType === 'trialing';
+  const isProfessionalPlan = userPlanType === 'profissional' || userPlanType === 'empresa';
 
   // Fetch user's company ID
   const fetchUserCompanyId = React.useCallback(async () => {
@@ -145,6 +150,11 @@ const ApprovalsPage: React.FC = () => {
 
   // Placeholder for future "Create New Approval" functionality
   const handleCreateNewApproval = () => {
+    if (isInitiantePlan) {
+      toast.error("A criação de aprovações não está disponível no seu plano 'Iniciante'. Faça upgrade para aceder a esta funcionalidade.");
+      navigate("/plans");
+      return;
+    }
     toast.info("Funcionalidade de criar nova aprovação manual em desenvolvimento.");
     // navigate("/approvals/new"); // Future route
   };
@@ -165,6 +175,18 @@ const ApprovalsPage: React.FC = () => {
           <Skeleton className="h-32 w-full" />
         </div>
       </div>
+    );
+  }
+
+  if (isInitiantePlan) {
+    return (
+      <EmptyState
+        icon={CheckSquare}
+        title="Funcionalidade não disponível no seu plano"
+        description="A gestão de aprovações está disponível apenas para planos Profissional e Empresa. Faça upgrade para aceder a esta funcionalidade."
+        buttonText="Ver Planos"
+        onButtonClick={() => navigate("/plans")}
+      />
     );
   }
 

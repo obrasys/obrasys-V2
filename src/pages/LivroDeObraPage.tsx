@@ -21,11 +21,17 @@ import { useLivroDeObraActions } from "@/hooks/use-livro-de-obra-actions"; // NE
 import { Skeleton } from "@/components/ui/skeleton";
 import EmptyState from "@/components/EmptyState";
 import { FileText } from "lucide-react";
+import { useSession } from "@/components/SessionContextProvider"; // Import useSession
 
 const LivroDeObraPage = () => {
   const navigate = useNavigate();
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
   const [isManualRdoDialogOpen, setIsManualRdoDialogOpen] = React.useState(false);
+  const { profile } = useSession(); // Get profile from session
+
+  const userPlanType = profile?.plan_type || 'trialing';
+  const isInitiantePlan = userPlanType === 'iniciante' || userPlanType === 'trialing';
+  const isProfessionalPlan = userPlanType === 'profissional' || userPlanType === 'empresa';
 
   // Use o hook de dados
   const {
@@ -89,9 +95,23 @@ const LivroDeObraPage = () => {
     <div className="space-y-6">
       <LivroDeObraHeader
         onBackClick={() => navigate("/compliance")}
-        onManualRdoClick={() => setIsManualRdoDialogOpen(true)}
-        onNewLivroClick={() => setIsDialogOpen(true)}
-        isManualRdoButtonDisabled={!selectedLivroObra}
+        onManualRdoClick={() => {
+          if (isInitiantePlan) {
+            toast.error("A criação de registos RDO manuais não está disponível no seu plano 'Iniciante'. Faça upgrade para aceder a esta funcionalidade.");
+            navigate("/plans");
+          } else {
+            setIsManualRdoDialogOpen(true);
+          }
+        }}
+        onNewLivroClick={() => {
+          if (isInitiantePlan && livrosObra.length >= 1) {
+            toast.error("O seu plano 'Iniciante' permite um máximo de 1 Livro de Obra. Faça upgrade para criar mais.");
+            navigate("/plans");
+          } else {
+            setIsDialogOpen(true);
+          }
+        }}
+        isManualRdoButtonDisabled={!selectedLivroObra || isInitiantePlan}
       />
 
       <LivroDeObraList
@@ -99,7 +119,14 @@ const LivroDeObraPage = () => {
         projects={projects}
         selectedLivroObra={selectedLivroObra}
         onSelectLivroObra={setSelectedLivroObra}
-        onNewLivroClick={() => setIsDialogOpen(true)}
+        onNewLivroClick={() => {
+          if (isInitiantePlan && livrosObra.length >= 1) {
+            toast.error("O seu plano 'Iniciante' permite um máximo de 1 Livro de Obra. Faça upgrade para criar mais.");
+            navigate("/plans");
+          } else {
+            setIsDialogOpen(true);
+          }
+        }}
       />
 
       {selectedLivroObra ? (
@@ -110,9 +137,29 @@ const LivroDeObraPage = () => {
             onGeneratePdf={handleGeneratePdf}
           />
 
-          <RdoTimeline rdos={rdoEntries} projectUsers={projectUsers} />
+          {isInitiantePlan ? (
+            <EmptyState
+              icon={FileText}
+              title="Funcionalidade de RDOs não disponível no seu plano"
+              description="A visualização e gestão de Registos Diários de Obra (RDOs) está disponível apenas para planos Profissional e Empresa. Faça upgrade para aceder a esta funcionalidade."
+              buttonText="Ver Planos"
+              onButtonClick={() => navigate("/plans")}
+            />
+          ) : (
+            <RdoTimeline rdos={rdoEntries} projectUsers={projectUsers} />
+          )}
 
-          <LivroDeObraAICompliance projectId={selectedLivroObra.project_id} />
+          {isInitiantePlan ? (
+            <EmptyState
+              icon={FileText}
+              title="Análise de Conformidade IA não disponível no seu plano"
+              description="A análise de conformidade com IA está disponível apenas para planos Profissional e Empresa. Faça upgrade para aceder a esta funcionalidade."
+              buttonText="Ver Planos"
+              onButtonClick={() => navigate("/plans")}
+            />
+          ) : (
+            <LivroDeObraAICompliance projectId={selectedLivroObra.project_id} />
+          )}
         </>
       ) : (
         <div className="mt-8">
@@ -121,7 +168,14 @@ const LivroDeObraPage = () => {
             title="Selecione um Livro de Obra"
             description="Escolha um Livro de Obra da lista acima para ver os seus detalhes, RDOs e análise de conformidade, ou crie um novo."
             buttonText="Criar Novo Livro de Obra"
-            onButtonClick={() => setIsDialogOpen(true)}
+            onButtonClick={() => {
+              if (isInitiantePlan && livrosObra.length >= 1) {
+                toast.error("O seu plano 'Iniciante' permite um máximo de 1 Livro de Obra. Faça upgrade para criar mais.");
+                navigate("/plans");
+              } else {
+                setIsDialogOpen(true);
+              }
+            }}
           />
         </div>
       )}

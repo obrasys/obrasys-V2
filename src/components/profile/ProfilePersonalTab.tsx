@@ -27,6 +27,7 @@ const personalProfileSchema = profileSchema.pick({
   last_name: true,
   phone: true,
   avatar_url: true, // Manter para exibir, mas não para upload aqui
+  plan_type: true, // NEW: plan_type
 });
 
 type PersonalProfileFormValues = z.infer<typeof personalProfileSchema>;
@@ -44,6 +45,7 @@ const ProfilePersonalTab: React.FC = () => {
       last_name: "",
       phone: "",
       avatar_url: "",
+      plan_type: "trialing", // Default value
     },
   });
 
@@ -56,7 +58,7 @@ const ProfilePersonalTab: React.FC = () => {
     setIsLoading(true);
     const { data: profileData, error: profileError } = await supabase
       .from('profiles')
-      .select('first_name, last_name, phone, avatar_url, role, company_id')
+      .select('first_name, last_name, phone, avatar_url, role, company_id, plan_type') // Fetch plan_type
       .eq('id', user.id)
       .single();
 
@@ -72,6 +74,7 @@ const ProfilePersonalTab: React.FC = () => {
           last_name: "",
           phone: "",
           avatar_url: "",
+          plan_type: "trialing", // Default value
         });
       } else {
         console.error("Erro ao carregar perfil:", profileError);
@@ -86,6 +89,7 @@ const ProfilePersonalTab: React.FC = () => {
         last_name: profileData.last_name || "",
         phone: profileData.phone || "",
         avatar_url: profileData.avatar_url || "",
+        plan_type: profileData.plan_type || "trialing", // Set plan_type
       });
       setIsLoading(false);
     }
@@ -175,6 +179,7 @@ const ProfilePersonalTab: React.FC = () => {
             <h3 className="text-lg font-semibold">{profileData?.first_name} {profileData?.last_name}</h3>
             <p className="text-sm text-muted-foreground">{user?.email}</p>
             <p className="text-sm text-muted-foreground capitalize">{profileData?.role || "Cliente"}</p>
+            <p className="text-sm text-muted-foreground capitalize">Plano: {profileData?.plan_type?.replace('_', ' ') || "Trialing"}</p> {/* Display plan type */}
           </div>
         </div>
 
@@ -227,6 +232,12 @@ const ProfilePersonalTab: React.FC = () => {
           <FormLabel>Cargo / Função</FormLabel>
           <FormControl>
             <Input value={profileData?.role || "Cliente"} readOnly disabled className="capitalize" />
+          </FormControl>
+        </FormItem>
+        <FormItem>
+          <FormLabel>Plano Atual</FormLabel>
+          <FormControl>
+            <Input value={profileData?.plan_type?.replace('_', ' ') || "Trialing"} readOnly disabled className="capitalize" />
           </FormControl>
         </FormItem>
         <Button type="submit" disabled={isSaving}>

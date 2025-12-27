@@ -18,6 +18,8 @@ import Papa from "papaparse";
 import { supabase } from "@/integrations/supabase/client";
 import { v4 as uuidv4 } from "uuid";
 import { Article, Category, Subcategory } from "@/schemas/article-schema";
+import { useSession } from "@/components/SessionContextProvider"; // Import useSession
+import { useNavigate } from "react-router-dom"; // Import useNavigate
 
 interface ImportArticlesDialogProps {
   isOpen: boolean;
@@ -32,6 +34,12 @@ const ImportArticlesDialog: React.FC<ImportArticlesDialogProps> = ({
   onImportSuccess,
   userCompanyId,
 }) => {
+  const navigate = useNavigate();
+  const { profile } = useSession(); // Get profile from session
+
+  const userPlanType = profile?.plan_type || 'trialing';
+  const isInitiantePlan = userPlanType === 'iniciante' || userPlanType === 'trialing';
+
   const [file, setFile] = useState<File | null>(null);
   const [isImporting, setIsImporting] = useState(false);
   const [importSummary, setImportSummary] = useState<{
@@ -65,6 +73,12 @@ const ImportArticlesDialog: React.FC<ImportArticlesDialogProps> = ({
     }
     if (!userCompanyId) {
       toast.error("ID da empresa não encontrado. Por favor, faça login novamente.");
+      return;
+    }
+
+    if (isInitiantePlan) {
+      toast.error("A importação de artigos não está disponível no seu plano 'Iniciante'. Faça upgrade para aceder a esta funcionalidade.");
+      navigate("/plans");
       return;
     }
 

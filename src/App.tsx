@@ -31,6 +31,7 @@ import ApprovalsPage from "@/pages/ApprovalsPage";
 import CollaboratorsPage from "@/pages/CollaboratorsPage";
 import ReportsPage from "@/pages/ReportsPage";
 import SchedulePage from "@/pages/SchedulePage";
+import PlansPage from "@/pages/PlansPage"; // NEW: Import PlansPage
 
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -76,6 +77,7 @@ const App = () => {
                 <Route path="approvals" element={<ApprovalsPage />} />
                 <Route path="collaborators" element={<CollaboratorsPage />} />
                 <Route path="reports" element={<ReportsPage />} />
+                <Route path="plans" element={<PlansPage />} /> {/* NEW: Plans Page Route */}
                 <Route path="*" element={<NotFound />} />
               </Route>
             </Routes>

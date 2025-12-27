@@ -32,6 +32,8 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Article, Category, Subcategory, articleSchema } from "@/schemas/article-schema";
 import { toast } from "sonner";
+import { useSession } from "@/components/SessionContextProvider"; // Import useSession
+import { useNavigate } from "react-router-dom"; // Import useNavigate
 
 interface CreateEditArticleDialogProps {
   isOpen: boolean;
@@ -50,6 +52,12 @@ const CreateEditArticleDialog: React.FC<CreateEditArticleDialogProps> = ({
   categories,
   subcategories,
 }) => {
+  const navigate = useNavigate();
+  const { profile } = useSession(); // Get profile from session
+
+  const userPlanType = profile?.plan_type || 'trialing';
+  const isInitiantePlan = userPlanType === 'iniciante' || userPlanType === 'trialing';
+
   const form = useForm<Article>({
     resolver: zodResolver(articleSchema),
     defaultValues: articleToEdit || {
@@ -84,6 +92,13 @@ const CreateEditArticleDialog: React.FC<CreateEditArticleDialogProps> = ({
   }, [articleToEdit, form]);
 
   const onSubmit = (data: Article) => {
+    // This check is also in WorkItemsPage, but good to have here too
+    if (isInitiantePlan && !articleToEdit && (form.formState.isDirty || !data.id)) { // Check if creating new article
+      toast.error("O seu plano 'Iniciante' permite um máximo de 50 artigos. Faça upgrade para criar mais.");
+      navigate("/plans");
+      return;
+    }
+
     const newArticle: Article = {
       ...data,
       id: data.id || uuidv4(), // Generate ID if new article

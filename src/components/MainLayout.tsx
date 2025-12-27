@@ -21,18 +21,19 @@ import { toast } from "sonner";
 import EditProfileModal from "@/components/profile/EditProfileModal";
 import { seedDefaultArticles } from "@/utils/initial-data";
 import { useNotification } from "@/contexts/NotificationContext";
+import { Profile } from "@/schemas/profile-schema"; // Import Profile schema
 
 interface SidebarProps {
   isCollapsed: boolean;
   toggleSidebar: () => void;
-  profile: { first_name: string | null; last_name: string | null; avatar_url: string | null; role: string | null; } | null;
+  profile: Profile | null; // Use Profile schema
 }
 
 const MainLayout = () => {
   const isMobile = useIsMobile();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = React.useState(isMobile);
-  const { user, isLoading: isSessionLoading } = useSession();
-  const [profile, setProfile] = React.useState<{ first_name: string | null; last_name: string | null; avatar_url: string | null; role: string | null; company_id: string | null; } | null>(null);
+  const { user, profile: sessionProfile, isLoading: isSessionLoading } = useSession(); // Get profile from session context
+  const [profile, setProfile] = React.useState<Profile | null>(null); // Local state for profile
   const [isEditProfileModalOpen, setIsEditProfileModalOpen] = React.useState(false);
   const navigate = useNavigate();
 
@@ -48,7 +49,7 @@ const MainLayout = () => {
 
     const { data: profileData, error: profileError } = await supabase
       .from('profiles')
-      .select('first_name, last_name, avatar_url, role, company_id')
+      .select('first_name, last_name, avatar_url, role, company_id, plan_type') // Fetch plan_type
       .eq('id', user.id)
       .single();
 

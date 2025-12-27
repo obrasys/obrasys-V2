@@ -7,9 +7,49 @@ import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { BellRing, Lightbulb, Bot, Activity, Monitor } from "lucide-react";
 import NavButton from "@/components/NavButton"; // Importar NavButton
+import { useSession } from "@/components/SessionContextProvider"; // Import useSession
+import { Profile } from "@/schemas/profile-schema"; // Import Profile schema
+import { toast } from "sonner"; // Import toast
 
 const AutomationIntelligence = () => {
   const navigate = useNavigate();
+  const { profile } = useSession(); // Get profile from session
+
+  const userPlanType = profile?.plan_type || 'trialing';
+  const isInitiantePlan = userPlanType === 'iniciante' || userPlanType === 'trialing';
+  const isProfessionalPlan = userPlanType === 'profissional' || userPlanType === 'empresa';
+
+  if (isInitiantePlan) {
+    return (
+      <div className="space-y-6">
+        <div className="flex flex-col md:flex-row items-center justify-between gap-4 pb-4 md:pb-6">
+          <h1 className="text-2xl md:text-3xl font-extrabold text-center md:text-left text-primary dark:text-primary-foreground flex-grow">
+            Automação & Inteligência
+          </h1>
+        </div>
+        <section className="text-center max-w-3xl mx-auto mb-8">
+          <p className="text-base md:text-lg text-muted-foreground leading-relaxed">
+            Aqui centraliza ferramentas de IA e automação para otimizar a tomada de decisões
+            e a eficiência operacional.
+          </p>
+        </section>
+        <Separator className="my-8 bg-gray-300 dark:bg-gray-700" />
+        <Card className="bg-card text-card-foreground border border-border">
+          <CardHeader>
+            <CardTitle className="text-xl font-semibold">Funcionalidade não disponível no seu plano</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground mt-2">
+              As funcionalidades de Automação & Inteligência estão disponíveis apenas para planos Profissional e Empresa. Faça upgrade para aceder a esta funcionalidade.
+            </p>
+            <Button className="mt-6 w-full" onClick={() => navigate("/plans")}>
+              Ver Planos
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

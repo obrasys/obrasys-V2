@@ -12,6 +12,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"; // Import Accordion components
 import { v4 as uuidv4 } from "uuid"; // For new subcategory IDs
+import { useSession } from "@/components/SessionContextProvider"; // Import useSession
+import { useNavigate } from "react-router-dom"; // Import useNavigate
 
 interface CategoryManagementSectionProps {
   categories: Category[];
@@ -28,6 +30,13 @@ const CategoryManagementSection: React.FC<CategoryManagementSectionProps> = ({
   onCategoriesUpdated,
   onSubcategoriesUpdated, // Destructure subcategories callback
 }) => {
+  const navigate = useNavigate();
+  const { profile } = useSession(); // Get profile from session
+
+  const userPlanType = profile?.plan_type || 'trialing';
+  const isInitiantePlan = userPlanType === 'iniciante' || userPlanType === 'trialing';
+  const isProfessionalPlan = userPlanType === 'profissional' || userPlanType === 'empresa';
+
   const [isCategoryDialogOpen, setIsCategoryDialogOpen] = React.useState(false);
   const [categoryToEdit, setCategoryToEdit] = React.useState<Category | null>(null);
 
@@ -41,6 +50,13 @@ const CategoryManagementSection: React.FC<CategoryManagementSectionProps> = ({
       toast.error("ID da empresa não encontrado. Por favor, faça login novamente.");
       return;
     }
+
+    if (isInitiantePlan && !category.id && categories.length >= 10) {
+      toast.error("O seu plano 'Iniciante' permite um máximo de 10 categorias. Faça upgrade para criar mais.");
+      navigate("/plans");
+      return;
+    }
+
     try {
       const categoryDataToSave = {
         ...category,
@@ -89,6 +105,11 @@ const CategoryManagementSection: React.FC<CategoryManagementSectionProps> = ({
 
   // --- Subcategory Handlers ---
   const handleAddSubcategoryClick = (categoryId: string) => {
+    if (isInitiantePlan && subcategories.filter(sub => sub.categoria_id === categoryId).length >= 20) {
+      toast.error("O seu plano 'Iniciante' permite um máximo de 20 subcategorias por categoria. Faça upgrade para criar mais.");
+      navigate("/plans");
+      return;
+    }
     setCurrentCategoryIdForSubcategory(categoryId);
     setSubcategoryToEdit(null); // Ensure it's a new subcategory
     setIsSubcategoryDialogOpen(true);
@@ -99,6 +120,13 @@ const CategoryManagementSection: React.FC<CategoryManagementSectionProps> = ({
       toast.error("ID da empresa ou ID da categoria em falta.");
       return;
     }
+
+    if (isInitiantePlan && !subcategory.id && subcategories.filter(sub => sub.categoria_id === currentCategoryIdForSubcategory).length >= 20) {
+      toast.error("O seu plano 'Iniciante' permite um máximo de 20 subcategorias por categoria. Faça upgrade para criar mais.");
+      navigate("/plans");
+      return;
+    }
+
     try {
       const subcategoryDataToSave = {
         ...subcategory,
@@ -153,7 +181,15 @@ const CategoryManagementSection: React.FC<CategoryManagementSectionProps> = ({
         <CardTitle className="text-xl font-semibold flex items-center gap-2">
           <FolderOpen className="h-5 w-5 text-primary" /> Gestão de Categorias e Subcategorias
         </CardTitle>
-        <Button onClick={() => { setCategoryToEdit(null); setIsCategoryDialogOpen(true); }}>
+        <Button onClick={() => {
+          if (isInitiantePlan && categories.length >= 10) {
+            toast.error("O seu plano 'Iniciante' permite um máximo de 10 categorias. Faça upgrade para criar mais.");
+            navigate("/plans");
+          } else {
+            setCategoryToEdit(null);
+            setIsCategoryDialogOpen(true);
+          }
+        }}>
           <PlusCircle className="h-4 w-4 mr-2" /> Adicionar Categoria
         </Button>
       </CardHeader>
@@ -164,7 +200,15 @@ const CategoryManagementSection: React.FC<CategoryManagementSectionProps> = ({
             title="Nenhuma categoria de artigo encontrada"
             description="Adicione categorias para organizar os seus artigos de construção."
             buttonText="Adicionar Primeira Categoria"
-            onButtonClick={() => { setCategoryToEdit(null); setIsCategoryDialogOpen(true); }}
+            onButtonClick={() => {
+              if (isInitiantePlan && categories.length >= 10) {
+                toast.error("O seu plano 'Iniciante' permite um máximo de 10 categorias. Faça upgrade para criar mais.");
+                navigate("/plans");
+              } else {
+                setCategoryToEdit(null);
+                setIsCategoryDialogOpen(true);
+              }
+            }}
           />
         ) : (
           <Accordion type="multiple" className="w-full">

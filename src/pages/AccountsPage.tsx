@@ -24,8 +24,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const AccountsPage: React.FC = () => {
   const navigate = useNavigate();
-  const { user, isLoading: isSessionLoading } = useSession();
+  const { user, profile, isLoading: isSessionLoading } = useSession(); // Get profile from session
   const [userCompanyId, setUserCompanyId] = React.useState<string | null>(null);
+
+  const userPlanType = profile?.plan_type || 'trialing';
+  const isInitiantePlan = userPlanType === 'iniciante' || userPlanType === 'trialing';
+  const isProfessionalPlan = userPlanType === 'profissional' || userPlanType === 'empresa';
 
   // State for Invoices (Contas a Receber)
   const [invoices, setInvoices] = React.useState<InvoiceWithRelations[]>([]);
@@ -335,11 +339,27 @@ const AccountsPage: React.FC = () => {
             <RefreshCw className="h-4 w-4" /> Atualizar
           </Button>
           {activeTab === "receber" ? (
-            <Button onClick={() => { setInvoiceToEdit(null); setIsInvoiceDialogOpen(true); }} className="flex items-center gap-2">
+            <Button onClick={() => {
+              if (isInitiantePlan && invoices.filter(inv => inv.status !== 'cancelled').length >= 5) {
+                toast.error("O seu plano 'Iniciante' permite um máximo de 5 faturas ativas. Faça upgrade para criar mais.");
+                navigate("/plans");
+              } else {
+                setInvoiceToEdit(null);
+                setIsInvoiceDialogOpen(true);
+              }
+            }} className="flex items-center gap-2">
               <PlusCircle className="h-4 w-4" /> Nova Fatura
             </Button>
           ) : (
-            <Button onClick={() => { setExpenseToEdit(null); setIsExpenseDialogOpen(true); }} className="flex items-center gap-2">
+            <Button onClick={() => {
+              if (isInitiantePlan && expenses.filter(exp => exp.status !== 'cancelled').length >= 5) {
+                toast.error("O seu plano 'Iniciante' permite um máximo de 5 despesas ativas. Faça upgrade para criar mais.");
+                navigate("/plans");
+              } else {
+                setExpenseToEdit(null);
+                setIsExpenseDialogOpen(true);
+              }
+            }} className="flex items-center gap-2">
               <PlusCircle className="h-4 w-4" /> Nova Despesa
             </Button>
           )}
@@ -446,7 +466,15 @@ const AccountsPage: React.FC = () => {
                       title="Nenhuma fatura encontrada"
                       description="Comece por criar uma nova fatura para gerir os seus recebimentos."
                       buttonText="Nova Fatura"
-                      onButtonClick={() => { setInvoiceToEdit(null); setIsInvoiceDialogOpen(true); }}
+                      onButtonClick={() => {
+                        if (isInitiantePlan && invoices.filter(inv => inv.status !== 'cancelled').length >= 5) {
+                          toast.error("O seu plano 'Iniciante' permite um máximo de 5 faturas ativas. Faça upgrade para criar mais.");
+                          navigate("/plans");
+                        } else {
+                          setInvoiceToEdit(null);
+                          setIsInvoiceDialogOpen(true);
+                        }
+                      }}
                     />
                   )}
                 </CardContent>
@@ -503,7 +531,15 @@ const AccountsPage: React.FC = () => {
                       title="Nenhuma despesa encontrada"
                       description="Comece por criar uma nova despesa para gerir as suas contas a pagar."
                       buttonText="Nova Despesa"
-                      onButtonClick={() => { setExpenseToEdit(null); setIsExpenseDialogOpen(true); }}
+                      onButtonClick={() => {
+                        if (isInitiantePlan && expenses.filter(exp => exp.status !== 'cancelled').length >= 5) {
+                          toast.error("O seu plano 'Iniciante' permite um máximo de 5 despesas ativas. Faça upgrade para criar mais.");
+                          navigate("/plans");
+                        } else {
+                          setExpenseToEdit(null);
+                          setIsExpenseDialogOpen(true);
+                        }
+                      }}
                     />
                   )}
                 </CardContent>

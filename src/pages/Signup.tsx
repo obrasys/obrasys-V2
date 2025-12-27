@@ -19,6 +19,14 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { UserPlus, Eye, EyeOff, ArrowLeft } from 'lucide-react';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { addDays, formatISO } from 'date-fns'; // Import addDays and formatISO
 
 // Define o schema de validação para o formulário de cadastro
 const signupSchema = z.object({
@@ -26,7 +34,10 @@ const signupSchema = z.object({
   email: z.string().email("Formato de email inválido.").min(1, "O email é obrigatório."),
   phone: z.string().min(1, "O telefone é obrigatório."),
   company: z.string().min(1, "O nome da empresa é obrigatório."),
-  nif: z.string().optional(), // NIF is optional as per screenshot
+  companyType: z.enum(["Empresa", "Profissional independente", "Entidade pública"], {
+    required_error: "O tipo de empresa é obrigatório.",
+  }), // NEW: companyType
+  nif: z.string().optional(),
   password: z.string().min(8, "A palavra-passe deve ter pelo menos 8 caracteres."),
   confirmPassword: z.string().min(1, "Confirme a sua palavra-passe."),
   acceptTerms: z.boolean().refine((val) => val === true, {
@@ -51,6 +62,7 @@ const Signup: React.FC = () => {
       email: "",
       phone: "",
       company: "",
+      companyType: "Empresa", // Default company type
       nif: "",
       password: "",
       confirmPassword: "",
@@ -60,7 +72,8 @@ const Signup: React.FC = () => {
 
   const onSubmit = async (data: SignupFormValues) => {
     try {
-      const { error } = await supabase.auth.signUp({
+      // 1. Sign up the user with Supabase Auth
+      const { data: authData, error: authError } = await supabase.auth.signUp({
         email: data.email,
         password: data.password,
         options: {
@@ -69,14 +82,53 @@ const Signup: React.FC = () => {
             phone: data.phone,
             company: data.company,
             nif: data.nif,
+            company_type: data.companyType, // Pass company type to auth metadata
           },
         },
       });
 
-      if (error) {
-        toast.error(`Erro ao registar: ${error.message}`);
-      } else {
-        toast.success('Registo efetuado com sucesso! Verifique o seu email para confirmar a conta.');
+      if (authError) {
+        toast.error(`Erro ao registar: ${authError.message}`);
+        return;
+      }
+
+      if (authData.user) {
+        // The handle_new_user_and_company trigger should create the profile and company.
+        // We now need to create the initial subscription.
+        const { data: profileFetch, error: profileFetchError } = await supabase
+          .from('profiles')
+          .select('company_id')
+          .eq('id', authData.user.id)
+          .single();
+
+        if (profileFetchError || !profileFetch?.company_id) {
+          console.error("Erro ao buscar company_id após signup:", profileFetchError);
+          toast.error("Erro interno: Não foi possível associar a empresa ao utilizador.");
+          // Consider deleting the user if company creation failed, or handle retry
+          return;
+        }
+
+        const companyId = profileFetch.company_id;
+        const trialEndDate = addDays(new Date(), 30); // 30 days from now
+
+        const { error: subscriptionError } = await supabase
+          .from('subscriptions')
+          .insert({
+            company_id: companyId,
+            status: 'trialing',
+            plan_type: 'trialing',
+            trial_start: formatISO(new Date()),
+            trial_end: formatISO(trialEndDate),
+          });
+
+        if (subscriptionError) {
+          console.error("Erro ao criar subscrição de trial:", subscriptionError);
+          toast.error(`Erro ao criar subscrição de trial: ${subscriptionError.message}`);
+          // This is a critical error, consider logging and potentially reverting user creation
+          return;
+        }
+
+        toast.success('Registo efetuado com sucesso! Verifique o seu email para confirmar a conta e iniciar o seu trial.');
         navigate('/login'); // Redireciona para o login após o registo
       }
     } catch (error: any) {
@@ -145,7 +197,7 @@ const Signup: React.FC = () => {
                 name="company"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Empresa *</FormLabel>
+                    <FormLabel>Nome da Empresa *</FormLabel>
                     <FormControl>
                       <Input placeholder="Construções Silva, Lda." {...field} />
                     </FormControl>
@@ -154,6 +206,28 @@ const Signup: React.FC = () => {
                 )}
               />
             </div>
+            <FormField
+              control={form.control}
+              name="companyType"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Tipo de Cliente *</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione o tipo de cliente" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="Empresa">Empresa</SelectItem>
+                      <SelectItem value="Profissional independente">Profissional independente</SelectItem>
+                      <SelectItem value="Entidade pública">Entidade pública</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
             <FormField
               control={form.control}
               name="nif"

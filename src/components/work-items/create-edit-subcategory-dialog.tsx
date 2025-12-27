@@ -25,6 +25,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Subcategory, subcategorySchema } from "@/schemas/article-schema";
 import { toast } from "sonner";
+import { useSession } from "@/components/SessionContextProvider"; // Import useSession
+import { useNavigate } from "react-router-dom"; // Import useNavigate
 
 interface CreateEditSubcategoryDialogProps {
   isOpen: boolean;
@@ -41,6 +43,12 @@ const CreateEditSubcategoryDialog: React.FC<CreateEditSubcategoryDialogProps> = 
   subcategoryToEdit,
   categoryId,
 }) => {
+  const navigate = useNavigate();
+  const { profile } = useSession(); // Get profile from session
+
+  const userPlanType = profile?.plan_type || 'trialing';
+  const isInitiantePlan = userPlanType === 'iniciante' || userPlanType === 'trialing';
+
   const form = useForm<Subcategory>({
     resolver: zodResolver(subcategorySchema),
     defaultValues: subcategoryToEdit || {
@@ -67,6 +75,14 @@ const CreateEditSubcategoryDialog: React.FC<CreateEditSubcategoryDialogProps> = 
       toast.error("ID da categoria pai em falta.");
       return;
     }
+
+    // This check is also in CategoryManagementSection, but good to have here too
+    if (isInitiantePlan && !subcategoryToEdit && (form.formState.isDirty || !data.id)) { // Check if creating new subcategory
+      toast.error("O seu plano 'Iniciante' permite um máximo de 20 subcategorias por categoria. Faça upgrade para criar mais.");
+      navigate("/plans");
+      return;
+    }
+
     const newSubcategory: Subcategory = {
       ...data,
       id: data.id || uuidv4(), // Generate ID if new subcategory
@@ -95,7 +111,7 @@ const CreateEditSubcategoryDialog: React.FC<CreateEditSubcategoryDialogProps> = 
                 <FormItem>
                   <FormLabel>Nome da Subcategoria *</FormLabel>
                   <FormControl>
-                    <Input placeholder="Ex: Escavação em Terra" {...field} />
+                    <Input {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -108,7 +124,7 @@ const CreateEditSubcategoryDialog: React.FC<CreateEditSubcategoryDialogProps> = 
                 <FormItem>
                   <FormLabel>Descrição (opcional)</FormLabel>
                   <FormControl>
-                    <Textarea placeholder="Breve descrição da subcategoria..." {...field} />
+                    <Textarea {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

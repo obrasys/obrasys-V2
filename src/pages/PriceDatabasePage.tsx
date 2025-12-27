@@ -25,10 +25,16 @@ import {
   SelectValue,
 } from "@/components/ui/select"; // Import Select components
 import { Input } from "@/components/ui/input"; // Import Input
+import { useNavigate } from "react-router-dom"; // Import useNavigate
 
 const PriceDatabasePage = () => {
-  const { user, isLoading: isSessionLoading } = useSession();
+  const navigate = useNavigate();
+  const { user, profile, isLoading: isSessionLoading } = useSession(); // Get profile from session
   const [userCompanyId, setUserCompanyId] = React.useState<string | null>(null);
+
+  const userPlanType = profile?.plan_type || 'trialing';
+  const isInitiantePlan = userPlanType === 'iniciante' || userPlanType === 'trialing';
+  const isProfessionalPlan = userPlanType === 'profissional' || userPlanType === 'empresa';
 
   const [articles, setArticles] = React.useState<Article[]>([]);
   const [categories, setCategories] = React.useState<Category[]>([]);
@@ -159,6 +165,13 @@ const PriceDatabasePage = () => {
       toast.error("ID da empresa não encontrado. Por favor, faça login novamente.");
       return;
     }
+
+    if (isInitiantePlan && !article.id && articles.length >= 50) {
+      toast.error("O seu plano 'Iniciante' permite um máximo de 50 artigos. Faça upgrade para criar mais.");
+      navigate("/plans");
+      return;
+    }
+
     try {
       const articleDataToSave = {
         ...article,
@@ -291,13 +304,28 @@ const PriceDatabasePage = () => {
           Base de Preços Unificada
         </h1>
         <div className="flex flex-wrap gap-2 mt-2 md:mt-0">
-          <Button onClick={() => setIsImportDialogOpen(true)} variant="outline" className="flex items-center gap-2">
+          <Button onClick={() => {
+            if (isInitiantePlan) {
+              toast.error("A importação de artigos não está disponível no seu plano 'Iniciante'. Faça upgrade para aceder a esta funcionalidade.");
+              navigate("/plans");
+            } else {
+              setIsImportDialogOpen(true);
+            }
+          }} variant="outline" className="flex items-center gap-2">
             <Upload className="h-4 w-4" /> Importar CSV
           </Button>
           <Button variant="outline" className="flex items-center gap-2" disabled>
             <Download className="h-4 w-4" /> Exportar CSV
           </Button>
-          <Button onClick={() => { setArticleToEdit(null); setIsArticleDialogOpen(true); }} className="flex items-center gap-2">
+          <Button onClick={() => {
+            if (isInitiantePlan && articles.length >= 50) {
+              toast.error("O seu plano 'Iniciante' permite um máximo de 50 artigos. Faça upgrade para criar mais.");
+              navigate("/plans");
+            } else {
+              setArticleToEdit(null);
+              setIsArticleDialogOpen(true);
+            }
+          }} className="flex items-center gap-2">
             <PlusCircle className="h-4 w-4" /> Novo Artigo
           </Button>
         </div>

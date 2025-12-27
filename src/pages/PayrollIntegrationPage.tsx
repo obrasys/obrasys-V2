@@ -17,9 +17,11 @@ import CreateEditPayrollEntryDialog from "@/components/payroll/CreateEditPayroll
 import KPICard from "@/components/KPICard";
 import { formatCurrency } from "@/utils/formatters";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useNavigate } from "react-router-dom"; // Import useNavigate
 
 const PayrollIntegrationPage = () => {
-  const { user, isLoading: isSessionLoading } = useSession();
+  const navigate = useNavigate();
+  const { user, profile, isLoading: isSessionLoading } = useSession(); // Get profile from session
   const [userCompanyId, setUserCompanyId] = useState<string | null>(null);
   const [payrollEntries, setPayrollEntries] = useState<PayrollEntryWithRelations[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
@@ -28,6 +30,10 @@ const PayrollIntegrationPage = () => {
   const [isPayrollEntryDialogOpen, setIsPayrollEntryDialogOpen] = useState(false);
   const [entryToEdit, setEntryToEdit] = useState<PayrollEntry | null>(null);
   const [isProcessingAction, setIsProcessingAction] = useState(false);
+
+  const userPlanType = profile?.plan_type || 'trialing';
+  const isInitiantePlan = userPlanType === 'iniciante' || userPlanType === 'trialing';
+  const isProfessionalPlan = userPlanType === 'profissional' || userPlanType === 'empresa';
 
   // Fetch user's company ID
   const fetchUserCompanyId = useCallback(async () => {
@@ -282,7 +288,15 @@ const PayrollIntegrationPage = () => {
           <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between space-y-2 sm:space-y-0 pb-2">
             <CardTitle className="text-2xl font-semibold">Registos de Folha de Pagamento</CardTitle>
             <div className="flex flex-wrap gap-2">
-              <Button onClick={() => { setEntryToEdit(null); setIsPayrollEntryDialogOpen(true); }} className="flex items-center gap-2">
+              <Button onClick={() => {
+                if (isInitiantePlan && payrollEntries.filter(entry => entry.status !== 'paid').length >= 5) {
+                  toast.error("O seu plano 'Iniciante' permite um máximo de 5 registos de folha de pagamento ativos. Faça upgrade para criar mais.");
+                  navigate("/plans");
+                } else {
+                  setEntryToEdit(null);
+                  setIsPayrollEntryDialogOpen(true);
+                }
+              }} className="flex items-center gap-2">
                 <PlusCircle className="h-4 w-4" /> Novo Registo
               </Button>
               <Button variant="outline" className="flex items-center gap-2" disabled>
@@ -307,7 +321,15 @@ const PayrollIntegrationPage = () => {
                 title="Nenhum registo de folha de pagamento encontrado"
                 description="Crie um novo registo para começar a gerir os custos de mão de obra."
                 buttonText="Novo Registo de Folha de Pagamento"
-                onButtonClick={() => { setEntryToEdit(null); setIsPayrollEntryDialogOpen(true); }}
+                onButtonClick={() => {
+                  if (isInitiantePlan && payrollEntries.filter(entry => entry.status !== 'paid').length >= 5) {
+                    toast.error("O seu plano 'Iniciante' permite um máximo de 5 registos de folha de pagamento ativos. Faça upgrade para criar mais.");
+                    navigate("/plans");
+                  } else {
+                    setEntryToEdit(null);
+                    setIsPayrollEntryDialogOpen(true);
+                  }
+                }}
               />
             )}
           </CardContent>

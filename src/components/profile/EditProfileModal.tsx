@@ -37,6 +37,7 @@ const personalProfileSchema = profileSchema.pick({
   last_name: true,
   phone: true,
   avatar_url: true,
+  plan_type: true, // NEW: plan_type
 });
 
 type PersonalProfileFormValues = z.infer<typeof personalProfileSchema>;
@@ -62,6 +63,7 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onClose, on
       last_name: "",
       phone: "",
       avatar_url: null, // Alterado de "" para null
+      plan_type: "trialing", // Default value
     },
   });
 
@@ -76,7 +78,7 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onClose, on
     console.log("[EditProfileModal] Fetching profile for user:", user.id);
     const { data: profileData, error: profileError } = await supabase
       .from('profiles')
-      .select('first_name, last_name, phone, avatar_url, role, company_id')
+      .select('first_name, last_name, phone, avatar_url, role, company_id, plan_type') // Fetch plan_type
       .eq('id', user.id)
       .single();
 
@@ -88,6 +90,7 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onClose, on
           last_name: "",
           phone: "",
           avatar_url: null, // Alterado de "" para null
+          plan_type: "trialing", // Default value
         });
         setAvatarPreview(null);
       } else {
@@ -102,6 +105,7 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onClose, on
         last_name: profileData.last_name || "",
         phone: profileData.phone || "",
         avatar_url: profileData.avatar_url || null, // Alterado de "" para null
+        plan_type: profileData.plan_type || "trialing", // Set plan_type
       });
       setAvatarPreview(profileData.avatar_url); // Set initial preview from DB
       setIsLoading(false);

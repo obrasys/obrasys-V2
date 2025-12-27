@@ -40,6 +40,7 @@ import { formatCurrency } from "@/utils/formatters"; // Import formatCurrency
 import { cn } from "@/lib/utils"; // Import cn for conditional classNames
 import NotificationToastContent from "@/components/NotificationToastContent";
 import { useNotification } from "@/contexts/NotificationContext"; // NEW: Import useNotification
+import TrialBanner from "@/components/TrialBanner"; // NEW: Import TrialBanner
 
 interface DashboardNotification {
   id: string;
@@ -81,7 +82,7 @@ const Dashboard = () => {
     }
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
-      .select('company_id, first_name, last_name, role')
+      .select('company_id, first_name, last_name, role, plan_type') // Fetch plan_type
       .eq('id', user.id)
       .single();
 
@@ -356,6 +357,9 @@ const Dashboard = () => {
 
   return (
     <div className="space-y-6">
+      {/* Trial Banner */}
+      <TrialBanner />
+
       {/* Header - now specific to Dashboard content */}
       <div className="flex flex-col md:flex-row items-center justify-between pb-4 md:pb-6 border-b border-border mb-4 md:mb-6">
         <div>
@@ -506,10 +510,10 @@ const Dashboard = () => {
                   <Upload className="h-5 w-5 mb-1" />
                   <span className="text-sm">Importar Dados</span>
                 </Button>
-                <Button variant="outline" className="h-20 flex flex-col items-center justify-center text-center" disabled>
-                  <Settings className="h-5 w-5 mb-1" />
-                  <span className="text-sm">Gestão da Empresa</span>
-                </Button>
+                <NavButton to="/plans" variant="outline" className="h-20 flex flex-col items-center justify-center text-center"> {/* NEW: Nossos Planos button */}
+                  <DollarSign className="h-5 w-5 mb-1" />
+                  <span className="text-sm">Nossos Planos</span>
+                </NavButton>
               </div>
             </CardContent>
           </Card>

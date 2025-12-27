@@ -29,11 +29,12 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import NavButton from "@/components/NavButton";
 import { useSession } from "@/components/SessionContextProvider";
+import { Profile } from "@/schemas/profile-schema"; // Import Profile schema
 
 interface SidebarProps {
   isCollapsed: boolean;
   toggleSidebar: () => void;
-  profile: { first_name: string | null; last_name: string | null; avatar_url: string | null; role: string | null; } | null;
+  profile: Profile | null; // Use Profile schema
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, toggleSidebar, profile }) => {
@@ -41,68 +42,88 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, toggleSidebar, profile }
   const navigate = useNavigate();
   const { user } = useSession();
 
+  const userPlanType = profile?.plan_type || 'trialing'; // Default to 'trialing' if not set
+
   const navItems = [
     {
       name: "Painel de Controlo",
       icon: LayoutDashboard,
       href: "/dashboard",
+      minPlan: "trialing",
     },
     {
       name: "Orçamentos",
       icon: DollarSign,
       href: "/budgeting",
+      minPlan: "trialing",
     },
     {
       name: "Obras",
       icon: HardHat,
       href: "/projects",
+      minPlan: "trialing",
     },
     {
       name: "Cronograma",
       icon: CalendarDays,
       href: "/schedule",
+      minPlan: "profissional", // Requires 'profissional' or higher
     },
     {
       name: "Colaboradores",
       icon: Users,
       href: "/collaborators",
+      minPlan: "profissional", // Requires 'profissional' or higher
     },
     {
       name: "Conformidade",
       icon: ShieldCheck,
       href: "/compliance",
+      minPlan: "trialing",
     },
     {
       name: "Gestão de Aprovações",
       icon: CheckSquare,
       href: "/approvals",
+      minPlan: "profissional", // Requires 'profissional' or higher
     },
     {
       name: "Financeiro",
       icon: Banknote,
       href: "/finance-management",
+      minPlan: "trialing",
     },
     {
       name: "Relatórios",
       icon: FileText,
       href: "/reports",
+      minPlan: "trialing",
     },
     {
-      name: "Base de Preços", // Renamed
-      icon: Scale, // Changed icon
-      href: "/price-database", // Updated href
+      name: "Base de Preços",
+      icon: Scale,
+      href: "/price-database",
+      minPlan: "trialing",
     },
     {
-      name: "Artigos de Trabalho", // NEW: Separate item
-      icon: Archive, // NEW: Icon for work items
-      href: "/work-items", // NEW: Route for work items
+      name: "Artigos de Trabalho",
+      icon: Archive,
+      href: "/work-items",
+      minPlan: "trialing",
     },
     {
       name: "Automação & Inteligência",
       icon: Zap,
       href: "/automation-intelligence",
+      minPlan: "profissional", // Requires 'profissional' or higher
     },
   ];
+
+  // Helper to determine if a plan is sufficient
+  const isPlanSufficient = (requiredPlan: string) => {
+    const planOrder = ["trialing", "iniciante", "profissional", "empresa"];
+    return planOrder.indexOf(userPlanType) >= planOrder.indexOf(requiredPlan);
+  };
 
   const handleLogout = () => {
     navigate('/login');
@@ -165,7 +186,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, toggleSidebar, profile }
         {!isCollapsed && (
           <div className="flex flex-col">
             <span className="font-semibold text-sm">{profile?.first_name} {profile?.last_name}</span>
-            <span className="text-xs text-muted-foreground">{profile?.role || "Cliente"}</span>
+            <span className="text-xs text-muted-foreground capitalize">{profile?.role || "Cliente"}</span>
+            <span className="text-xs text-muted-foreground capitalize">Plano: {userPlanType.replace('_', ' ')}</span> {/* Display plan type */}
           </div>
         )}
       </div>
@@ -185,6 +207,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, toggleSidebar, profile }
                 : "text-sidebar-foreground",
               isCollapsed && "justify-center px-0",
             )}
+            disabled={!isPlanSufficient(item.minPlan)} // Disable if plan is not sufficient
           >
             <item.icon className="h-5 w-5" />
             {!isCollapsed && <span>{item.name}</span>}

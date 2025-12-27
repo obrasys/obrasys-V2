@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/select"; // Adicionado: Importação dos componentes Select
 import { useNavigate } from "react-router-dom"; // Importar useNavigate
 import { useSession } from "@/components/SessionContextProvider"; // Importar useSession
+import { Profile } from "@/schemas/profile-schema"; // Import Profile schema
 
 // Import new modular components
 import BudgetingHeader from "@/components/budgeting/BudgetingHeader";
@@ -46,8 +47,12 @@ const Budgeting = () => {
   const [clients, setClients] = React.useState<Client[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const navigate = useNavigate();
-  const { user } = useSession();
+  const { user, profile, isLoading: isSessionLoading } = useSession(); // Get profile from session
   const [userCompanyId, setUserCompanyId] = React.useState<string | null>(null);
+
+  const userPlanType = profile?.plan_type || 'trialing';
+  const isInitiantePlan = userPlanType === 'iniciante' || userPlanType === 'trialing';
+  const isProfessionalPlan = userPlanType === 'profissional' || userPlanType === 'empresa';
 
   // Fetch user's company ID
   const fetchUserCompanyId = React.useCallback(async () => {
@@ -185,7 +190,7 @@ const Budgeting = () => {
 
   const handleSaveClient = async (newClient: Client) => {
     if (!user || !userCompanyId) {
-      toast.error("Utilizador não autenticado ou ID da empresa não encontrado.");
+      toast.error("ID da empresa não encontrado. Por favor, faça login novamente.");
       return;
     }
     try {
@@ -365,7 +370,14 @@ const Budgeting = () => {
     <div className="space-y-6">
       <BudgetingHeader
         onRegisterClientClick={() => setIsClientDialogOpen(true)}
-        onNewBudgetClick={() => navigate("/budgeting/new")}
+        onNewBudgetClick={() => {
+          if (isInitiantePlan && budgets.filter(b => b.estado !== 'Aprovado' && b.estado !== 'Rejeitado').length >= 5) {
+            toast.error("O seu plano 'Iniciante' permite um máximo de 5 orçamentos ativos. Faça upgrade para criar mais.");
+            navigate("/plans");
+          } else {
+            navigate("/budgeting/new");
+          }
+        }}
       />
 
       <BudgetSelectionAndActions

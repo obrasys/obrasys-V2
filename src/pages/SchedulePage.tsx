@@ -18,15 +18,20 @@ import { toast } from "sonner";
 import { useSession } from "@/components/SessionContextProvider";
 import { Project } from "@/schemas/project-schema";
 import ScheduleTab from "@/components/projects/schedule-tab"; // Importar o ScheduleTab
+import { Profile } from "@/schemas/profile-schema"; // Import Profile schema
 
 const SchedulePage = () => {
   console.log("SchedulePage: Component is being rendered."); // Adicionado para diagnóstico
   const navigate = useNavigate();
-  const { user, isLoading: isSessionLoading } = useSession();
+  const { user, profile, isLoading: isSessionLoading } = useSession(); // Get profile from session
   const [userCompanyId, setUserCompanyId] = React.useState<string | null>(null);
   const [projects, setProjects] = React.useState<Project[]>([]);
   const [selectedProjectId, setSelectedProjectId] = React.useState<string | null>(null);
   const [loadingProjects, setLoadingProjects] = React.useState(true);
+
+  const userPlanType = profile?.plan_type || 'trialing';
+  const isInitiantePlan = userPlanType === 'iniciante' || userPlanType === 'trialing';
+  const isProfessionalPlan = userPlanType === 'profissional' || userPlanType === 'empresa';
 
   // Fetch user's company ID
   const fetchUserCompanyId = React.useCallback(async () => {
@@ -99,6 +104,18 @@ const SchedulePage = () => {
     );
   }
 
+  if (isInitiantePlan) {
+    return (
+      <EmptyState
+        icon={CalendarDays}
+        title="Funcionalidade não disponível no seu plano"
+        description="A gestão de cronogramas está disponível apenas para planos Profissional e Empresa. Faça upgrade para aceder a esta funcionalidade."
+        buttonText="Ver Planos"
+        onButtonClick={() => navigate("/plans")}
+      />
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row items-center justify-between gap-4 pb-4 md:pb-6">
@@ -153,7 +170,7 @@ const SchedulePage = () => {
         <ScheduleTab
           projectId={selectedProject.id}
           budgetId={selectedProject.budget_id}
-          onScheduleRefetch={fetchProjects} // Passar fetchProjects para atualizar a lista de obras
+          onScheduleRefetch={fetchProjects} // Passar fetchProjects para atualizar o projeto pai
           userCompanyId={userCompanyId}
         />
       ) : selectedProjectId && !selectedProject?.budget_id ? (
