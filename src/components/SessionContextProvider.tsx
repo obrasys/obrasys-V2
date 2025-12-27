@@ -57,6 +57,50 @@ export const SessionContextProvider: React.FC<{ children: React.ReactNode }> = (
     }
   }
 
+  async function ensureProfileExists(currentUser: User): Promise<Profile | null> {
+    // Tenta ler o perfil; se não existir, cria um perfil básico
+    const { data: profileData, error: profileError } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', currentUser.id)
+      .single();
+
+    if (profileError && profileError.code === 'PGRST116') {
+      // Criar perfil mínimo
+      const email = currentUser.email || '';
+      const namePart = email.split('@')[0] || 'Utilizador';
+      const firstName = namePart.charAt(0).toUpperCase() + namePart.slice(1);
+      const lastName = '';
+      const { data: created, error: insertErr } = await supabase
+        .from('profiles')
+        .insert({
+          id: currentUser.id,
+          first_name: firstName,
+          last_name: lastName,
+          role: 'cliente',
+          plan_type: 'trialing',
+          // company_id ficará null até ser associado
+        })
+        .select('*')
+        .single();
+      if (insertErr) {
+        console.error('[SessionContext] Falha ao criar perfil:', insertErr);
+        toast.error('Não foi possível criar o perfil do utilizador.');
+        return null;
+      }
+      toast.success('Perfil criado com sucesso!');
+      return created as Profile;
+    }
+
+    if (profileError && profileError.code !== 'PGRST116') {
+      console.error('[SessionContext] Erro ao ler perfil:', profileError);
+      toast.error('Falha ao carregar o perfil do utilizador.');
+      return null;
+    }
+
+    return (profileData as Profile) || null;
+  }
+
   useEffect(() => {
     // Processa Magic Link: tokens no hash da URL (#access_token, #refresh_token, type=magiclink)
     const handleMagicLink = async () => {
@@ -101,16 +145,7 @@ export const SessionContextProvider: React.FC<{ children: React.ReactNode }> = (
         
         let fetchedProfile: Profile | null = null;
         if (currentSession?.user) {
-          const { data: profileData, error: profileError } = await supabase
-            .from('profiles')
-            .select('*') // Select all profile data
-            .eq('id', currentSession.user.id)
-            .single();
-          if (profileError && profileError.code !== 'PGRST116') {
-            console.error("Error fetching profile on auth state change:", profileError);
-          } else if (profileData) {
-            fetchedProfile = profileData;
-          }
+          fetchedProfile = await ensureProfileExists(currentSession.user);
         }
         setProfile(fetchedProfile); // Set profile data
 
@@ -142,16 +177,7 @@ export const SessionContextProvider: React.FC<{ children: React.ReactNode }> = (
 
       let fetchedProfile: Profile | null = null;
       if (session?.user) {
-        const { data: profileData, error: profileError } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', session.user.id)
-          .single();
-        if (profileError && profileError.code !== 'PGRST116') {
-          console.error("Error fetching profile on initial session load:", profileError);
-        } else if (profileData) {
-          fetchedProfile = profileData;
-        }
+        fetchedProfile = await ensureProfileExists(session.user);
       }
       setProfile(fetchedProfile); // Set profile data
 
