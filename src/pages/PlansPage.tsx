@@ -26,15 +26,21 @@ const PlansPage: React.FC = () => {
 
   // Buscar empresa e plano atual (com possível fim do trial)
   React.useEffect(() => {
+    let cancelled = false;
+
     const fetchUserData = async () => {
+      // Se não houver utilizador, termina carregamento
       if (!user) {
-        setUserCompanyId(null);
-        setCurrentPlan(null);
-        setTrialEnd(null);
-        setIsLoadingPlans(false);
+        if (!cancelled) {
+          setUserCompanyId(null);
+          setCurrentPlan(null);
+          setTrialEnd(null);
+          setIsLoadingPlans(false);
+        }
         return;
       }
 
+      // Carregar dados do perfil
       const { data: profileData, error: profileError } = await supabase
         .from("profiles")
         .select("company_id, plan_type")
@@ -44,36 +50,46 @@ const PlansPage: React.FC = () => {
       if (profileError) {
         console.error("Erro ao carregar dados do perfil:", profileError);
         toast.error(`Erro ao carregar dados do perfil: ${profileError.message}`);
-        setUserCompanyId(null);
-        setCurrentPlan(null);
+        if (!cancelled) {
+          setUserCompanyId(null);
+          setCurrentPlan(null);
+        }
       } else if (profileData) {
-        setUserCompanyId(profileData.company_id);
-        setCurrentPlan((profileData.plan_type || "trialing") as PlanType);
-      }
+        if (!cancelled) {
+          setUserCompanyId(profileData.company_id);
+          setCurrentPlan((profileData.plan_type || "trialing") as PlanType);
+        }
 
-      // Tentar ler informação de assinatura (trial_end) da tabela subscriptions
-      if (profileData?.company_id) {
-        const { data: sub, error: subError } = await supabase
-          .from("subscriptions")
-          .select("trial_end, status, plan_type")
-          .order("created_at", { ascending: false })
-          .limit(1);
+        // Ler assinatura filtrando pela empresa
+        if (profileData.company_id) {
+          const { data: sub, error: subError } = await supabase
+            .from("subscriptions")
+            .select("trial_end, status, plan_type, company_id, created_at")
+            .eq("company_id", profileData.company_id)
+            .order("created_at", { ascending: false })
+            .limit(1);
 
-        if (!subError && sub && sub.length > 0) {
-          const s = sub[0];
-          // Se houver plan_type na assinatura, use-o como currentPlan preferencialmente
-          if (s?.plan_type) setCurrentPlan(s.plan_type as PlanType);
-          setTrialEnd(s?.trial_end || null);
+          if (!subError && sub && sub.length > 0) {
+            const s = sub[0] as { trial_end: string | null; plan_type: PlanType | null };
+            if (!cancelled) {
+              if (s?.plan_type) setCurrentPlan((s.plan_type || "trialing") as PlanType);
+              setTrialEnd(s?.trial_end || null);
+            }
+          }
         }
       }
 
-      setIsLoadingPlans(false);
+      if (!cancelled) {
+        setIsLoadingPlans(false);
+      }
     };
 
-    if (!isSessionLoading) {
-      fetchUserData();
-    }
-  }, [user, isSessionLoading]);
+    fetchUserData();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
 
   const handleSelectPlan = async (planName: string) => {
     if (!user || !userCompanyId) {
