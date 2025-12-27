@@ -19,7 +19,8 @@ import { useSession } from "@/components/SessionContextProvider";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import EditProfileModal from "@/components/profile/EditProfileModal";
-import { seedDefaultArticles } from "@/utils/initial-data"; // Import the new seeding function
+import { seedDefaultArticles } from "@/utils/initial-data";
+import { NotificationProvider, useNotification } from "@/contexts/NotificationContext"; // NEW: Import NotificationContext
 
 interface SidebarProps {
   isCollapsed: boolean;
@@ -146,9 +147,8 @@ const MainLayout = () => {
             {/* O título da página será renderizado pelo conteúdo do Outlet */}
           </div>
           <div className="flex items-center space-x-2 md:space-x-4">
-            <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
-              <Bell className="h-5 w-5" />
-            </Button>
+            {/* Notification Bell with Badge */}
+            <NotificationBell /> {/* NEW component for the bell */}
             <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
               <Settings className="h-5 w-5" />
             </Button>
@@ -190,7 +190,9 @@ const MainLayout = () => {
             </DropdownMenu>
           </div>
         </header>
-        <Outlet />
+        <NotificationProvider> {/* Wrap Outlet with NotificationProvider */}
+          <Outlet />
+        </NotificationProvider>
       </main>
 
       <EditProfileModal
@@ -198,6 +200,28 @@ const MainLayout = () => {
         onClose={() => setIsEditProfileModalOpen(false)}
         onProfileUpdated={fetchProfile}
       />
+    </div>
+  );
+};
+
+// NEW: NotificationBell component to display the bell icon and badge
+const NotificationBell: React.FC = () => {
+  const { notificationCount, hasNotifications } = useNotification();
+  const navigate = useNavigate();
+
+  return (
+    <div className="relative">
+      <Button
+        variant="ghost"
+        size="icon"
+        className="text-muted-foreground hover:text-foreground"
+        onClick={() => navigate('/dashboard')} // Navigate to dashboard to see notifications
+      >
+        <Bell className="h-5 w-5" />
+      </Button>
+      {hasNotifications && (
+        <span className="absolute top-0 right-0 block h-2 w-2 rounded-full ring-2 ring-background bg-red-500" />
+      )}
     </div>
   );
 };
