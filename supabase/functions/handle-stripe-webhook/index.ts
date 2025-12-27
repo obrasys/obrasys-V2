@@ -179,7 +179,7 @@ serve(async (req) => {
           }
 
           // Update profile plan_type if status changes to cancelled/expired
-          if (subscriptionStatus === 'cancelled' || subscriptionStatus === 'expired') {
+          if (subscriptionStatus === 'canceled' || subscriptionStatus === 'incomplete_expired') {
             const { error: profileUpdateError } = await supabaseAdmin
               .from('profiles')
               .update({ plan_type: 'expired' }) // Or 'cancelled' if you have that enum
