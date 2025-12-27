@@ -61,11 +61,7 @@ serve(async (req) => {
         stripeCustomerId = checkoutSession.customer as string;
         stripeSubscriptionId = checkoutSession.subscription as string;
         planType = checkoutSession.metadata?.plan_type || null;
-        subscriptionStatus = 'active'; // Assuming successful checkout means active
-
-        if (checkoutSession.expires_at) {
-          currentPeriodEnd = checkoutSession.expires_at; // Use expires_at for initial period end
-        }
+        subscriptionStatus = 'active';
 
         // Update or create subscription in Supabase
         if (companyId && stripeCustomerId && stripeSubscriptionId && planType) {
@@ -77,8 +73,8 @@ serve(async (req) => {
               stripe_subscription_id: stripeSubscriptionId,
               status: subscriptionStatus,
               plan_type: planType,
-              current_period_end: currentPeriodEnd ? new Date(currentPeriodEnd * 1000).toISOString() : null,
-              trial_end: null, // Trial ends on successful checkout
+              current_period_end: null,  // Set later via subscription events
+              trial_end: null,
               updated_at: new Date().toISOString(),
             }, { onConflict: 'company_id' });
 
@@ -98,21 +94,35 @@ serve(async (req) => {
             throw new Error('Failed to update profile plan_type.');
           }
 
-          // Record payment
-          const { error: paymentError } = await supabaseAdmin
-            .from('payments')
+          // Record subscription payment (Stripe checkout)
+          const { data: subscriptionRow, error: subscriptionFetchErr } = await supabaseAdmin
+            .from('subscriptions')
+            .select('id')
+            .eq('company_id', companyId)
+            .single();
+
+          if (subscriptionFetchErr) {
+            console.error('Error fetching subscription id:', subscriptionFetchErr);
+            throw new Error('Failed to fetch subscription id.');
+          }
+
+          const amountTotal = checkoutSession.amount_total ? checkoutSession.amount_total / 100 : 0;
+
+          const { error: subPaymentErr } = await supabaseAdmin
+            .from('subscription_payments')
             .insert({
-              subscription_id: (await supabaseAdmin.from('subscriptions').select('id').eq('company_id', companyId).single()).data?.id,
-              amount: checkoutSession.amount_total ? checkoutSession.amount_total / 100 : 0, // Amount in cents
+              company_id: companyId,
+              subscription_id: subscriptionRow.id,
+              amount: amountTotal,
               currency: checkoutSession.currency || 'eur',
               status: 'succeeded',
               stripe_invoice_id: checkoutSession.invoice as string,
               paid_at: new Date().toISOString(),
             });
 
-          if (paymentError) {
-            console.error('Error inserting payment on checkout.session.completed:', paymentError);
-            throw new Error('Failed to record payment.');
+          if (subPaymentErr) {
+            console.error('Error inserting subscription payment on checkout.session.completed:', subPaymentErr);
+            throw new Error('Failed to record subscription payment.');
           }
         }
         break;
@@ -188,7 +198,7 @@ serve(async (req) => {
         stripeCustomerId = invoiceSucceeded.customer as string;
         stripeSubscriptionId = invoiceSucceeded.subscription as string;
 
-        // Fetch company_id from companies table using stripe_customer_id
+        // Fetch company_id using stripe_customer_id
         const { data: companyForInvoice, error: companyForInvoiceError } = await supabaseAdmin
           .from('companies')
           .select('id')
@@ -201,7 +211,7 @@ serve(async (req) => {
         }
         companyId = companyForInvoice.id;
 
-        // Fetch subscription_id from subscriptions table
+        // Fetch subscription row (id and plan_type)
         const { data: subForInvoice, error: subForInvoiceError } = await supabaseAdmin
           .from('subscriptions')
           .select('id, plan_type')
@@ -213,10 +223,11 @@ serve(async (req) => {
           throw new Error('Failed to find subscription for company.');
         }
 
-        // Record payment
+        // Record subscription payment
         const { error: paymentSucceededError } = await supabaseAdmin
-          .from('payments')
+          .from('subscription_payments')
           .insert({
+            company_id: companyId,
             subscription_id: subForInvoice.id,
             amount: invoiceSucceeded.amount_paid ? invoiceSucceeded.amount_paid / 100 : 0,
             currency: invoiceSucceeded.currency || 'eur',
@@ -230,20 +241,30 @@ serve(async (req) => {
           throw new Error('Failed to record payment.');
         }
 
-        // Update subscription status and profile plan_type to active
-        const { error: updateSubAndProfileError } = await supabaseAdmin
+        // Retrieve Stripe subscription to get current_period_end
+        let stripeSub: Stripe.Subscription | null = null;
+        if (stripeSubscriptionId) {
+          stripeSub = await stripe.subscriptions.retrieve(stripeSubscriptionId);
+        }
+
+        const newPeriodEndISO = stripeSub?.current_period_end
+          ? new Date(stripeSub.current_period_end * 1000).toISOString()
+          : null;
+
+        // Update subscription status and keep plan_type
+        const { error: updateSubError } = await supabaseAdmin
           .from('subscriptions')
           .update({
             status: 'active',
-            plan_type: subForInvoice.plan_type, // Retain the plan type
-            current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+            plan_type: subForInvoice.plan_type,
+            current_period_end: newPeriodEndISO,
             updated_at: new Date().toISOString(),
           })
           .eq('company_id', companyId);
 
-        if (updateSubAndProfileError) {
-          console.error('Error updating subscription status and profile plan_type:', updateSubAndProfileError);
-          throw new Error('Failed to update subscription status and profile plan_type.');
+        if (updateSubError) {
+          console.error('Error updating subscription status and period end:', updateSubError);
+          throw new Error('Failed to update subscription.');
         }
         break;
 
@@ -251,7 +272,7 @@ serve(async (req) => {
         const invoiceFailed = event.data.object as Stripe.Invoice;
         stripeCustomerId = invoiceFailed.customer as string;
 
-        // Fetch company_id from companies table using stripe_customer_id
+        // Fetch company_id using stripe_customer_id
         const { data: companyForFailedInvoice, error: companyForFailedInvoiceError } = await supabaseAdmin
           .from('companies')
           .select('id')
@@ -264,7 +285,7 @@ serve(async (req) => {
         }
         companyId = companyForFailedInvoice.id;
 
-        // Fetch subscription_id from subscriptions table
+        // Fetch subscription row
         const { data: subForFailedInvoice, error: subForFailedInvoiceError } = await supabaseAdmin
           .from('subscriptions')
           .select('id')
@@ -278,14 +299,15 @@ serve(async (req) => {
 
         // Record failed payment
         const { error: paymentFailedError } = await supabaseAdmin
-          .from('payments')
+          .from('subscription_payments')
           .insert({
+            company_id: companyId,
             subscription_id: subForFailedInvoice.id,
             amount: invoiceFailed.amount_due ? invoiceFailed.amount_due / 100 : 0,
             currency: invoiceFailed.currency || 'eur',
             status: 'failed',
             stripe_invoice_id: invoiceFailed.id,
-            paid_at: null, // Not paid
+            paid_at: null,
           });
 
         if (paymentFailedError) {
@@ -293,7 +315,7 @@ serve(async (req) => {
           throw new Error('Failed to record failed payment.');
         }
 
-        // Optionally update subscription status to 'suspended' or 'past_due'
+        // Update subscription status to suspended/past_due
         const { error: updateSubStatusError } = await supabaseAdmin
           .from('subscriptions')
           .update({ status: 'suspended', updated_at: new Date().toISOString() })
@@ -305,13 +327,13 @@ serve(async (req) => {
         }
 
         // Update profile plan_type to expired
-        const { error: profileUpdateError } = await supabaseAdmin
+        const { error: profileUpdateError2 } = await supabaseAdmin
           .from('profiles')
           .update({ plan_type: 'expired' })
           .eq('company_id', companyId);
 
-        if (profileUpdateError) {
-          console.error('Error updating profile plan_type on invoice.payment_failed:', profileUpdateError);
+        if (profileUpdateError2) {
+          console.error('Error updating profile plan_type on invoice.payment_failed:', profileUpdateError2);
           throw new Error('Failed to update profile plan_type.');
         }
         break;
