@@ -37,6 +37,7 @@ import { Invoice, Expense } from "@/schemas/invoicing-schema"; // Import Invoice
 import { format, parseISO } from "date-fns"; // Import format and parseISO for date formatting
 import { pt } from "date-fns/locale"; // Import pt locale for date formatting
 import { formatCurrency } from "@/utils/formatters"; // Import formatCurrency
+import { cn } from "@/lib/utils"; // Import cn for conditional classNames
 
 interface DashboardNotification {
   id: string;
@@ -62,8 +63,8 @@ const Dashboard = () => {
   const [isLoadingScheduledTasks, setIsLoadingScheduledTasks] = React.useState(true);
   const [pendingApprovalsCount, setPendingApprovalsCount] = React.useState(0);
   const [isLoadingPendingApprovals, setIsLoadingPendingApprovals] = React.useState(true);
-  const [notifications, setNotifications] = React.useState<DashboardNotification[]>([]); // NEW: State for notifications
-  const [isLoadingNotifications, setIsLoadingNotifications] = React.useState(true); // NEW: Loading state for notifications
+  const [notifications, setNotifications] = React.useState<DashboardNotification[]>([]);
+  const [isLoadingNotifications, setIsLoadingNotifications] = React.useState(true);
 
   // Fetch user's company ID and profile data
   const fetchUserProfileAndCompanyId = React.useCallback(async () => {
@@ -181,7 +182,7 @@ const Dashboard = () => {
     setIsLoadingPendingApprovals(false);
   }, [userCompanyId]);
 
-  // NEW: Fetch all notifications (delays, financial alerts, overdue invoices/expenses)
+  // Fetch all notifications (delays, financial alerts, overdue invoices/expenses)
   const fetchNotifications = React.useCallback(async () => {
     if (!userCompanyId) {
       setNotifications([]);
@@ -287,7 +288,7 @@ const Dashboard = () => {
 
     setNotifications(fetchedNotifications);
     setIsLoadingNotifications(false);
-  }, [userCompanyId, projects]); // Added projects as dependency for project delays
+  }, [userCompanyId, projects]);
 
   React.useEffect(() => {
     if (!isSessionLoading) {
@@ -304,9 +305,8 @@ const Dashboard = () => {
     }
   }, [userCompanyId, fetchProjects, fetchPendingReports, fetchScheduledTasks, fetchPendingApprovals]);
 
-  // NEW: Call fetchNotifications whenever projects or userCompanyId changes
   React.useEffect(() => {
-    if (userCompanyId && !isLoadingProjects) { // Ensure projects are loaded before fetching notifications that depend on them
+    if (userCompanyId && !isLoadingProjects) {
       fetchNotifications();
     }
   }, [userCompanyId, projects, isLoadingProjects, fetchNotifications]);
@@ -481,7 +481,10 @@ const Dashboard = () => {
           </Card>
 
           {/* Notificações */}
-          <Card>
+          <Card className={cn(
+            "bg-card text-card-foreground border border-border",
+            notifications.length > 0 && "bg-highlight/50" // Apply highlight background when notifications exist
+          )}>
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle className="text-xl font-semibold flex items-center gap-2">
                 <Bell className="h-5 w-5 text-primary" /> Notificações

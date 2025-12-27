@@ -65,6 +65,9 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
+        highlight: { // NEW: Adicionando a cor de destaque
+          DEFAULT: "hsl(var(--highlight-background))",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",

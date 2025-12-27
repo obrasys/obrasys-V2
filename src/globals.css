@@ -49,6 +49,8 @@
     --sidebar-border: 220 13% 91%;
 
     --sidebar-ring: 217.2 91.2% 59.8%;
+
+    --highlight-background: 0 0% 75.7%; /* #c1c1c1 */
   }
 
   .dark {
