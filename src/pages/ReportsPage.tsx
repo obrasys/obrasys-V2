@@ -31,6 +31,9 @@ const ReportsPage = () => {
     const currentMonthYear = format(new Date(), "MMMM yyyy", { locale: pt });
     const companyName = "Obra Sys Construções"; // Placeholder
     const financialResponsible = "João Silva"; // Placeholder
+    const projectName = "Projeto Residencial Alfa"; // Placeholder for project report
+    const clientName = "Cliente Exemplo, Lda."; // Placeholder for project report
+    const projectPeriod = "01/01/2024 - 31/12/2024"; // Placeholder for project report
 
     let content = `
       <!DOCTYPE html>
@@ -143,6 +146,151 @@ const ReportsPage = () => {
             </ul>
         </p>
       `;
+    } else if (reportName === "Relatório de Fluxo de Caixa") {
+      content += `
+        <div class="cover-page">
+            <h1>Relatório de Fluxo de Caixa</h1>
+            <p><strong>${companyName}</strong></p>
+            <p>Mês / Ano: ${currentMonthYear}</p>
+            <p>Responsável Financeiro: ${financialResponsible}</p>
+        </div>
+
+        <h1>Relatório de Fluxo de Caixa</h1>
+        <div class="header-info">
+            <p><strong>Data de Geração:</strong> ${currentDate}</p>
+            <p><strong>Empresa:</strong> ${companyName}</p>
+            <p><strong>Mês / Ano:</strong> ${currentMonthYear}</p>
+        </div>
+
+        <h2>Entradas</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Data</th>
+                    <th>Origem</th>
+                    <th style="text-align: right;">Valor (€)</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr><td>05/07/2024</td><td>Pagamento Cliente A (Fatura INV-2024-001)</td><td style="text-align: right;">1.500,00 €</td></tr>
+                <tr><td>12/07/2024</td><td>Pagamento Cliente B (Adiantamento)</td><td style="text-align: right;">1.000,00 €</td></tr>
+                <tr><td>18/07/2024</td><td>Empréstimo Bancário</td><td style="text-align: right;">5.000,00 €</td></tr>
+            </tbody>
+        </table>
+
+        <h2>Saídas</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Data</th>
+                    <th>Destino</th>
+                    <th style="text-align: right;">Valor (€)</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr><td>03/07/2024</td><td>Salários (Junho)</td><td style="text-align: right;">5.000,00 €</td></tr>
+                <tr><td>08/07/2024</td><td>Fornecedor X (Materiais)</td><td style="text-align: right;">350,00 €</td></tr>
+                <tr><td>15/07/2024</td><td>Renda Escritório</td><td style="text-align: right;">800,00 €</td></tr>
+            </tbody>
+        </table>
+
+        <h2>Resumo</h2>
+        <div class="summary">
+            <p><strong>Saldo inicial:</strong> 2.000,00 €</p>
+            <p><strong>Total entradas:</strong> 7.500,00 €</p>
+            <p><strong>Total saídas:</strong> 6.150,00 €</p>
+            <p><strong>Saldo final:</strong> 3.350,00 €</p>
+        </div>
+
+        <h2>Previsão Próximos 30/60/90 dias</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Período</th>
+                    <th style="text-align: right;">Saldo Previsto (€)</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr><td>Próximos 30 dias</td><td style="text-align: right;">+1.500,00 €</td></tr>
+                <tr><td>Próximos 60 dias</td><td style="text-align: right;">+2.800,00 €</td></tr>
+                <tr><td>Próximos 90 dias</td><td style="text-align: right;">+4.000,00 €</td></tr>
+            </tbody>
+        </table>
+      `;
+    } else if (reportName === "Relatório Financeiro por Projeto / Obra") {
+      content += `
+        <div class="cover-page">
+            <h1>Relatório Financeiro por Projeto / Obra</h1>
+            <p><strong>${companyName}</strong></p>
+            <p>Projeto: ${projectName}</p>
+            <p>Período: ${projectPeriod}</p>
+        </div>
+
+        <h1>Relatório Financeiro por Projeto / Obra</h1>
+        <div class="header-info">
+            <p><strong>Data de Geração:</strong> ${currentDate}</p>
+            <p><strong>Empresa:</strong> ${companyName}</p>
+            <p><strong>Projeto / Obra:</strong> ${projectName}</p>
+            <p><strong>Cliente:</strong> ${clientName}</p>
+            <p><strong>Período:</strong> ${projectPeriod}</p>
+        </div>
+
+        <h2>Orçamento Previsto</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Item</th>
+                    <th style="text-align: right;">Valor (€)</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr><td>Fundações</td><td style="text-align: right;">10.000,00 €</td></tr>
+                <tr><td>Estruturas</td><td style="text-align: right;">25.000,00 €</td></tr>
+                <tr><td>Acabamentos</td><td style="text-align: right;">15.000,00 €</td></tr>
+                <tr><td><strong>Total Orçamento</strong></td><td style="text-align: right;"><strong>50.000,00 €</strong></td></tr>
+            </tbody>
+        </table>
+
+        <h2>Custos Reais</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Categoria</th>
+                    <th style="text-align: right;">Previsto (€)</th>
+                    <th style="text-align: right;">Real (€)</th>
+                    <th style="text-align: right;">Diferença (€)</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr><td>Mão de Obra</td><td style="text-align: right;">15.000,00 €</td><td style="text-align: right;">16.500,00 €</td><td style="text-align: right;">+1.500,00 €</td></tr>
+                <tr><td>Materiais</td><td style="text-align: right;">20.000,00 €</td><td style="text-align: right;">21.000,00 €</td><td style="text-align: right;">+1.000,00 €</td></tr>
+                <tr><td>Subempreitadas</td><td style="text-align: right;">10.000,00 €</td><td style="text-align: right;">9.500,00 €</td><td style="text-align: right;">-500,00 €</td></tr>
+                <tr><td>Equipamentos</td><td style="text-align: right;">5.000,00 €</td><td style="text-align: right;">6.000,00 €</td><td style="text-align: right;">+1.000,00 €</td></tr>
+                <tr><td><strong>Total Custos</strong></td><td style="text-align: right;"><strong>50.000,00 €</strong></td><td style="text-align: right;"><strong>53.000,00 €</strong></td><td style="text-align: right;"><strong>+3.000,00 €</strong></td></tr>
+            </tbody>
+        </table>
+
+        <h2>Receita</h2>
+        <div class="summary">
+            <p><strong>Valor contratado:</strong> 60.000,00 €</p>
+            <p><strong>Valores faturados:</strong> 40.000,00 €</p>
+            <p><strong>Saldo a receber:</strong> 20.000,00 €</p>
+        </div>
+
+        <h2>Resultado da Obra</h2>
+        <div class="summary">
+            <p><strong>Lucro / Prejuízo:</strong> 7.000,00 € (Lucro)</p>
+            <p><strong>Margem (%):</strong> 11.67%</p>
+        </div>
+
+        <h2>Alertas</h2>
+        <p>
+            <ul>
+                <li>Estouro de orçamento: Custos de mão de obra e materiais excederam o previsto em 10% e 5%, respetivamente.</li>
+                <li>Atrasos financeiros: Pagamento da 2ª tranche do cliente com 15 dias de atraso.</li>
+            </ul>
+        </p>
+      `;
     } else if (reportName === "Faturas") {
       content += `
         <h1>Relatório de Faturas</h1>
@@ -236,21 +384,6 @@ const ReportsPage = () => {
             <p><strong>Custo Total de Mão de Obra:</strong> 2.250,00 €</p>
             <p><strong>Total Pago:</strong> 1.200,00 €</p>
             <p><strong>Total Pendente/Processado:</strong> 1.050,00 €</p>
-        </div>
-      `;
-    } else if (reportName === "Fluxo de Caixa") {
-      content += `
-        <h1>Relatório de Fluxo de Caixa</h1>
-        <div class="header-info">
-            <p><strong>Data de Geração:</strong> ${currentDate}</p>
-            <p><strong>Empresa:</strong> Obra Sys Construções</p>
-            <p><strong>Período:</strong> Últimos 30 dias (Exemplo)</p>
-        </div>
-        <h2>Projeções e Histórico de Fluxo de Caixa</h2>
-        <p>Este relatório apresentaria um gráfico de fluxo de caixa (entradas vs saídas) ao longo do tempo, com projeções futuras.</p>
-        <div class="summary">
-            <p><strong>Saldo Atual:</strong> 5.000,00 €</p>
-            <p><strong>Projeção Próximo Mês:</strong> +1.200,00 €</p>
         </div>
       `;
     } else if (reportName === "Progresso da Obra") {
@@ -376,7 +509,7 @@ const ReportsPage = () => {
   };
 
   const handleGenerateReportClick = (reportName: string) => {
-    generateReportContent(reportName, {}); // Pass empty data for now
+    generateReportContent(reportName, {});
   };
 
   return (
@@ -408,6 +541,21 @@ const ReportsPage = () => {
               Acompanhe a saúde financeira mês a mês e apoie decisões rápidas.
             </p>
             <Button className="mt-6 w-full" onClick={() => handleGenerateReportClick("Relatório Financeiro Mensal")}>
+              <Printer className="h-4 w-4 mr-2" /> Gerar Relatório
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Card className="hover:shadow-xl transition-shadow duration-300 ease-in-out bg-card text-card-foreground border border-border">
+          <CardHeader className="flex flex-row items-center space-x-4 pb-2">
+            <TrendingUp className="h-8 w-8 text-orange-500 dark:text-orange-400" />
+            <CardTitle className="text-xl font-semibold">Relatório de Fluxo de Caixa</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground mt-2">
+              Garantir liquidez e evitar surpresas.
+            </p>
+            <Button className="mt-6 w-full" onClick={() => handleGenerateReportClick("Relatório de Fluxo de Caixa")}>
               <Printer className="h-4 w-4 mr-2" /> Gerar Relatório
             </Button>
           </CardContent>
@@ -457,21 +605,6 @@ const ReportsPage = () => {
             </Button>
           </CardContent>
         </Card>
-
-        <Card className="hover:shadow-xl transition-shadow duration-300 ease-in-out bg-card text-card-foreground border border-border">
-          <CardHeader className="flex flex-row items-center space-x-4 pb-2">
-            <TrendingUp className="h-8 w-8 text-orange-500 dark:text-orange-400" />
-            <CardTitle className="text-xl font-semibold">Fluxo de Caixa</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground mt-2">
-              Projeções e histórico do fluxo de caixa da empresa.
-            </p>
-            <Button className="mt-6 w-full" onClick={() => handleGenerateReportClick("Fluxo de Caixa")}>
-              <Printer className="h-4 w-4 mr-2" /> Gerar Relatório
-            </Button>
-          </CardContent>
-        </Card>
       </div>
 
       <Separator className="my-8 bg-gray-300 dark:bg-gray-700" />
@@ -479,6 +612,21 @@ const ReportsPage = () => {
       {/* Relatórios de Obra */}
       <h2 className="text-xl font-semibold mb-4 text-primary">Relatórios de Obra</h2>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-8">
+        <Card className="hover:shadow-xl transition-shadow duration-300 ease-in-out bg-card text-card-foreground border border-border">
+          <CardHeader className="flex flex-row items-center space-x-4 pb-2">
+            <HardHat className="h-8 w-8 text-blue-500 dark:text-blue-400" />
+            <CardTitle className="text-xl font-semibold">Relatório Financeiro por Projeto / Obra</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground mt-2">
+              Controlar rentabilidade de cada obra/projeto.
+            </p>
+            <Button className="mt-6 w-full" onClick={() => handleGenerateReportClick("Relatório Financeiro por Projeto / Obra")}>
+              <Printer className="h-4 w-4 mr-2" /> Gerar Relatório
+            </Button>
+          </CardContent>
+        </Card>
+
         <Card className="hover:shadow-xl transition-shadow duration-300 ease-in-out bg-card text-card-foreground border border-border">
           <CardHeader className="flex flex-row items-center space-x-4 pb-2">
             <HardHat className="h-8 w-8 text-blue-500 dark:text-blue-400" />
