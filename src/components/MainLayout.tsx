@@ -20,7 +20,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import EditProfileModal from "@/components/profile/EditProfileModal";
 import { seedDefaultArticles } from "@/utils/initial-data";
-import { NotificationProvider, useNotification } from "@/contexts/NotificationContext"; // NEW: Import NotificationContext
+import { useNotification } from "@/contexts/NotificationContext"; // NEW: Import useNotification
 
 interface SidebarProps {
   isCollapsed: boolean;
@@ -190,9 +190,8 @@ const MainLayout = () => {
             </DropdownMenu>
           </div>
         </header>
-        <NotificationProvider> {/* Wrap Outlet with NotificationProvider */}
-          <Outlet />
-        </NotificationProvider>
+        {/* Removed NotificationProvider from here */}
+        <Outlet />
       </main>
 
       <EditProfileModal

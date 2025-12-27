@@ -34,48 +34,51 @@ import SchedulePage from "@/pages/SchedulePage";
 
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip"; // Import TooltipProvider
+import { NotificationProvider } from "@/contexts/NotificationContext"; // NEW: Import NotificationProvider
 
 const App = () => {
   return (
     <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <SessionContextProvider>
         <Toaster richColors position="top-right" />
-        <TooltipProvider> {/* Adicionado TooltipProvider aqui */}
-          <Routes>
-            <Route path="/login" element={<Login />} />
-            <Route path="/signup" element={<Signup />} />
-            <Route path="/" element={<MainLayout />}>
-              <Route index element={<Index />} />
-              <Route path="dashboard" element={<Dashboard />} />
-              <Route path="profile" element={<ProfilePage />} />
-              <Route path="budgeting" element={<Budgeting />} />
-              <Route path="budgeting/new" element={<NewBudgetPage />} />
-              <Route path="budgeting/edit/:budgetId" element={<NewBudgetPage />} />
-              <Route path="project-management" element={<ProjectManagement />} />
-              <Route path="supply-chain" element={<SupplyChain />} />
-              <Route path="crm-portal" element={<CRMPortal />} />
-              <Route path="automation-intelligence" element={<AutomationIntelligence />} />
-              <Route path="automation-intelligence/ai-alerts" element={<AIAssistantAlertsPage />} />
-              <Route path="automation-intelligence/replanning-suggestions" element={<ReplanningSuggestionsPage />} />
-              <Route path="automation-intelligence/ai-assistant" element={<AIAssistantPage />} />
-              <Route path="automation-intelligence/performance-analysis" element={<PerformanceAnalysisPage />} />
-              <Route path="compliance" element={<CompliancePage />} />
-              <Route path="compliance/livro-de-obra" element={<LivroDeObraPage />} />
-              <Route path="compliance/checklist" element={<ComplianceChecklistPage />} />
-              <Route path="projects" element={<ProjectsPage />} />
-              <Route path="schedule" element={<SchedulePage />} />
-              <Route path="finance-management" element={<FinancialDashboardsPage />} />
-              <Route path="accounts" element={<AccountsPage />} />
-              <Route path="finance-management/payroll-integration" element={<PayrollIntegrationPage />} />
-              <Route path="finance-management/dashboards" element={<FinancialDashboardsPage />} />
-              <Route path="work-items" element={<WorkItemsPage />} />
-              <Route path="price-database" element={<PriceDatabasePage />} />
-              <Route path="approvals" element={<ApprovalsPage />} />
-              <Route path="collaborators" element={<CollaboratorsPage />} />
-              <Route path="reports" element={<ReportsPage />} />
-              <Route path="*" element={<NotFound />} />
-            </Route>
-          </Routes>
+        <TooltipProvider>
+          <NotificationProvider> {/* Adicionado NotificationProvider aqui */}
+            <Routes>
+              <Route path="/login" element={<Login />} />
+              <Route path="/signup" element={<Signup />} />
+              <Route path="/" element={<MainLayout />}>
+                <Route index element={<Index />} />
+                <Route path="dashboard" element={<Dashboard />} />
+                <Route path="profile" element={<ProfilePage />} />
+                <Route path="budgeting" element={<Budgeting />} />
+                <Route path="budgeting/new" element={<NewBudgetPage />} />
+                <Route path="budgeting/edit/:budgetId" element={<NewBudgetPage />} />
+                <Route path="project-management" element={<ProjectManagement />} />
+                <Route path="supply-chain" element={<SupplyChain />} />
+                <Route path="crm-portal" element={<CRMPortal />} />
+                <Route path="automation-intelligence" element={<AutomationIntelligence />} />
+                <Route path="automation-intelligence/ai-alerts" element={<AIAssistantAlertsPage />} />
+                <Route path="automation-intelligence/replanning-suggestions" element={<ReplanningSuggestionsPage />} />
+                <Route path="automation-intelligence/ai-assistant" element={<AIAssistantPage />} />
+                <Route path="automation-intelligence/performance-analysis" element={<PerformanceAnalysisPage />} />
+                <Route path="compliance" element={<CompliancePage />} />
+                <Route path="compliance/livro-de-obra" element={<LivroDeObraPage />} />
+                <Route path="compliance/checklist" element={<ComplianceChecklistPage />} />
+                <Route path="projects" element={<ProjectsPage />} />
+                <Route path="schedule" element={<SchedulePage />} />
+                <Route path="finance-management" element={<FinancialDashboardsPage />} />
+                <Route path="accounts" element={<AccountsPage />} />
+                <Route path="finance-management/payroll-integration" element={<PayrollIntegrationPage />} />
+                <Route path="finance-management/dashboards" element={<FinancialDashboardsPage />} />
+                <Route path="work-items" element={<WorkItemsPage />} />
+                <Route path="price-database" element={<PriceDatabasePage />} />
+                <Route path="approvals" element={<ApprovalsPage />} />
+                <Route path="collaborators" element={<CollaboratorsPage />} />
+                <Route path="reports" element={<ReportsPage />} />
+                <Route path="*" element={<NotFound />} />
+              </Route>
+            </Routes>
+          </NotificationProvider>
         </TooltipProvider>
       </SessionContextProvider>
     </BrowserRouter>
