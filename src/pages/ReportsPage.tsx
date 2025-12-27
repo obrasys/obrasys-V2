@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
@@ -18,22 +18,113 @@ import {
   TrendingUp,
   History,
   Archive,
-  Printer, // Importar o ícone da impressora
+  Printer,
+  Loader2,
+  CalendarDays,
 } from "lucide-react";
 import NavButton from "@/components/NavButton";
 import { toast } from "sonner";
-import { format } from "date-fns";
+import { format, parseISO, startOfMonth, endOfMonth, subMonths } from "date-fns";
 import { pt } from "date-fns/locale";
+import { supabase } from "@/integrations/supabase/client";
+import { useSession } from "@/components/SessionContextProvider";
+import { Project } from "@/schemas/project-schema";
+import { Invoice, Expense, Payment } from "@/schemas/invoicing-schema";
+import { BudgetDB, BudgetItemDB, BudgetChapterDB } from "@/schemas/budget-schema";
+import { AiAlert } from "@/schemas/ai-alert-schema";
+import { formatCurrency } from "@/utils/formatters";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { cn } from "@/lib/utils";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const ReportsPage = () => {
-  const generateReportContent = (reportName: string, data: any) => {
+  const { user, isLoading: isSessionLoading } = useSession();
+  const [userCompanyId, setUserCompanyId] = useState<string | null>(null);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [isLoadingInitialData, setIsLoadingInitialData] = useState(true);
+  const [isLoadingReport, setIsLoadingReport] = useState(false);
+
+  // Report parameters state
+  const [selectedMonth, setSelectedMonth] = useState(format(new Date(), "yyyy-MM"));
+  const [selectedProjectIdForReport, setSelectedProjectIdForReport] = useState<string | null>(null);
+
+  // Fetch user's company ID
+  const fetchUserCompanyId = useCallback(async () => {
+    if (!user) {
+      setUserCompanyId(null);
+      return;
+    }
+    const { data: profileData, error: profileError } = await supabase
+      .from('profiles')
+      .select('company_id')
+      .eq('id', user.id)
+      .single();
+
+    if (profileError) {
+      console.error("Erro ao carregar company_id do perfil:", profileError);
+      setUserCompanyId(null);
+    } else if (profileData) {
+      setUserCompanyId(profileData.company_id);
+    }
+  }, [user]);
+
+  // Fetch projects for the project selector
+  const fetchProjects = useCallback(async () => {
+    if (!userCompanyId) {
+      setProjects([]);
+      return;
+    }
+    const { data, error } = await supabase
+      .from('projects')
+      .select('id, nome, client_id, localizacao, custo_planeado, custo_real, budget_id, prazo, clients(nome)')
+      .eq('company_id', userCompanyId)
+      .order('nome', { ascending: true });
+
+    if (error) {
+      toast.error(`Erro ao carregar obras: ${error.message}`);
+      console.error("Erro ao carregar obras:", error);
+      setProjects([]);
+    } else {
+      const formattedProjects: Project[] = (data || []).map((project: any) => ({
+        ...project,
+        client_name: project.clients?.nome || "Cliente Desconhecido",
+      }));
+      setProjects(formattedProjects);
+      if (!selectedProjectIdForReport && formattedProjects.length > 0) {
+        setSelectedProjectIdForReport(formattedProjects[0].id);
+      }
+    }
+  }, [userCompanyId, selectedProjectIdForReport]);
+
+  useEffect(() => {
+    if (!isSessionLoading) {
+      fetchUserCompanyId();
+    }
+  }, [isSessionLoading, fetchUserCompanyId]);
+
+  useEffect(() => {
+    if (userCompanyId) {
+      fetchProjects();
+      setIsLoadingInitialData(false);
+    }
+  }, [userCompanyId, fetchProjects]);
+
+  const generateReportContent = (reportName: string, reportData: any) => {
     const currentDate = format(new Date(), "dd/MM/yyyy HH:mm", { locale: pt });
-    const currentMonthYear = format(new Date(), "MMMM yyyy", { locale: pt });
-    const companyName = "Obra Sys Construções"; // Placeholder
-    const financialResponsible = "João Silva"; // Placeholder
-    const projectName = "Projeto Residencial Alfa"; // Placeholder for project report
-    const clientName = "Cliente Exemplo, Lda."; // Placeholder for project report
-    const projectPeriod = "01/01/2024 - 31/12/2024"; // Placeholder for project report
+    const companyName = reportData.company?.name || "Obra Sys Construções";
+    const financialResponsible = "João Silva"; // Placeholder for now
+    const projectName = reportData.project?.nome || 'N/A';
+    const clientName = reportData.project?.client_name || 'N/A';
+    const projectPeriod = reportData.project?.prazo ? `${format(parseISO(reportData.project.created_at), "dd/MM/yyyy")} - ${format(parseISO(reportData.project.prazo), "dd/MM/yyyy")}` : 'N/A';
+    const reportMonthYear = reportData.monthYear ? format(parseISO(reportData.monthYear), "MMMM yyyy", { locale: pt }) : 'N/A';
 
     let content = `
       <!DOCTYPE html>
@@ -72,11 +163,12 @@ const ReportsPage = () => {
     `;
 
     if (reportName === "Relatório Financeiro Mensal") {
+      const { totalRevenue, totalExpenses, profitLoss, prevMonthComparison, revenueBySource, expensesByCategory } = reportData;
       content += `
         <div class="cover-page">
             <h1>Relatório Financeiro Mensal</h1>
             <p><strong>${companyName}</strong></p>
-            <p>Mês / Ano: ${currentMonthYear}</p>
+            <p>Mês / Ano: ${reportMonthYear}</p>
             <p>Responsável Financeiro: ${financialResponsible}</p>
         </div>
 
@@ -84,15 +176,15 @@ const ReportsPage = () => {
         <div class="header-info">
             <p><strong>Data de Geração:</strong> ${currentDate}</p>
             <p><strong>Empresa:</strong> ${companyName}</p>
-            <p><strong>Mês / Ano:</strong> ${currentMonthYear}</p>
+            <p><strong>Mês / Ano:</strong> ${reportMonthYear}</p>
         </div>
 
         <h2>Resumo Executivo</h2>
         <div class="summary">
-            <p><strong>Receita total do mês:</strong> 15.000,00 €</p>
-            <p><strong>Despesas totais:</strong> 10.000,00 €</p>
-            <p><strong>Resultado (Lucro / Prejuízo):</strong> 5.000,00 € (Lucro)</p>
-            <p><strong>Comparação com mês anterior:</strong> +10%</p>
+            <p><strong>Receita total do mês:</strong> ${formatCurrency(totalRevenue)}</p>
+            <p><strong>Despesas totais:</strong> ${formatCurrency(totalExpenses)}</p>
+            <p><strong>Resultado (Lucro / Prejuízo):</strong> ${formatCurrency(profitLoss)} (${profitLoss >= 0 ? 'Lucro' : 'Prejuízo'})</p>
+            <p><strong>Comparação com mês anterior:</strong> ${prevMonthComparison.toFixed(1)}%</p>
         </div>
 
         <h2>Receitas</h2>
@@ -105,10 +197,10 @@ const ReportsPage = () => {
                 </tr>
             </thead>
             <tbody>
-                <tr><td>Serviços</td><td style="text-align: right;">12.000,00 €</td><td style="text-align: right;">80%</td></tr>
-                <tr><td>Produtos</td><td style="text-align: right;">2.000,00 €</td><td style="text-align: right;">13.3%</td></tr>
-                <tr><td>Assinaturas</td><td style="text-align: right;">1.000,00 €</td><td style="text-align: right;">6.7%</td></tr>
-                <tr><td><strong>Total</strong></td><td style="text-align: right;"><strong>15.000,00 €</strong></td><td style="text-align: right;"><strong>100%</strong></td></tr>
+                ${revenueBySource.map((item: any) => `
+                  <tr><td>${item.source}</td><td style="text-align: right;">${formatCurrency(item.value)}</td><td style="text-align: right;">${item.percentage.toFixed(1)}%</td></tr>
+                `).join('')}
+                <tr><td><strong>Total</strong></td><td style="text-align: right;"><strong>${formatCurrency(totalRevenue)}</strong></td><td style="text-align: right;"><strong>100%</strong></td></tr>
             </tbody>
         </table>
 
@@ -121,37 +213,36 @@ const ReportsPage = () => {
                 </tr>
             </thead>
             <tbody>
-                <tr><td>Pessoal</td><td style="text-align: right;">5.000,00 €</td></tr>
-                <tr><td>Marketing</td><td style="text-align: right;">1.000,00 €</td></tr>
-                <tr><td>Tecnologia</td><td style="text-align: right;">1.500,00 €</td></tr>
-                <tr><td>Operacionais</td><td style="text-align: right;">2.000,00 €</td></tr>
-                <tr><td>Impostos</td><td style="text-align: right;">500,00 €</td></tr>
-                <tr><td><strong>Total</strong></td><td style="text-align: right;"><strong>10.000,00 €</strong></td></tr>
+                ${expensesByCategory.map((item: any) => `
+                  <tr><td>${item.category}</td><td style="text-align: right;">${formatCurrency(item.value)}</td></tr>
+                `).join('')}
+                <tr><td><strong>Total</strong></td><td style="text-align: right;"><strong>${formatCurrency(totalExpenses)}</strong></td></tr>
             </tbody>
         </table>
 
         <h2>Resultado Financeiro</h2>
         <div class="summary">
-            <p><strong>Lucro bruto:</strong> 7.000,00 €</p>
-            <p><strong>Lucro líquido:</strong> 5.000,00 €</p>
-            <p><strong>Margem (%):</strong> 33.3%</p>
+            <p><strong>Lucro bruto:</strong> ${formatCurrency(totalRevenue - totalExpenses)}</p>
+            <p><strong>Lucro líquido:</strong> ${formatCurrency(profitLoss)}</p>
+            <p><strong>Margem (%):</strong> ${totalRevenue > 0 ? ((profitLoss / totalRevenue) * 100).toFixed(1) : 0}%</p>
         </div>
 
         <h2>Observações</h2>
         <p>
             <ul>
-                <li>Custos fora do padrão: Aumento de 20% em despesas operacionais devido a manutenção inesperada de equipamento.</li>
-                <li>Receitas extraordinárias: Nenhuma.</li>
-                <li>Alertas: A margem de lucro está estável, mas o aumento das despesas operacionais deve ser monitorizado.</li>
+                <li>Custos fora do padrão: N/A</li>
+                <li>Receitas extraordinárias: N/A</li>
+                <li>Alertas: N/A</li>
             </ul>
         </p>
       `;
     } else if (reportName === "Relatório de Fluxo de Caixa") {
+      const { initialBalance, totalEntries, totalExits, finalBalance, entries, exits, forecast } = reportData;
       content += `
         <div class="cover-page">
             <h1>Relatório de Fluxo de Caixa</h1>
             <p><strong>${companyName}</strong></p>
-            <p>Mês / Ano: ${currentMonthYear}</p>
+            <p>Mês / Ano: ${reportData.period}</p>
             <p>Responsável Financeiro: ${financialResponsible}</p>
         </div>
 
@@ -159,7 +250,7 @@ const ReportsPage = () => {
         <div class="header-info">
             <p><strong>Data de Geração:</strong> ${currentDate}</p>
             <p><strong>Empresa:</strong> ${companyName}</p>
-            <p><strong>Mês / Ano:</strong> ${currentMonthYear}</p>
+            <p><strong>Período:</strong> ${reportData.period}</p>
         </div>
 
         <h2>Entradas</h2>
@@ -172,9 +263,9 @@ const ReportsPage = () => {
                 </tr>
             </thead>
             <tbody>
-                <tr><td>05/07/2024</td><td>Pagamento Cliente A (Fatura INV-2024-001)</td><td style="text-align: right;">1.500,00 €</td></tr>
-                <tr><td>12/07/2024</td><td>Pagamento Cliente B (Adiantamento)</td><td style="text-align: right;">1.000,00 €</td></tr>
-                <tr><td>18/07/2024</td><td>Empréstimo Bancário</td><td style="text-align: right;">5.000,00 €</td></tr>
+                ${entries.map((entry: any) => `
+                  <tr><td>${format(parseISO(entry.date), "dd/MM/yyyy")}</td><td>${entry.origin}</td><td style="text-align: right;">${formatCurrency(entry.amount)}</td></tr>
+                `).join('')}
             </tbody>
         </table>
 
@@ -188,18 +279,18 @@ const ReportsPage = () => {
                 </tr>
             </thead>
             <tbody>
-                <tr><td>03/07/2024</td><td>Salários (Junho)</td><td style="text-align: right;">5.000,00 €</td></tr>
-                <tr><td>08/07/2024</td><td>Fornecedor X (Materiais)</td><td style="text-align: right;">350,00 €</td></tr>
-                <tr><td>15/07/2024</td><td>Renda Escritório</td><td style="text-align: right;">800,00 €</td></tr>
+                ${exits.map((exit: any) => `
+                  <tr><td>${format(parseISO(exit.date), "dd/MM/yyyy")}</td><td>${exit.destination}</td><td style="text-align: right;">${formatCurrency(exit.amount)}</td></tr>
+                `).join('')}
             </tbody>
         </table>
 
         <h2>Resumo</h2>
         <div class="summary">
-            <p><strong>Saldo inicial:</strong> 2.000,00 €</p>
-            <p><strong>Total entradas:</strong> 7.500,00 €</p>
-            <p><strong>Total saídas:</strong> 6.150,00 €</p>
-            <p><strong>Saldo final:</strong> 3.350,00 €</p>
+            <p><strong>Saldo inicial:</strong> ${formatCurrency(initialBalance)}</p>
+            <p><strong>Total entradas:</strong> ${formatCurrency(totalEntries)}</p>
+            <p><strong>Total saídas:</strong> ${formatCurrency(totalExits)}</p>
+            <p><strong>Saldo final:</strong> ${formatCurrency(finalBalance)}</p>
         </div>
 
         <h2>Previsão Próximos 30/60/90 dias</h2>
@@ -211,13 +302,22 @@ const ReportsPage = () => {
                 </tr>
             </thead>
             <tbody>
-                <tr><td>Próximos 30 dias</td><td style="text-align: right;">+1.500,00 €</td></tr>
-                <tr><td>Próximos 60 dias</td><td style="text-align: right;">+2.800,00 €</td></tr>
-                <tr><td>Próximos 90 dias</td><td style="text-align: right;">+4.000,00 €</td></tr>
+                <tr><td>Próximos 30 dias</td><td style="text-align: right;">${formatCurrency(forecast.next30Days)}</td></tr>
+                <tr><td>Próximos 60 dias</td><td style="text-align: right;">${formatCurrency(forecast.next60Days)}</td></tr>
+                <tr><td>Próximos 90 dias</td><td style="text-align: right;">${formatCurrency(forecast.next90Days)}</td></tr>
             </tbody>
         </table>
       `;
     } else if (reportName === "Relatório Financeiro por Projeto / Obra") {
+      const { project, budget, budgetItems, projectInvoices, projectAlerts } = reportData;
+      const totalBudgeted = budget?.total_planeado || 0;
+      const totalRealCost = budget?.total_executado || 0;
+      const totalInvoiced = projectInvoices.reduce((sum: number, inv: Invoice) => sum + inv.total_amount, 0);
+      const totalPaidInvoices = projectInvoices.reduce((sum: number, inv: Invoice) => sum + (inv.paid_amount || 0), 0);
+      const balanceToReceive = totalInvoiced - totalPaidInvoices;
+      const profitLoss = totalInvoiced - totalRealCost;
+      const margin = totalInvoiced > 0 ? (profitLoss / totalInvoiced) * 100 : 0;
+
       content += `
         <div class="cover-page">
             <h1>Relatório Financeiro por Projeto / Obra</h1>
@@ -244,10 +344,10 @@ const ReportsPage = () => {
                 </tr>
             </thead>
             <tbody>
-                <tr><td>Fundações</td><td style="text-align: right;">10.000,00 €</td></tr>
-                <tr><td>Estruturas</td><td style="text-align: right;">25.000,00 €</td></tr>
-                <tr><td>Acabamentos</td><td style="text-align: right;">15.000,00 €</td></tr>
-                <tr><td><strong>Total Orçamento</strong></td><td style="text-align: right;"><strong>50.000,00 €</strong></td></tr>
+                ${budgetItems.map((item: BudgetItemDB) => `
+                  <tr><td>${item.servico}</td><td style="text-align: right;">${formatCurrency(item.custo_planeado)}</td></tr>
+                `).join('')}
+                <tr><td><strong>Total Orçamento</strong></td><td style="text-align: right;"><strong>${formatCurrency(totalBudgeted)}</strong></td></tr>
             </tbody>
         </table>
 
@@ -262,42 +362,47 @@ const ReportsPage = () => {
                 </tr>
             </thead>
             <tbody>
-                <tr><td>Mão de Obra</td><td style="text-align: right;">15.000,00 €</td><td style="text-align: right;">16.500,00 €</td><td style="text-align: right;">+1.500,00 €</td></tr>
-                <tr><td>Materiais</td><td style="text-align: right;">20.000,00 €</td><td style="text-align: right;">21.000,00 €</td><td style="text-align: right;">+1.000,00 €</td></tr>
-                <tr><td>Subempreitadas</td><td style="text-align: right;">10.000,00 €</td><td style="text-align: right;">9.500,00 €</td><td style="text-align: right;">-500,00 €</td></tr>
-                <tr><td>Equipamentos</td><td style="text-align: right;">5.000,00 €</td><td style="text-align: right;">6.000,00 €</td><td style="text-align: right;">+1.000,00 €</td></tr>
-                <tr><td><strong>Total Custos</strong></td><td style="text-align: right;"><strong>50.000,00 €</strong></td><td style="text-align: right;"><strong>53.000,00 €</strong></td><td style="text-align: right;"><strong>+3.000,00 €</strong></td></tr>
+                <tr><td>Mão de Obra</td><td style="text-align: right;">${formatCurrency(budgetItems.reduce((sum: number, item: BudgetItemDB) => sum + (item.custo_planeado * (item.tipo === 'equipe' ? 1 : 0)), 0))}</td><td style="text-align: right;">${formatCurrency(budgetItems.reduce((sum: number, item: BudgetItemDB) => sum + (item.custo_real_mao_obra || 0), 0))}</td><td style="text-align: right;">${formatCurrency(budgetItems.reduce((sum: number, item: BudgetItemDB) => sum + (item.custo_real_mao_obra || 0) - (item.custo_planeado * (item.tipo === 'equipe' ? 1 : 0)), 0))}</td></tr>
+                <tr><td>Materiais</td><td style="text-align: right;">${formatCurrency(budgetItems.reduce((sum: number, item: BudgetItemDB) => sum + (item.custo_planeado * (item.tipo === 'material' ? 1 : 0)), 0))}</td><td style="text-align: right;">${formatCurrency(budgetItems.reduce((sum: number, item: BudgetItemDB) => sum + (item.custo_real_material || 0), 0))}</td><td style="text-align: right;">${formatCurrency(budgetItems.reduce((sum: number, item: BudgetItemDB) => sum + (item.custo_real_material || 0) - (item.custo_planeado * (item.tipo === 'material' ? 1 : 0)), 0))}</td></tr>
+                <tr><td>Serviços/Outros</td><td style="text-align: right;">${formatCurrency(budgetItems.reduce((sum: number, item: BudgetItemDB) => sum + (item.custo_planeado * (item.tipo === 'servico' ? 1 : 0)), 0))}</td><td style="text-align: right;">${formatCurrency(budgetItems.reduce((sum: number, item: BudgetItemDB) => sum + ((item.custo_executado || 0) - (item.custo_real_material || 0) - (item.custo_real_mao_obra || 0)), 0))}</td><td style="text-align: right;">${formatCurrency(budgetItems.reduce((sum: number, item: BudgetItemDB) => sum + ((item.custo_executado || 0) - (item.custo_real_material || 0) - (item.custo_real_mao_obra || 0)) - (item.custo_planeado * (item.tipo === 'servico' ? 1 : 0)), 0))}</td></tr>
+                <tr><td><strong>Total Custos</strong></td><td style="text-align: right;"><strong>${formatCurrency(totalBudgeted)}</strong></td><td style="text-align: right;"><strong>${formatCurrency(totalRealCost)}</strong></td><td style="text-align: right;"><strong>${formatCurrency(totalRealCost - totalBudgeted)}</strong></td></tr>
             </tbody>
         </table>
 
         <h2>Receita</h2>
         <div class="summary">
-            <p><strong>Valor contratado:</strong> 60.000,00 €</p>
-            <p><strong>Valores faturados:</strong> 40.000,00 €</p>
-            <p><strong>Saldo a receber:</strong> 20.000,00 €</p>
+            <p><strong>Valor contratado:</strong> ${formatCurrency(totalBudgeted)}</p>
+            <p><strong>Valores faturados:</strong> ${formatCurrency(totalInvoiced)}</p>
+            <p><strong>Saldo a receber:</strong> ${formatCurrency(balanceToReceive)}</p>
         </div>
 
         <h2>Resultado da Obra</h2>
         <div class="summary">
-            <p><strong>Lucro / Prejuízo:</strong> 7.000,00 € (Lucro)</p>
-            <p><strong>Margem (%):</strong> 11.67%</p>
+            <p><strong>Lucro / Prejuízo:</strong> ${formatCurrency(profitLoss)} (${profitLoss >= 0 ? 'Lucro' : 'Prejuízo'})</p>
+            <p><strong>Margem (%):</strong> ${margin.toFixed(2)}%</p>
         </div>
 
         <h2>Alertas</h2>
         <p>
             <ul>
-                <li>Estouro de orçamento: Custos de mão de obra e materiais excederam o previsto em 10% e 5%, respetivamente.</li>
-                <li>Atrasos financeiros: Pagamento da 2ª tranche do cliente com 15 dias de atraso.</li>
+                ${projectAlerts.length > 0 ? projectAlerts.map((alert: AiAlert) => `
+                  <li><span style="font-weight: bold; color: ${alert.severity === 'critical' ? 'red' : alert.severity === 'warning' ? 'orange' : 'blue'};">[${alert.severity?.toUpperCase()}]</span> ${alert.title}: ${alert.message}</li>
+                `).join('') : '<li>Nenhum alerta crítico ou de aviso para este projeto.</li>'}
             </ul>
         </p>
       `;
     } else if (reportName === "Faturas") {
+      const { invoices } = reportData;
+      const totalInvoiced = invoices.reduce((sum: number, inv: Invoice) => sum + inv.total_amount, 0);
+      const totalPaidInvoices = invoices.reduce((sum: number, inv: Invoice) => sum + (inv.paid_amount || 0), 0);
+      const totalPendingInvoices = totalInvoiced - totalPaidInvoices;
+
       content += `
         <h1>Relatório de Faturas</h1>
         <div class="header-info">
             <p><strong>Data de Geração:</strong> ${currentDate}</p>
-            <p><strong>Empresa:</strong> Obra Sys Construções</p>
-            <p><strong>Período:</strong> Últimos 30 dias (Exemplo)</p>
+            <p><strong>Empresa:</strong> ${companyName}</p>
+            <p><strong>Período:</strong> ${reportData.period}</p>
         </div>
         <h2>Visão Geral das Faturas</h2>
         <table>
@@ -305,31 +410,43 @@ const ReportsPage = () => {
                 <tr>
                     <th>Nº Fatura</th>
                     <th>Cliente</th>
-                    <th>Valor Total</th>
-                    <th>Valor Pago</th>
+                    <th style="text-align: right;">Valor Total</th>
+                    <th style="text-align: right;">Valor Pago</th>
                     <th>Estado</th>
                     <th>Data Vencimento</th>
                 </tr>
             </thead>
             <tbody>
-                <tr><td>INV-2024-001</td><td>Cliente A</td><td>1.500,00 €</td><td>1.500,00 €</td><td>Pago</td><td>15/07/2024</td></tr>
-                <tr><td>INV-2024-002</td><td>Cliente B</td><td>2.300,00 €</td><td>1.000,00 €</td><td>Pendente</td><td>20/07/2024</td></tr>
-                <tr><td>INV-2024-003</td><td>Cliente C</td><td>800,00 €</td><td>0,00 €</td><td>Atrasado</td><td>01/07/2024</td></tr>
+                ${invoices.map((inv: Invoice) => `
+                  <tr>
+                    <td>${inv.invoice_number}</td>
+                    <td>${inv.clients?.nome || 'N/A'}</td>
+                    <td style="text-align: right;">${formatCurrency(inv.total_amount)}</td>
+                    <td style="text-align: right;">${formatCurrency(inv.paid_amount || 0)}</td>
+                    <td>${inv.status.replace('_', ' ')}</td>
+                    <td>${format(parseISO(inv.due_date), "dd/MM/yyyy")}</td>
+                  </tr>
+                `).join('')}
             </tbody>
         </table>
         <div class="summary">
-            <p><strong>Total Faturado:</strong> 4.600,00 €</p>
-            <p><strong>Total Recebido:</strong> 2.500,00 €</p>
-            <p><strong>Total Pendente:</strong> 2.100,00 €</p>
+            <p><strong>Total Faturado:</strong> ${formatCurrency(totalInvoiced)}</p>
+            <p><strong>Total Recebido:</strong> ${formatCurrency(totalPaidInvoices)}</p>
+            <p><strong>Total Pendente:</strong> ${formatCurrency(totalPendingInvoices)}</p>
         </div>
       `;
     } else if (reportName === "Despesas") {
+      const { expenses } = reportData;
+      const totalExpenses = expenses.reduce((sum: number, exp: Expense) => sum + exp.amount, 0);
+      const totalPaidExpenses = expenses.filter((exp: Expense) => exp.status === "paid").reduce((sum: number, exp: Expense) => sum + exp.amount, 0);
+      const totalPendingExpenses = expenses.filter((exp: Expense) => exp.status === "pending" || exp.status === "overdue").reduce((sum: number, exp: Expense) => sum + exp.amount, 0);
+
       content += `
         <h1>Relatório de Despesas</h1>
         <div class="header-info">
             <p><strong>Data de Geração:</strong> ${currentDate}</p>
-            <p><strong>Empresa:</strong> Obra Sys Construções</p>
-            <p><strong>Período:</strong> Últimos 30 dias (Exemplo)</p>
+            <p><strong>Empresa:</strong> ${companyName}</p>
+            <p><strong>Período:</strong> ${reportData.period}</p>
         </div>
         <h2>Análise Detalhada das Despesas</h2>
         <table>
@@ -337,30 +454,41 @@ const ReportsPage = () => {
                 <tr>
                     <th>Fornecedor</th>
                     <th>Descrição</th>
-                    <th>Valor</th>
+                    <th style="text-align: right;">Valor</th>
                     <th>Estado</th>
                     <th>Data Vencimento</th>
                 </tr>
             </thead>
             <tbody>
-                <tr><td>Fornecedor X</td><td>Compra de cimento</td><td>350,00 €</td><td>Pago</td><td>10/07/2024</td></tr>
-                <tr><td>Fornecedor Y</td><td>Aluguer de equipamento</td><td>500,00 €</td><td>Pendente</td><td>25/07/2024</td></tr>
-                <tr><td>Fornecedor Z</td><td>Serviços de eletricidade</td><td>200,00 €</td><td>Atrasado</td><td>05/07/2024</td></tr>
+                ${expenses.map((exp: Expense) => `
+                  <tr>
+                    <td>${exp.supplier_name}</td>
+                    <td>${exp.description}</td>
+                    <td style="text-align: right;">${formatCurrency(exp.amount)}</td>
+                    <td>${exp.status.replace('_', ' ')}</td>
+                    <td>${format(parseISO(exp.due_date), "dd/MM/yyyy")}</td>
+                  </tr>
+                `).join('')}
             </tbody>
         </table>
         <div class="summary">
-            <p><strong>Total de Despesas:</strong> 1.050,00 €</p>
-            <p><strong>Total Pago:</strong> 350,00 €</p>
-            <p><strong>Total Pendente:</strong> 700,00 €</p>
+            <p><strong>Total de Despesas:</strong> ${formatCurrency(totalExpenses)}</p>
+            <p><strong>Total Pago:</strong> ${formatCurrency(totalPaidExpenses)}</p>
+            <p><strong>Total Pendente:</strong> ${formatCurrency(totalPendingExpenses)}</p>
         </div>
       `;
     } else if (reportName === "Folha de Pagamento") {
+      const { payrollEntries } = reportData;
+      const totalPayrollCost = payrollEntries.reduce((sum: number, entry: any) => sum + entry.amount, 0);
+      const totalPaidPayroll = payrollEntries.filter((entry: any) => entry.status === "paid").reduce((sum: number, entry: any) => sum + entry.amount, 0);
+      const totalPendingPayroll = payrollEntries.filter((entry: any) => entry.status === "pending" || entry.status === "processed").reduce((sum: number, entry: any) => sum + entry.amount, 0);
+
       content += `
         <h1>Relatório de Folha de Pagamento</h1>
         <div class="header-info">
             <p><strong>Data de Geração:</strong> ${currentDate}</p>
-            <p><strong>Empresa:</strong> Obra Sys Construções</p>
-            <p><strong>Período:</strong> Últimos 30 dias (Exemplo)</p>
+            <p><strong>Empresa:</strong> ${companyName}</p>
+            <p><strong>Período:</strong> ${reportData.period}</p>
         </div>
         <h2>Custos de Mão de Obra</h2>
         <table>
@@ -369,87 +497,136 @@ const ReportsPage = () => {
                     <th>Colaborador</th>
                     <th>Obra</th>
                     <th>Tipo</th>
-                    <th>Valor</th>
+                    <th style="text-align: right;">Valor</th>
                     <th>Data</th>
                     <th>Estado</th>
                 </tr>
             </thead>
             <tbody>
-                <tr><td>João Silva</td><td>Obra A</td><td>Salário</td><td>1.200,00 €</td><td>30/06/2024</td><td>Pago</td></tr>
-                <tr><td>Maria Santos</td><td>Obra B</td><td>Salário</td><td>900,00 €</td><td>30/06/2024</td><td>Pendente</td></tr>
-                <tr><td>Pedro Costa</td><td>Obra A</td><td>Horas Extras</td><td>150,00 €</td><td>10/07/2024</td><td>Processado</td></tr>
+                ${payrollEntries.map((entry: any) => `
+                  <tr>
+                    <td>${entry.users?.first_name || 'N/A'} ${entry.users?.last_name || ''}</td>
+                    <td>${entry.projects?.nome || 'N/A'}</td>
+                    <td>${entry.type.replace('_', ' ')}</td>
+                    <td style="text-align: right;">${formatCurrency(entry.amount)}</td>
+                    <td>${format(parseISO(entry.entry_date), "dd/MM/yyyy")}</td>
+                    <td>${entry.status.replace('_', ' ')}</td>
+                  </tr>
+                `).join('')}
             </tbody>
         </table>
         <div class="summary">
-            <p><strong>Custo Total de Mão de Obra:</strong> 2.250,00 €</p>
-            <p><strong>Total Pago:</strong> 1.200,00 €</p>
-            <p><strong>Total Pendente/Processado:</strong> 1.050,00 €</p>
+            <p><strong>Custo Total de Mão de Obra:</strong> ${formatCurrency(totalPayrollCost)}</p>
+            <p><strong>Total Pago:</strong> ${formatCurrency(totalPaidPayroll)}</p>
+            <p><strong>Total Pendente/Processado:</strong> ${formatCurrency(totalPendingPayroll)}</p>
         </div>
       `;
     } else if (reportName === "Progresso da Obra") {
+      const { project, scheduleTasks } = reportData;
+      const totalPlannedCost = project?.custo_planeado || 0;
+      const totalRealCost = project?.custo_real || 0;
+      const deviation = totalRealCost - totalPlannedCost;
+
       content += `
         <h1>Relatório de Progresso da Obra</h1>
         <div class="header-info">
             <p><strong>Data de Geração:</strong> ${currentDate}</p>
-            <p><strong>Empresa:</strong> Obra Sys Construções</p>
-            <p><strong>Período:</strong> Últimos 30 dias (Exemplo)</p>
+            <p><strong>Empresa:</strong> ${companyName}</p>
+            <p><strong>Projeto / Obra:</strong> ${projectName}</p>
+            <p><strong>Cliente:</strong> ${clientName}</p>
+            <p><strong>Período:</strong> ${projectPeriod}</p>
         </div>
         <h2>Acompanhamento de Progresso Físico e Financeiro</h2>
         <table>
             <thead>
                 <tr>
-                    <th>Obra</th>
+                    <th>Fase / Capítulo</th>
                     <th>Estado</th>
-                    <th>Progresso (%)</th>
-                    <th>Custo Planeado</th>
-                    <th>Custo Real</th>
-                    <th>Desvio</th>
+                    <th style="text-align: right;">Progresso (%)</th>
+                    <th>Data Início</th>
+                    <th>Data Fim</th>
+                    <th>Duração (dias)</th>
                 </tr>
             </thead>
             <tbody>
-                <tr><td>Projeto Residencial</td><td>Em execução</td><td>65%</td><td>50.000,00 €</td><td>55.000,00 €</td><td>+5.000,00 €</td></tr>
-                <tr><td>Remodelação Escritório</td><td>Concluída</td><td>100%</td><td>15.000,00 €</td><td>14.500,00 €</td><td>-500,00 €</td></tr>
+                ${scheduleTasks.map((task: any) => `
+                  <tr>
+                    <td>${task.capitulo}</td>
+                    <td>${task.estado}</td>
+                    <td style="text-align: right;">${task.progresso}%</td>
+                    <td>${task.data_inicio ? format(parseISO(task.data_inicio), "dd/MM/yyyy") : 'N/A'}</td>
+                    <td>${task.data_fim ? format(parseISO(task.data_fim), "dd/MM/yyyy") : 'N/A'}</td>
+                    <td style="text-align: right;">${task.duracao_dias || 'N/A'}</td>
+                  </tr>
+                `).join('')}
             </tbody>
         </table>
         <div class="summary">
-            <p><strong>Média de Progresso:</strong> 82.5%</p>
-            <p><strong>Desvio Total de Custos:</strong> +4.500,00 €</p>
+            <p><strong>Progresso Geral da Obra:</strong> ${project?.progresso || 0}%</p>
+            <p><strong>Custo Planeado:</strong> ${formatCurrency(totalPlannedCost)}</p>
+            <p><strong>Custo Real:</strong> ${formatCurrency(totalRealCost)}</p>
+            <p><strong>Desvio de Custos:</strong> ${formatCurrency(deviation)}</p>
         </div>
       `;
     } else if (reportName === "Orçamento da Obra") {
+      const { project, budget, budgetItems } = reportData;
+      const totalBudgeted = budget?.total_planeado || 0;
+      const totalExecuted = budget?.total_executado || 0;
+      const deviation = totalExecuted - totalBudgeted;
+      const deviationPercentage = totalBudgeted > 0 ? (deviation / totalBudgeted) * 100 : 0;
+
       content += `
         <h1>Relatório de Orçamento da Obra</h1>
         <div class="header-info">
             <p><strong>Data de Geração:</strong> ${currentDate}</p>
-            <p><strong>Empresa:</strong> Obra Sys Construções</p>
-            <p><strong>Período:</strong> Últimos 30 dias (Exemplo)</p>
+            <p><strong>Empresa:</strong> ${companyName}</p>
+            <p><strong>Projeto / Obra:</strong> ${projectName}</p>
+            <p><strong>Cliente:</strong> ${clientName}</p>
+            <p><strong>Período:</strong> ${projectPeriod}</p>
         </div>
         <h2>Comparativo de Orçamento (Planeado vs Real)</h2>
         <table>
             <thead>
                 <tr>
-                    <th>Obra</th>
-                    <th>Orçamento Total</th>
-                    <th>Custo Executado</th>
-                    <th>Desvio (€)</th>
-                    <th>Desvio (%)</th>
+                    <th>Serviço / Item</th>
+                    <th style="text-align: right;">Qtd.</th>
+                    <th>Un.</th>
+                    <th style="text-align: right;">Preço Unit.</th>
+                    <th style="text-align: right;">Custo Planeado</th>
+                    <th style="text-align: right;">Custo Executado</th>
+                    <th style="text-align: right;">Desvio (€)</th>
                 </tr>
             </thead>
             <tbody>
-                <tr><td>Projeto Residencial</td><td>50.000,00 €</td><td>55.000,00 €</td><td>+5.000,00 €</td><td>+10%</td></tr>
-                <tr><td>Remodelação Escritório</td><td>15.000,00 €</td><td>14.500,00 €</td><td>-500,00 €</td><td>-3.3%</td></tr>
+                ${budgetItems.map((item: BudgetItemDB) => `
+                  <tr>
+                    <td>${item.servico}</td>
+                    <td style="text-align: right;">${item.quantidade}</td>
+                    <td>${item.unidade}</td>
+                    <td style="text-align: right;">${formatCurrency(item.preco_unitario)}</td>
+                    <td style="text-align: right;">${formatCurrency(item.custo_planeado)}</td>
+                    <td style="text-align: right;">${formatCurrency(item.custo_executado)}</td>
+                    <td style="text-align: right;">${formatCurrency(item.custo_executado - item.custo_planeado)}</td>
+                  </tr>
+                `).join('')}
             </tbody>
         </table>
         <div class="summary">
-            <p><strong>Desvio Médio:</strong> +3.5%</p>
+            <p><strong>Orçamento Total:</strong> ${formatCurrency(totalBudgeted)}</p>
+            <p><strong>Custo Executado:</strong> ${formatCurrency(totalExecuted)}</p>
+            <p><strong>Desvio Total:</strong> ${formatCurrency(deviation)} (${deviationPercentage.toFixed(1)}%)</p>
         </div>
       `;
     } else if (reportName === "Catálogo de Artigos") {
+      const { articles } = reportData;
+      const totalArticles = articles.length;
+      const averagePrice = totalArticles > 0 ? articles.reduce((sum: number, article: any) => sum + article.preco_unitario, 0) / totalArticles : 0;
+
       content += `
         <h1>Relatório de Catálogo de Artigos</h1>
         <div class="header-info">
             <p><strong>Data de Geração:</strong> ${currentDate}</p>
-            <p><strong>Empresa:</strong> Obra Sys Construções</p>
+            <p><strong>Empresa:</strong> ${companyName}</p>
         </div>
         <h2>Lista Completa de Artigos de Trabalho</h2>
         <table>
@@ -459,19 +636,26 @@ const ReportsPage = () => {
                     <th>Descrição</th>
                     <th>Unidade</th>
                     <th>Tipo</th>
-                    <th>Preço Unitário</th>
+                    <th style="text-align: right;">Preço Unitário</th>
                     <th>Categoria</th>
                 </tr>
             </thead>
             <tbody>
-                <tr><td>MO-001</td><td>Oficial de Construção</td><td>Hora</td><td>Mão de Obra</td><td>30,50 €</td><td>Mão de Obra (Geral)</td></tr>
-                <tr><td>EST-001</td><td>Betão Armado (Colocado)</td><td>m3</td><td>Fornecimento e Aplicação</td><td>425,00 €</td><td>Estrutura e Alvenaria</td></tr>
-                <tr><td>PIN-002</td><td>Pintura Interior (Paredes + Tinta)</td><td>m2</td><td>Fornecimento e Aplicação</td><td>14,00 €</td><td>Pinturas</td></tr>
+                ${articles.map((article: any) => `
+                  <tr>
+                    <td>${article.codigo}</td>
+                    <td>${article.descricao}</td>
+                    <td>${article.unidade}</td>
+                    <td>${article.tipo}</td>
+                    <td style="text-align: right;">${formatCurrency(article.preco_unitario)}</td>
+                    <td>${article.categories?.nome || 'N/A'}</td>
+                  </tr>
+                `).join('')}
             </tbody>
         </table>
         <div class="summary">
-            <p><strong>Total de Artigos:</strong> 150 (Exemplo)</p>
-            <p><strong>Preço Médio por Artigo:</strong> 85,00 € (Exemplo)</p>
+            <p><strong>Total de Artigos:</strong> ${totalArticles}</p>
+            <p><strong>Preço Médio por Artigo:</strong> ${formatCurrency(averagePrice)}</p>
         </div>
       `;
     } else if (reportName === "Histórico de Preços") {
@@ -479,13 +663,75 @@ const ReportsPage = () => {
         <h1>Relatório de Histórico de Preços</h1>
         <div class="header-info">
             <p><strong>Data de Geração:</strong> ${currentDate}</p>
-            <p><strong>Empresa:</strong> Obra Sys Construções</p>
+            <p><strong>Empresa:</strong> ${companyName}</p>
         </div>
         <h2>Evolução dos Preços dos Artigos</h2>
         <p>Este relatório apresentaria gráficos e tabelas mostrando a variação de preços de artigos selecionados ao longo do tempo.</p>
         <div class="summary">
             <p><strong>Artigo Mais Volátil:</strong> Cimento (Exemplo)</p>
             <p><strong>Aumento Médio Anual:</strong> 5% (Exemplo)</p>
+        </div>
+      `;
+    } else if (reportName === "Alertas de IA") {
+      const { alerts } = reportData;
+      content += `
+        <h1>Relatório de Alertas de IA</h1>
+        <div class="header-info">
+            <p><strong>Data de Geração:</strong> ${currentDate}</p>
+            <p><strong>Empresa:</strong> ${companyName}</p>
+        </div>
+        <h2>Alertas Gerados pelo Assistente de IA</h2>
+        ${alerts.length > 0 ? `
+        <table>
+            <thead>
+                <tr>
+                    <th>Projeto</th>
+                    <th>Título</th>
+                    <th>Mensagem</th>
+                    <th>Severidade</th>
+                    <th>Data</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${alerts.map((alert: AiAlert) => `
+                  <tr>
+                    <td>${alert.projects?.nome || 'N/A'}</td>
+                    <td>${alert.title}</td>
+                    <td>${alert.message}</td>
+                    <td>${alert.severity?.replace('_', ' ') || 'N/A'}</td>
+                    <td>${alert.created_at ? format(parseISO(alert.created_at), "dd/MM/yyyy HH:mm") : 'N/A'}</td>
+                  </tr>
+                `).join('')}
+            </tbody>
+        </table>
+        ` : `<p style="text-align: center; margin-top: 20px; color: #777;">Nenhum alerta de IA encontrado.</p>`}
+      `;
+    } else if (reportName === "Checklist de Conformidade") {
+      content += `
+        <h1>Relatório de Checklist de Conformidade</h1>
+        <div class="header-info">
+            <p><strong>Data de Geração:</strong> ${currentDate}</p>
+            <p><strong>Empresa:</strong> ${companyName}</p>
+        </div>
+        <h2>Estado das Verificações de Conformidade</h2>
+        <p>Este relatório apresentaria o estado atual do checklist de conformidade.</p>
+        <div class="summary">
+            <p><strong>Itens Concluídos:</strong> 20/25 (Exemplo)</p>
+            <p><strong>Conformidade Geral:</strong> 80% (Exemplo)</p>
+        </div>
+      `;
+    } else if (reportName === "Livro de Obra Digital") {
+      content += `
+        <h1>Relatório do Livro de Obra Digital</h1>
+        <div class="header-info">
+            <p><strong>Data de Geração:</strong> ${currentDate}</p>
+            <p><strong>Empresa:</strong> ${companyName}</p>
+        </div>
+        <h2>Resumo dos Livros de Obra</h2>
+        <p>Este relatório apresentaria um resumo dos livros de obra existentes, com links para os detalhes.</p>
+        <div class="summary">
+            <p><strong>Livros de Obra Ativos:</strong> 3 (Exemplo)</p>
+            <p><strong>Última Atualização:</strong> ${currentDate}</p>
         </div>
       `;
     }
@@ -508,9 +754,398 @@ const ReportsPage = () => {
     }
   };
 
-  const handleGenerateReportClick = (reportName: string) => {
-    generateReportContent(reportName, {});
+  const handleGenerateReportClick = async (reportName: string) => {
+    if (!userCompanyId) {
+      toast.error("ID da empresa não encontrado. Por favor, faça login novamente.");
+      return;
+    }
+    setIsLoadingReport(true);
+    let reportData: any = { company: null, monthYear: selectedMonth };
+
+    try {
+      // Fetch company data
+      const { data: company, error: companyError } = await supabase
+        .from('companies')
+        .select('*')
+        .eq('id', userCompanyId)
+        .single();
+      if (companyError) console.error("Error fetching company data:", companyError);
+      reportData.company = company;
+
+      const startOfSelectedMonth = startOfMonth(parseISO(selectedMonth));
+      const endOfSelectedMonth = endOfMonth(parseISO(selectedMonth));
+      const startOfPrevMonth = startOfMonth(subMonths(parseISO(selectedMonth), 1));
+      const endOfPrevMonth = endOfMonth(subMonths(parseISO(selectedMonth), 1));
+
+      if (reportName === "Relatório Financeiro Mensal") {
+        // Fetch invoices for current month
+        const { data: currentMonthInvoices, error: invError } = await supabase
+          .from('invoices')
+          .select('total_amount, paid_amount')
+          .eq('company_id', userCompanyId)
+          .gte('issue_date', format(startOfSelectedMonth, 'yyyy-MM-dd'))
+          .lte('issue_date', format(endOfSelectedMonth, 'yyyy-MM-dd'))
+          .in('status', ['paid', 'pending']);
+        if (invError) throw invError;
+        const totalRevenue = (currentMonthInvoices || []).reduce((sum, inv) => sum + inv.total_amount, 0);
+
+        // Fetch expenses for current month
+        const { data: currentMonthExpenses, error: expError } = await supabase
+          .from('expenses')
+          .select('amount, type:description') // Using description as a mock category for now
+          .eq('company_id', userCompanyId)
+          .gte('due_date', format(startOfSelectedMonth, 'yyyy-MM-dd'))
+          .lte('due_date', format(endOfSelectedMonth, 'yyyy-MM-dd'))
+          .in('status', ['paid', 'pending', 'overdue']);
+        if (expError) throw expError;
+        const totalExpenses = (currentMonthExpenses || []).reduce((sum, exp) => sum + exp.amount, 0);
+
+        // Fetch invoices for previous month for comparison
+        const { data: prevMonthInvoices, error: prevInvError } = await supabase
+          .from('invoices')
+          .select('total_amount')
+          .eq('company_id', userCompanyId)
+          .gte('issue_date', format(startOfPrevMonth, 'yyyy-MM-dd'))
+          .lte('issue_date', format(endOfPrevMonth, 'yyyy-MM-dd'))
+          .in('status', ['paid', 'pending']);
+        if (prevInvError) throw prevInvError;
+        const prevMonthRevenue = (prevMonthInvoices || []).reduce((sum, inv) => sum + inv.total_amount, 0);
+
+        const profitLoss = totalRevenue - totalExpenses;
+        const prevMonthComparison = prevMonthRevenue > 0 ? ((totalRevenue - prevMonthRevenue) / prevMonthRevenue) * 100 : 0;
+
+        // Simplified revenue by source and expenses by category
+        const revenueBySource = [
+          { source: "Faturas Emitidas", value: totalRevenue, percentage: totalRevenue > 0 ? (totalRevenue / totalRevenue) * 100 : 0 },
+        ];
+        const expensesByCategory = [
+          { category: "Despesas Registadas", value: totalExpenses },
+        ];
+
+        reportData = {
+          ...reportData,
+          totalRevenue,
+          totalExpenses,
+          profitLoss,
+          prevMonthComparison,
+          revenueBySource,
+          expensesByCategory,
+          period: `${format(startOfSelectedMonth, "dd/MM/yyyy")} - ${format(endOfSelectedMonth, "dd/MM/yyyy")}`,
+        };
+
+      } else if (reportName === "Relatório de Fluxo de Caixa") {
+        // Fetch all payments and expenses for the year to calculate initial balance
+        const startOfYear = startOfMonth(new Date(new Date().getFullYear(), 0, 1));
+        const { data: allPayments, error: allPaymentsError } = await supabase
+          .from('payments')
+          .select('amount, payment_date')
+          .eq('company_id', userCompanyId)
+          .gte('payment_date', format(startOfYear, 'yyyy-MM-dd'))
+          .lte('payment_date', format(endOfSelectedMonth, 'yyyy-MM-dd'));
+        if (allPaymentsError) throw allPaymentsError;
+
+        const { data: allExpenses, error: allExpensesError } = await supabase
+          .from('expenses')
+          .select('amount, due_date')
+          .eq('company_id', userCompanyId)
+          .gte('due_date', format(startOfYear, 'yyyy-MM-dd'))
+          .lte('due_date', format(endOfSelectedMonth, 'yyyy-MM-dd'));
+        if (allExpensesError) throw allExpensesError;
+
+        let initialBalance = 0;
+        // Calculate balance up to the start of the selected month
+        (allPayments || []).forEach(p => {
+          if (parseISO(p.payment_date) < startOfSelectedMonth) initialBalance += p.amount;
+        });
+        (allExpenses || []).forEach(e => {
+          if (parseISO(e.due_date) < startOfSelectedMonth) initialBalance -= e.amount;
+        });
+
+        // Fetch payments for current month
+        const { data: currentMonthPayments, error: paymentsError } = await supabase
+          .from('payments')
+          .select('amount, payment_date, invoices(invoice_number)')
+          .eq('company_id', userCompanyId)
+          .gte('payment_date', format(startOfSelectedMonth, 'yyyy-MM-dd'))
+          .lte('payment_date', format(endOfSelectedMonth, 'yyyy-MM-dd'));
+        if (paymentsError) throw paymentsError;
+        const totalEntries = (currentMonthPayments || []).reduce((sum, p) => sum + p.amount, 0);
+        const entries = (currentMonthPayments || []).map(p => ({
+          date: p.payment_date,
+          origin: `Pagamento Fatura ${p.invoices?.invoice_number || 'N/A'}`,
+          amount: p.amount,
+        }));
+
+        // Fetch expenses for current month
+        const { data: currentMonthExpensesFlow, error: expensesFlowError } = await supabase
+          .from('expenses')
+          .select('amount, due_date, description')
+          .eq('company_id', userCompanyId)
+          .gte('due_date', format(startOfSelectedMonth, 'yyyy-MM-dd'))
+          .lte('due_date', format(endOfSelectedMonth, 'yyyy-MM-dd'));
+        if (expensesFlowError) throw expensesFlowError;
+        const totalExits = (currentMonthExpensesFlow || []).reduce((sum, exp) => sum + exp.amount, 0);
+        const exits = (currentMonthExpensesFlow || []).map(exp => ({
+          date: exp.due_date,
+          destination: exp.description,
+          amount: exp.amount,
+        }));
+
+        const finalBalance = initialBalance + totalEntries - totalExits;
+
+        // Mock forecast for now
+        const forecast = {
+          next30Days: finalBalance + 1500,
+          next60Days: finalBalance + 2800,
+          next90Days: finalBalance + 4000,
+        };
+
+        reportData = {
+          ...reportData,
+          initialBalance,
+          totalEntries,
+          totalExits,
+          finalBalance,
+          entries,
+          exits,
+          forecast,
+          period: `${format(startOfSelectedMonth, "dd/MM/yyyy")} - ${format(endOfSelectedMonth, "dd/MM/yyyy")}`,
+        };
+
+      } else if (reportName === "Relatório Financeiro por Projeto / Obra") {
+        if (!selectedProjectIdForReport) {
+          toast.error("Selecione um projeto para gerar este relatório.");
+          return;
+        }
+        const project = projects.find(p => p.id === selectedProjectIdForReport);
+        if (!project) {
+          toast.error("Projeto não encontrado.");
+          return;
+        }
+
+        // Fetch budget for the project
+        let budget: BudgetDB | null = null;
+        let budgetItems: BudgetItemDB[] = [];
+        if (project.budget_id) {
+          const { data: fetchedBudget, error: budgetError } = await supabase
+            .from('budgets')
+            .select(`
+              *,
+              budget_chapters (
+                budget_items (*)
+              )
+            `)
+            .eq('id', project.budget_id)
+            .single();
+          if (budgetError && budgetError.code !== 'PGRST116') throw budgetError;
+          if (fetchedBudget) {
+            budget = fetchedBudget;
+            budgetItems = fetchedBudget.budget_chapters.flatMap((chapter: any) => chapter.budget_items);
+          }
+        }
+
+        // Fetch invoices for the project
+        const { data: projectInvoices, error: invError } = await supabase
+          .from('invoices')
+          .select('*, clients(nome), projects(nome)')
+          .eq('project_id', selectedProjectIdForReport)
+          .eq('company_id', userCompanyId);
+        if (invError) throw invError;
+
+        // Fetch AI alerts for the project
+        const { data: projectAlerts, error: alertsError } = await supabase
+          .from('ai_alerts')
+          .select('id, title, message, severity, created_at, projects(nome)')
+          .eq('project_id', selectedProjectIdForReport)
+          .eq('company_id', userCompanyId)
+          .in('severity', ['critical', 'warning'])
+          .eq('resolved', false)
+          .order('created_at', { ascending: false });
+        if (alertsError) throw alertsError;
+
+        reportData = {
+          ...reportData,
+          project,
+          budget,
+          budgetItems,
+          projectInvoices,
+          projectAlerts: projectAlerts || [],
+          period: `${format(parseISO(project.created_at), "dd/MM/yyyy")} - ${project.prazo ? format(parseISO(project.prazo), "dd/MM/yyyy") : 'N/A'}`,
+        };
+
+      } else if (reportName === "Faturas") {
+        const { data: invoices, error: invError } = await supabase
+          .from('invoices')
+          .select('*, clients(nome), projects(nome)')
+          .eq('company_id', userCompanyId)
+          .gte('issue_date', format(startOfSelectedMonth, 'yyyy-MM-dd'))
+          .lte('issue_date', format(endOfSelectedMonth, 'yyyy-MM-dd'))
+          .order('issue_date', { ascending: false });
+        if (invError) throw invError;
+        reportData = {
+          ...reportData,
+          invoices: invoices || [],
+          period: `${format(startOfSelectedMonth, "dd/MM/yyyy")} - ${format(endOfSelectedMonth, "dd/MM/yyyy")}`,
+        };
+
+      } else if (reportName === "Despesas") {
+        const { data: expenses, error: expError } = await supabase
+          .from('expenses')
+          .select('*')
+          .eq('company_id', userCompanyId)
+          .gte('due_date', format(startOfSelectedMonth, 'yyyy-MM-dd'))
+          .lte('due_date', format(endOfSelectedMonth, 'yyyy-MM-dd'))
+          .order('due_date', { ascending: false });
+        if (expError) throw expError;
+        reportData = {
+          ...reportData,
+          expenses: expenses || [],
+          period: `${format(startOfSelectedMonth, "dd/MM/yyyy")} - ${format(endOfSelectedMonth, "dd/MM/yyyy")}`,
+        };
+
+      } else if (reportName === "Folha de Pagamento") {
+        const { data: payrollEntries, error: payrollError } = await supabase
+          .from('payroll_entries')
+          .select('*, projects(nome), users:profiles(first_name, last_name)')
+          .eq('company_id', userCompanyId)
+          .gte('entry_date', format(startOfSelectedMonth, 'yyyy-MM-dd'))
+          .lte('entry_date', format(endOfSelectedMonth, 'yyyy-MM-dd'))
+          .order('entry_date', { ascending: false });
+        if (payrollError) throw payrollError;
+        reportData = {
+          ...reportData,
+          payrollEntries: payrollEntries || [],
+          period: `${format(startOfSelectedMonth, "dd/MM/yyyy")} - ${format(endOfSelectedMonth, "yyyy-MM-dd")}`,
+        };
+
+      } else if (reportName === "Progresso da Obra") {
+        if (!selectedProjectIdForReport) {
+          toast.error("Selecione um projeto para gerar este relatório.");
+          return;
+        }
+        const project = projects.find(p => p.id === selectedProjectIdForReport);
+        if (!project) {
+          toast.error("Projeto não encontrado.");
+          return;
+        }
+
+        let scheduleTasks: any[] = [];
+        if (project.budget_id) {
+          const { data: schedule, error: scheduleError } = await supabase
+            .from('schedules')
+            .select('id')
+            .eq('project_id', project.id)
+            .single();
+          if (scheduleError && scheduleError.code !== 'PGRST116') throw scheduleError;
+
+          if (schedule) {
+            const { data: tasks, error: tasksError } = await supabase
+              .from('schedule_tasks')
+              .select('*')
+              .eq('schedule_id', schedule.id)
+              .order('ordem', { ascending: true });
+            if (tasksError) throw tasksError;
+            scheduleTasks = tasks || [];
+          }
+        }
+
+        reportData = {
+          ...reportData,
+          project,
+          scheduleTasks,
+          period: `${format(parseISO(project.created_at), "dd/MM/yyyy")} - ${project.prazo ? format(parseISO(project.prazo), "dd/MM/yyyy") : 'N/A'}`,
+        };
+
+      } else if (reportName === "Orçamento da Obra") {
+        if (!selectedProjectIdForReport) {
+          toast.error("Selecione um projeto para gerar este relatório.");
+          return;
+        }
+        const project = projects.find(p => p.id === selectedProjectIdForReport);
+        if (!project) {
+          toast.error("Projeto não encontrado.");
+          return;
+        }
+
+        let budget: BudgetDB | null = null;
+        let budgetItems: BudgetItemDB[] = [];
+        if (project.budget_id) {
+          const { data: fetchedBudget, error: budgetError } = await supabase
+            .from('budgets')
+            .select(`
+              *,
+              budget_chapters (
+                budget_items (*)
+              )
+            `)
+            .eq('id', project.budget_id)
+            .single();
+          if (budgetError && budgetError.code !== 'PGRST116') throw budgetError;
+          if (fetchedBudget) {
+            budget = fetchedBudget;
+            budgetItems = fetchedBudget.budget_chapters.flatMap((chapter: any) => chapter.budget_items);
+          }
+        }
+
+        reportData = {
+          ...reportData,
+          project,
+          budget,
+          budgetItems,
+          period: `${format(parseISO(project.created_at), "dd/MM/yyyy")} - ${project.prazo ? format(parseISO(project.prazo), "dd/MM/yyyy") : 'N/A'}`,
+        };
+
+      } else if (reportName === "Catálogo de Artigos") {
+        const { data: articles, error: articlesError } = await supabase
+          .from('articles')
+          .select('*, categories(nome)')
+          .eq('company_id', userCompanyId)
+          .order('codigo', { ascending: true });
+        if (articlesError) throw articlesError;
+        reportData = { ...reportData, articles: articles || [] };
+
+      } else if (reportName === "Histórico de Preços") {
+        // This report is more complex and would require a dedicated price history table or more advanced logic.
+        // Keeping it as a placeholder for now.
+        toast.info("Este relatório requer dados de histórico de preços que ainda não estão implementados.");
+        return;
+      } else if (reportName === "Alertas de IA") {
+        const { data: alerts, error: alertsError } = await supabase
+          .from('ai_alerts')
+          .select('*, projects(nome)')
+          .eq('company_id', userCompanyId)
+          .order('created_at', { ascending: false });
+        if (alertsError) throw alertsError;
+        reportData = { ...reportData, alerts: alerts || [] };
+      }
+
+      generateReportContent(reportName, reportData);
+    } catch (error: any) {
+      toast.error(`Erro ao gerar relatório: ${error.message}`);
+      console.error("Erro ao gerar relatório:", error);
+    } finally {
+      setIsLoadingReport(false);
+    }
   };
+
+  if (isLoadingInitialData) {
+    return (
+      <div className="space-y-6">
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between pb-4 md:pb-6 border-b border-border mb-4 md:mb-6">
+          <div>
+            <Skeleton className="h-8 w-64 mb-2" />
+            <Skeleton className="h-4 w-48" />
+          </div>
+          <Skeleton className="h-10 w-40 mt-2 md:mt-0" />
+        </div>
+        <div className="p-4 space-y-4">
+          <Skeleton className="h-48 w-full" />
+          <Skeleton className="h-32 w-full" />
+          <Skeleton className="h-32 w-full" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -528,6 +1163,65 @@ const ReportsPage = () => {
 
       <Separator className="my-8 bg-gray-300 dark:bg-gray-700" />
 
+      {/* Seletores de Parâmetros */}
+      <Card className="bg-card text-card-foreground border border-border">
+        <CardHeader>
+          <CardTitle className="text-xl font-semibold">Parâmetros do Relatório</CardTitle>
+        </CardHeader>
+        <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="flex flex-col space-y-2">
+            <Label htmlFor="month-selector">Mês/Ano (para relatórios mensais)</Label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant={"outline"}
+                  className={cn(
+                    "w-full justify-start text-left font-normal",
+                    !selectedMonth && "text-muted-foreground"
+                  )}
+                >
+                  <CalendarDays className="mr-2 h-4 w-4" />
+                  {selectedMonth ? format(parseISO(selectedMonth), "MMMM yyyy", { locale: pt }) : "Selecione Mês/Ano"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0">
+                <Calendar
+                  mode="single"
+                  captionLayout="dropdown-buttons"
+                  selected={selectedMonth ? parseISO(selectedMonth) : undefined}
+                  onSelect={(date) => setSelectedMonth(date ? format(date, "yyyy-MM") : format(new Date(), "yyyy-MM"))}
+                  fromYear={2000}
+                  toYear={new Date().getFullYear() + 5}
+                  locale={pt}
+                />
+              </PopoverContent>
+            </Popover>
+          </div>
+          <div className="flex flex-col space-y-2">
+            <Label htmlFor="project-selector">Obra (para relatórios por projeto)</Label>
+            <Select
+              value={selectedProjectIdForReport || "placeholder"}
+              onValueChange={(value) => setSelectedProjectIdForReport(value === "placeholder" ? null : value)}
+              disabled={projects.length === 0}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Selecione uma obra" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="placeholder" disabled>Selecione uma obra</SelectItem>
+                {projects.map((project) => (
+                  <SelectItem key={project.id} value={project.id}>
+                    {project.nome}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Separator className="my-8 bg-gray-300 dark:bg-gray-700" />
+
       {/* Relatórios Financeiros */}
       <h2 className="text-xl font-semibold mb-4 text-primary">Relatórios Financeiros</h2>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-8">
@@ -540,8 +1234,8 @@ const ReportsPage = () => {
             <p className="text-sm text-muted-foreground mt-2">
               Acompanhe a saúde financeira mês a mês e apoie decisões rápidas.
             </p>
-            <Button className="mt-6 w-full" onClick={() => handleGenerateReportClick("Relatório Financeiro Mensal")}>
-              <Printer className="h-4 w-4 mr-2" /> Gerar Relatório
+            <Button className="mt-6 w-full" onClick={() => handleGenerateReportClick("Relatório Financeiro Mensal")} disabled={isLoadingReport}>
+              {isLoadingReport ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Printer className="h-4 w-4 mr-2" />} Gerar Relatório
             </Button>
           </CardContent>
         </Card>
@@ -555,8 +1249,8 @@ const ReportsPage = () => {
             <p className="text-sm text-muted-foreground mt-2">
               Garantir liquidez e evitar surpresas.
             </p>
-            <Button className="mt-6 w-full" onClick={() => handleGenerateReportClick("Relatório de Fluxo de Caixa")}>
-              <Printer className="h-4 w-4 mr-2" /> Gerar Relatório
+            <Button className="mt-6 w-full" onClick={() => handleGenerateReportClick("Relatório de Fluxo de Caixa")} disabled={isLoadingReport}>
+              {isLoadingReport ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Printer className="h-4 w-4 mr-2" />} Gerar Relatório
             </Button>
           </CardContent>
         </Card>
@@ -570,8 +1264,8 @@ const ReportsPage = () => {
             <p className="text-sm text-muted-foreground mt-2">
               Visão geral das faturas emitidas, pagas e pendentes.
             </p>
-            <Button className="mt-6 w-full" onClick={() => handleGenerateReportClick("Faturas")}>
-              <Printer className="h-4 w-4 mr-2" /> Gerar Relatório
+            <Button className="mt-6 w-full" onClick={() => handleGenerateReportClick("Faturas")} disabled={isLoadingReport}>
+              {isLoadingReport ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Printer className="h-4 w-4 mr-2" />} Gerar Relatório
             </Button>
           </CardContent>
         </Card>
@@ -585,8 +1279,8 @@ const ReportsPage = () => {
             <p className="text-sm text-muted-foreground mt-2">
               Análise detalhada das despesas por fornecedor, categoria e estado.
             </p>
-            <Button className="mt-6 w-full" onClick={() => handleGenerateReportClick("Despesas")}>
-              <Printer className="h-4 w-4 mr-2" /> Gerar Relatório
+            <Button className="mt-6 w-full" onClick={() => handleGenerateReportClick("Despesas")} disabled={isLoadingReport}>
+              {isLoadingReport ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Printer className="h-4 w-4 mr-2" />} Gerar Relatório
             </Button>
           </CardContent>
         </Card>
@@ -600,8 +1294,8 @@ const ReportsPage = () => {
             <p className="text-sm text-muted-foreground mt-2">
               Custos de mão de obra, salários e benefícios por projeto e colaborador.
             </p>
-            <Button className="mt-6 w-full" onClick={() => handleGenerateReportClick("Folha de Pagamento")}>
-              <Printer className="h-4 w-4 mr-2" /> Gerar Relatório
+            <Button className="mt-6 w-full" onClick={() => handleGenerateReportClick("Folha de Pagamento")} disabled={isLoadingReport}>
+              {isLoadingReport ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Printer className="h-4 w-4 mr-2" />} Gerar Relatório
             </Button>
           </CardContent>
         </Card>
@@ -621,8 +1315,8 @@ const ReportsPage = () => {
             <p className="text-sm text-muted-foreground mt-2">
               Controlar rentabilidade de cada obra/projeto.
             </p>
-            <Button className="mt-6 w-full" onClick={() => handleGenerateReportClick("Relatório Financeiro por Projeto / Obra")}>
-              <Printer className="h-4 w-4 mr-2" /> Gerar Relatório
+            <Button className="mt-6 w-full" onClick={() => handleGenerateReportClick("Relatório Financeiro por Projeto / Obra")} disabled={isLoadingReport || !selectedProjectIdForReport}>
+              {isLoadingReport ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Printer className="h-4 w-4 mr-2" />} Gerar Relatório
             </Button>
           </CardContent>
         </Card>
@@ -636,8 +1330,8 @@ const ReportsPage = () => {
             <p className="text-sm text-muted-foreground mt-2">
               Acompanhamento do progresso físico e financeiro de cada projeto.
             </p>
-            <Button className="mt-6 w-full" onClick={() => handleGenerateReportClick("Progresso da Obra")}>
-              <Printer className="h-4 w-4 mr-2" /> Gerar Relatório
+            <Button className="mt-6 w-full" onClick={() => handleGenerateReportClick("Progresso da Obra")} disabled={isLoadingReport || !selectedProjectIdForReport}>
+              {isLoadingReport ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Printer className="h-4 w-4 mr-2" />} Gerar Relatório
             </Button>
           </CardContent>
         </Card>
@@ -651,8 +1345,8 @@ const ReportsPage = () => {
             <p className="text-sm text-muted-foreground mt-2">
               Comparativo entre o orçamento planeado e o custo real da obra.
             </p>
-            <Button className="mt-6 w-full" onClick={() => handleGenerateReportClick("Orçamento da Obra")}>
-              <Printer className="h-4 w-4 mr-2" /> Gerar Relatório
+            <Button className="mt-6 w-full" onClick={() => handleGenerateReportClick("Orçamento da Obra")} disabled={isLoadingReport || !selectedProjectIdForReport}>
+              {isLoadingReport ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Printer className="h-4 w-4 mr-2" />} Gerar Relatório
             </Button>
           </CardContent>
         </Card>
@@ -687,8 +1381,8 @@ const ReportsPage = () => {
             <p className="text-sm text-muted-foreground mt-2">
               Lista completa de todos os artigos de trabalho (serviços, materiais, equipas).
             </p>
-            <Button className="mt-6 w-full" onClick={() => handleGenerateReportClick("Catálogo de Artigos")}>
-              <Printer className="h-4 w-4 mr-2" /> Gerar Relatório
+            <Button className="mt-6 w-full" onClick={() => handleGenerateReportClick("Catálogo de Artigos")} disabled={isLoadingReport}>
+              {isLoadingReport ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Printer className="h-4 w-4 mr-2" />} Gerar Relatório
             </Button>
           </CardContent>
         </Card>
@@ -702,8 +1396,8 @@ const ReportsPage = () => {
             <p className="text-sm text-muted-foreground mt-2">
               Evolução dos preços dos artigos ao longo do tempo.
             </p>
-            <Button className="mt-6 w-full" onClick={() => handleGenerateReportClick("Histórico de Preços")}>
-              <Printer className="h-4 w-4 mr-2" /> Gerar Relatório
+            <Button className="mt-6 w-full" onClick={() => handleGenerateReportClick("Histórico de Preços")} disabled={isLoadingReport}>
+              {isLoadingReport ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Printer className="h-4 w-4 mr-2" />} Gerar Relatório
             </Button>
           </CardContent>
         </Card>
