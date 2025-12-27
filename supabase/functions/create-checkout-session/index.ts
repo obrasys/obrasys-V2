@@ -2,8 +2,10 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
 import Stripe from 'https://esm.sh/stripe@16.2.0?target=deno';
 
+const FRONTEND_ORIGIN = Deno.env.get('FRONTEND_URL') || '*';
+
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Origin': FRONTEND_ORIGIN,
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
@@ -13,36 +15,50 @@ serve(async (req) => {
   }
 
   try {
+    // Require Authorization header
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Parse body AFTER basic auth presence check
     const { company_id, plan_type, customer_email } = await req.json();
 
     if (!company_id || !plan_type || !customer_email) {
-      return new Response(JSON.stringify({ error: 'Missing required parameters: company_id, plan_type, customer_email' }), {
+      return new Response(JSON.stringify({ error: 'Missing required parameters' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    // NOVO: validar secrets/variáveis necessárias antes de qualquer chamada externa
+    // Validate required secrets early
     const stripeSecret = Deno.env.get('STRIPE_SECRET_KEY');
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const supabaseServiceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
     const frontendUrl = Deno.env.get('FRONTEND_URL');
 
-    if (!stripeSecret) {
-      return new Response(JSON.stringify({ error: 'Missing secret STRIPE_SECRET_KEY in Supabase → Edge Functions → Manage Secrets.' }), {
+    if (!stripeSecret || !supabaseUrl || !supabaseServiceRoleKey || !frontendUrl) {
+      return new Response(JSON.stringify({ error: 'Server misconfiguration' }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
-    if (!supabaseUrl || !supabaseServiceRoleKey) {
-      return new Response(JSON.stringify({ error: 'Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY in Edge Function environment.' }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-    if (!frontendUrl) {
-      return new Response(JSON.stringify({ error: 'Missing FRONTEND_URL secret. Set it to your app domain, e.g., https://app.obrasys.pt' }), {
-        status: 500,
+
+    // User-scoped client for authorization checks
+    const supabaseUser = createClient(
+      supabaseUrl,
+      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      { global: { headers: { Authorization: authHeader } } }
+    );
+
+    // Authorize company: ensure caller is a member of the provided company_id
+    const { data: isMember, error: memberErr } = await supabaseUser.rpc('is_company_member', { p_company_id: company_id });
+    if (memberErr || !isMember) {
+      return new Response(JSON.stringify({ error: 'Forbidden' }), {
+        status: 403,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
@@ -52,11 +68,8 @@ serve(async (req) => {
       httpClient: Stripe.createFetchHttpClient(),
     });
 
-    // Get Supabase client with service role key for backend operations
-    const supabaseAdmin = createClient(
-      supabaseUrl ?? '',
-      supabaseServiceRoleKey ?? ''
-    );
+    // Admin client for backend operations
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceRoleKey);
 
     // 1. Check if Stripe Customer exists for the company
     let stripeCustomerId: string | null = null;
@@ -66,9 +79,8 @@ serve(async (req) => {
       .eq('id', company_id)
       .single();
 
-    if (companyError && companyError.code !== 'PGRST116') { // PGRST116 means no rows found
-      console.error('Error fetching company stripe_customer_id:', companyError);
-      return new Response(JSON.stringify({ error: 'Failed to fetch company data (companies table not accessible with service role).' }), {
+    if (companyError && companyError.code !== 'PGRST116') {
+      return new Response(JSON.stringify({ error: 'Failed to fetch company data' }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -77,22 +89,19 @@ serve(async (req) => {
     if (companyData?.stripe_customer_id) {
       stripeCustomerId = companyData.stripe_customer_id;
     } else {
-      // Create new Stripe Customer
       const customer = await stripe.customers.create({
         email: customer_email,
         metadata: { supabase_company_id: company_id },
       });
       stripeCustomerId = customer.id;
 
-      // Update company with new Stripe Customer ID
       const { error: updateCompanyError } = await supabaseAdmin
         .from('companies')
         .update({ stripe_customer_id: stripeCustomerId })
         .eq('id', company_id);
 
       if (updateCompanyError) {
-        console.error('Error updating company with stripe_customer_id:', updateCompanyError);
-        return new Response(JSON.stringify({ error: 'Failed to update company with Stripe customer ID (check RLS/policies).' }), {
+        return new Response(JSON.stringify({ error: 'Failed to update company' }), {
           status: 500,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
@@ -109,42 +118,32 @@ serve(async (req) => {
         priceId = Deno.env.get('STRIPE_PRICE_ID_PROFISSIONAL') as string | undefined;
         break;
       case 'empresa':
-        // For 'empresa' plan, it's "Contactar Vendas", so no direct checkout
-        return new Response(JSON.stringify({ error: 'Please contact sales for the Enterprise plan.' }), {
+        return new Response(JSON.stringify({ error: 'Contact sales for the Enterprise plan.' }), {
           status: 400,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       default:
-        return new Response(JSON.stringify({ error: `Invalid plan_type provided: ${plan_type}` }), {
+        return new Response(JSON.stringify({ error: 'Invalid plan_type' }), {
           status: 400,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
     }
 
     if (!priceId) {
-      return new Response(JSON.stringify({ error: `Stripe Price ID for plan '${plan_type}' is not configured in Supabase secrets.` }), {
+      return new Response(JSON.stringify({ error: 'Price not configured' }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    // Create Stripe Checkout Session
     const checkoutSession = await stripe.checkout.sessions.create({
       customer: stripeCustomerId!,
       mode: 'subscription',
-      line_items: [{
-        price: priceId!,
-        quantity: 1,
-      }],
+      line_items: [{ price: priceId!, quantity: 1 }],
       success_url: `${frontendUrl}/dashboard?success=true`,
       cancel_url: `${frontendUrl}/plans?cancelled=true`,
-      metadata: {
-        company_id: company_id,
-        plan_type: plan_type,
-      },
-      subscription_data: {
-        trial_from_plan: true, // Use trial period defined in Stripe Price object
-      },
+      metadata: { company_id, plan_type },
+      subscription_data: { trial_from_plan: true },
     });
 
     return new Response(JSON.stringify({ url: checkoutSession.url }), {
@@ -152,11 +151,9 @@ serve(async (req) => {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
 
-  } catch (error) {
-    console.error('Stripe Checkout Session Error:', error);
-    // NOVO: devolver mensagem mais clara
-    const message = (error && (error as any).message) ? (error as any).message : 'Unknown error creating checkout session.';
-    return new Response(JSON.stringify({ error: message }), {
+  } catch (_error) {
+    // Return generic error to avoid leaking internals
+    return new Response(JSON.stringify({ error: 'Failed to create checkout session' }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });

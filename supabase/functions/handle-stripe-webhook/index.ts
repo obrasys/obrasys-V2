@@ -2,9 +2,11 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
 import Stripe from 'https://esm.sh/stripe@16.2.0?target=deno';
 
+const FRONTEND_ORIGIN = Deno.env.get('FRONTEND_URL') || '*';
+
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Origin': FRONTEND_ORIGIN,
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, stripe-signature',
 };
 
 serve(async (req) => {
@@ -22,7 +24,7 @@ serve(async (req) => {
     const webhookSecret = Deno.env.get('STRIPE_WEBHOOK_SECRET');
 
     if (!signature || !webhookSecret) {
-      return new Response(JSON.stringify({ error: 'Stripe-Signature header or webhook secret missing.' }), {
+      return new Response(JSON.stringify({ error: 'Bad request' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -33,9 +35,8 @@ serve(async (req) => {
 
     try {
       event = await stripe.webhooks.constructEventAsync(body, signature, webhookSecret);
-    } catch (err) {
-      console.error(`Webhook signature verification failed: ${err.message}`);
-      return new Response(JSON.stringify({ error: `Webhook Error: ${err.message}` }), {
+    } catch (_err) {
+      return new Response(JSON.stringify({ error: 'Invalid signature' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -346,9 +347,8 @@ serve(async (req) => {
       status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
-  } catch (error) {
-    console.error('Stripe Webhook Handler Error:', error);
-    return new Response(JSON.stringify({ error: error.message }), {
+  } catch (_error) {
+    return new Response(JSON.stringify({ error: 'Internal error' }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });

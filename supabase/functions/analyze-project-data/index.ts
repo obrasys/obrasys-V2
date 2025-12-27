@@ -2,8 +2,10 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
 import { format, differenceInDays, parseISO } from 'https://esm.sh/date-fns@3.6.0';
 
+const FRONTEND_ORIGIN = Deno.env.get('FRONTEND_URL') || '*';
+
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Origin': FRONTEND_ORIGIN,
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
@@ -42,6 +44,15 @@ serve(async (req) => {
       console.error('Edge Function: Bad Request - project_id is required.');
       return new Response(JSON.stringify({ error: 'project_id é obrigatório.' }), {
         status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Additional authorization: verify project belongs to caller's company
+    const { data: okProject, error: authErr } = await supabase.rpc('is_project_of_current_company', { p_project_id: project_id });
+    if (authErr || !okProject) {
+      return new Response(JSON.stringify({ error: 'Forbidden' }), {
+        status: 403,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
@@ -455,14 +466,8 @@ serve(async (req) => {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
 
-  } catch (error: any) {
-    // Catch any unhandled errors and return a generic 500 response with details
-    console.error('Edge Function: Unhandled error:', error);
-    return new Response(JSON.stringify({
-      error: 'Ocorreu um erro interno na função Edge.',
-      details: error.message || 'Detalhes do erro não disponíveis.',
-      stack: error.stack || 'Stack trace não disponível.',
-    }), {
+  } catch (_error: any) {
+    return new Response(JSON.stringify({ error: 'Internal error' }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
