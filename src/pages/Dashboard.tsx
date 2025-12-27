@@ -177,7 +177,8 @@ const Dashboard = () => {
     }
   }, [userCompanyId, fetchProjects, fetchPendingReports, fetchScheduledTasks, fetchPendingApprovals]);
 
-  const activeProjects = projects.filter(p => p.estado === "Em execução");
+  // Modificado para incluir 'Planeada' como obra ativa
+  const activeProjects = projects.filter(p => p.estado === "Em execução" || p.estado === "Planeada");
   const delayedProjects = projects.filter(p => p.estado === "Atrasada");
 
   const userName = profileData?.first_name && profileData?.last_name
