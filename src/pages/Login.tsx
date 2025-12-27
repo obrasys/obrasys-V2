@@ -36,10 +36,19 @@ const Login: React.FC = () => {
     (import.meta.env.VITE_APP_BASE_URL as string) ||
     (typeof window !== "undefined" ? window.location.origin : "https://app.obrasys.pt");
 
+  // NOVO: validar env do Supabase no carregamento
+  React.useEffect(() => {
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    const supabaseAnon = import.meta.env.VITE_SUPABASE_ANON_KEY;
+    if (!supabaseUrl || !supabaseAnon) {
+      toast.error("Configuração do Supabase ausente (URL ou ANON KEY). Verifique as variáveis de ambiente.");
+    }
+  }, []);
+
   // Evitar travar no estado de envio: timeout de segurança para resetar o botão
   React.useEffect(() => {
     if (!isSubmitting) return;
-    const t = setTimeout(() => setIsSubmitting(false), 8000);
+    const t = setTimeout(() => setIsSubmitting(false), 12000); // aumentado para 12s
     return () => clearTimeout(t);
   }, [isSubmitting]);
 
@@ -51,37 +60,51 @@ const Login: React.FC = () => {
     },
   });
 
+  // NOVO: helper para timeout explícito
+  async function signInWithTimeout(params: { email: string; password: string }, ms = 12000) {
+    const timeout = new Promise<{ data: any; error: any }>((resolve) =>
+      setTimeout(() => resolve({ data: null, error: new Error("Tempo excedido ao tentar entrar. Verifique a conexão e tente novamente.") }), ms)
+    );
+    const request = supabase.auth.signInWithPassword(params);
+    // corrida entre request e timeout
+    const result = await Promise.race([request as unknown as Promise<{ data: any; error: any }>, timeout]);
+    return result;
+  }
+
   const onSubmit = async (data: LoginFormValues) => {
     setIsSubmitting(true);
     try {
-      const { data: signInData, error } = await supabase.auth.signInWithPassword({
+      const { data: signInData, error } = await signInWithTimeout({
         email: data.email,
         password: data.password,
       });
 
       if (error) {
-        const msg = error.message || "";
-        const needsConfirm = msg.toLowerCase().includes("confirm");
+        const msg = (error.message || "").toLowerCase();
+        const needsConfirm = msg.includes("confirm");
         setNeedsEmailConfirmation(needsConfirm);
 
         if (needsConfirm) {
           toast.error("Email não confirmado. Verifique o seu email ou reenvie a confirmação abaixo.");
-        } else if (msg.toLowerCase().includes("invalid") || msg.toLowerCase().includes("credentials")) {
+        } else if (msg.includes("tempo excedido") || msg.includes("timeout")) {
+          toast.error("Tempo excedido ao iniciar sessão. Verifique a sua ligação e tente novamente.");
+        } else if (msg.includes("invalid") || msg.includes("credentials")) {
           toast.error("Credenciais inválidas. Verifique o e-mail e a palavra-passe.");
         } else {
-          toast.error(`Erro ao iniciar sessão: ${msg}`);
+          toast.error(`Erro ao iniciar sessão: ${error.message}`);
         }
         return;
       }
 
       if (signInData?.session) {
         toast.success('Sessão iniciada com sucesso!');
-        navigate('/dashboard');
+        // Redirecionamento robusto para evitar competição de navegação
+        window.location.assign('/dashboard');
         return;
       }
 
-      toast.success('Sessão iniciada! A redirecionar...');
-      setTimeout(() => navigate('/dashboard'), 500);
+      // Caso raro: sem erro e sem session
+      toast.error('Não foi possível criar a sessão. Tente novamente ou redefina a palavra-passe.');
     } catch (error: any) {
       toast.error(`Ocorreu um erro inesperado: ${error.message}`);
     } finally {
