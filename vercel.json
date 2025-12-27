@@ -1,5 +1,15 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+  "redirects": [
+    {
+      "source": "/(.*)",
+      "destination": "https://app.obrasys.pt/$1",
+      "permanent": true,
+      "has": [
+        { "type": "host", "value": "www.app.obrasys.pt" }
+      ]
+    }
+  ],
   "rewrites": [
     {
       "source": "/(.*)",
