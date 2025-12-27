@@ -29,6 +29,12 @@ const BudgetDetailTable = <TData, TValue>({
             data={allBudgetItems}
             filterColumnId="servico"
             filterPlaceholder="Filtrar por serviço..."
+            mobileHiddenColumnIds={[
+              "capitulo",
+              "unidade",
+              "preco_unitario",
+              "custo_planeado",
+            ]}
           />
         ) : (
           <EmptyState

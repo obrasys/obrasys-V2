@@ -37,6 +37,8 @@ interface DataTableProps<TData, TValue> {
   data: TData[];
   filterColumnId: string;
   filterPlaceholder: string;
+  // NOVO: ids de colunas a esconder em mobile
+  mobileHiddenColumnIds?: string[];
 }
 
 export function DataTable<TData, TValue>({
@@ -44,6 +46,7 @@ export function DataTable<TData, TValue>({
   data,
   filterColumnId,
   filterPlaceholder,
+  mobileHiddenColumnIds = [],
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
@@ -72,20 +75,38 @@ export function DataTable<TData, TValue>({
     },
   });
 
+  // NOVO: esconder colunas menos essenciais em ecrãs pequenos
+  React.useEffect(() => {
+    const mql = window.matchMedia("(max-width: 640px)");
+    const applyMobileVisibility = () => {
+      if (mql.matches && mobileHiddenColumnIds.length > 0) {
+        setColumnVisibility((prev) => {
+          const hidden = Object.fromEntries(
+            mobileHiddenColumnIds.map((id) => [id, false])
+          );
+          return { ...prev, ...hidden };
+        });
+      }
+    };
+    applyMobileVisibility();
+    // Não precisa listener; apenas aplica no carregamento
+  }, [mobileHiddenColumnIds]);
+
   return (
     <div className="w-full">
-      <div className="flex items-center py-4">
+      {/* Toolbar responsiva */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4 py-4">
         <Input
           placeholder={filterPlaceholder}
           value={(table.getColumn(filterColumnId)?.getFilterValue() as string) ?? ""}
           onChange={(event) =>
             table.getColumn(filterColumnId)?.setFilterValue(event.target.value)
           }
-          className="max-w-sm"
+          className="w-full sm:max-w-sm"
         />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="outline" className="ml-auto">
+            <Button variant="outline" className="w-full sm:w-auto sm:ml-auto">
               Colunas <ChevronDown className="ml-2 h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
@@ -110,7 +131,7 @@ export function DataTable<TData, TValue>({
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
-      <div className="rounded-md border overflow-x-auto"> {/* Adicionado overflow-x-auto aqui */}
+      <div className="rounded-md border overflow-x-auto">
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
@@ -154,17 +175,18 @@ export function DataTable<TData, TValue>({
           </TableBody>
         </Table>
       </div>
-      <div className="flex items-center justify-end space-x-2 py-4">
-        <div className="flex-1 text-sm text-muted-foreground">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-4 py-4">
+        <div className="text-sm text-muted-foreground">
           {table.getFilteredSelectedRowModel().rows.length} de{" "}
           {table.getFilteredRowModel().rows.length} linha(s) selecionada(s).
         </div>
-        <div className="space-x-2">
+        <div className="flex gap-2 w-full sm:w-auto">
           <Button
             variant="outline"
             size="sm"
             onClick={() => table.previousPage()}
             disabled={!table.getCanPreviousPage()}
+            className="w-full sm:w-auto"
           >
             Anterior
           </Button>
@@ -173,6 +195,7 @@ export function DataTable<TData, TValue>({
             size="sm"
             onClick={() => table.nextPage()}
             disabled={!table.getCanNextPage()}
+            className="w-full sm:w-auto"
           >
             Próximo
           </Button>
