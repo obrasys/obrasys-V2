@@ -8,11 +8,28 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/components/SessionContextProvider";
 import { Project } from "@/schemas/project-schema";
-import { Invoice, Expense, Payment, InvoiceWithRelations } from "@/schemas/invoicing-schema"; // Import InvoiceWithRelations
+import { Invoice, Expense, Payment, InvoiceWithRelations } from "@/schemas/invoicing-schema";
 import { BudgetDB, BudgetItemDB, BudgetChapterDB } from "@/schemas/budget-schema";
 import { AiAlert } from "@/schemas/ai-alert-schema";
 import { formatCurrency, formatDate } from "@/utils/formatters";
-import { Company } from "@/schemas/profile-schema"; // Import Company schema
+import { Company } from "@/schemas/profile-schema";
+
+// Import modular PDF templates
+import { generateBasePdfTemplate } from "@/components/reports/pdf-templates/base-template";
+import { generateMonthlyFinancialReportContent } from "@/components/reports/pdf-templates/monthly-financial-report-template";
+import { generateCashFlowReportContent } from "@/components/reports/pdf-templates/cash-flow-report-template";
+import { generateProjectFinancialReportContent } from "@/components/reports/pdf-templates/project-financial-report-template";
+import { generateInvoicesReportContent } from "@/components/reports/pdf-templates/invoices-report-template";
+import { generateExpensesReportContent } from "@/components/reports/pdf-templates/expenses-report-template";
+import { generatePayrollReportContent } from "@/components/reports/pdf-templates/payroll-report-template";
+import { generateProjectProgressReportContent } from "@/components/reports/pdf-templates/project-progress-report-template";
+import { generateProjectBudgetReportContent } from "@/components/reports/pdf-templates/project-budget-report-template";
+import { generateArticlesCatalogReportContent } from "@/components/reports/pdf-templates/articles-catalog-report-template";
+import { generatePriceHistoryReportContent } from "@/components/reports/pdf-templates/price-history-report-template";
+import { generateAiAlertsReportContent } from "@/components/reports/pdf-templates/ai-alerts-report-template";
+import { generateComplianceChecklistReportContent } from "@/components/reports/pdf-templates/compliance-checklist-report-template";
+import { generateLivroDeObraReportContent } from "@/components/reports/pdf-templates/livro-de-obra-report-template";
+
 
 interface UseReportGenerationResult {
   userCompanyId: string | null;
@@ -91,693 +108,6 @@ export function useReportGeneration(): UseReportGenerationResult {
     loadInitialData();
   }, [userCompanyId, fetchProjects]);
 
-  const generatePdfContent = useCallback((reportName: string, reportData: any) => {
-    const currentDate = format(new Date(), "dd/MM/yyyy HH:mm", { locale: pt });
-    const companyName = reportData.company?.name || "Obra Sys Construções";
-    const financialResponsible = "João Silva"; // Placeholder for now
-    const projectName = reportData.project?.nome || 'N/A';
-    const clientName = reportData.project?.client_name || 'N/A';
-    const projectPeriod = reportData.project?.created_at && reportData.project?.prazo ? `${format(parseISO(reportData.project.created_at), "dd/MM/yyyy")} - ${format(parseISO(reportData.project.prazo), "dd/MM/yyyy")}` : 'N/A';
-    const reportMonthYear = reportData.monthYear ? format(parseISO(reportData.monthYear), "MMMM yyyy", { locale: pt }) : 'N/A';
-
-    let content = `
-      <!DOCTYPE html>
-      <html lang="pt">
-      <head>
-          <meta charset="UTF-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <title>Relatório: ${reportName}</title>
-          <link href="https://fonts.googleapis.com/css2?family=Red+Hat+Display:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-          <style>
-              body { font-family: 'Red Hat Display', sans-serif; margin: 40px; color: #333; line-height: 1.6; }
-              h1 { color: #00679d; text-align: center; margin-bottom: 30px; }
-              h2 { color: #00679d; border-bottom: 1px solid #eee; padding-bottom: 10px; margin-top: 40px; margin-bottom: 20px; }
-              table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-              th, td { border: 1px solid #ccc; padding: 10px; text-align: left; }
-              th { background-color: #f2f2f2; font-weight: 600; }
-              .header-info { margin-bottom: 30px; background-color: #f9f9f9; padding: 15px; border-radius: 8px; }
-              .header-info p { margin: 8px 0; font-size: 0.95em; }
-              .summary { margin-top: 30px; padding: 15px; background-color: #e6f7ff; border-left: 5px solid #00679d; border-radius: 8px; }
-              .summary p { margin: 5px 0; font-weight: 500; }
-              .footer { margin-top: 50px; font-size: 0.75em; text-align: center; color: #777; border-top: 1px solid #eee; padding-top: 20px; }
-              .no-print { position: fixed; top: 20px; right: 20px; z-index: 1000; }
-              .cover-page { text-align: center; page-break-after: always; height: 100vh; display: flex; flex-direction: column; justify-content: center; align-items: center; }
-              .cover-page h1 { font-size: 3em; margin-bottom: 20px; }
-              .cover-page p { font-size: 1.5em; margin-bottom: 10px; }
-              @media print {
-                  .no-print { display: none; }
-              }
-          </style>
-      </head>
-      <body>
-          <div class="no-print">
-            <button onclick="window.print()" style="padding: 10px 20px; background-color: #00679d; color: white; border: none; border-radius: 5px; cursor: pointer; margin-right: 10px;">Imprimir</button>
-            <button onclick="window.close()" style="padding: 10px 20px; background-color: #ccc; color: #333; border: none; border-radius: 5px; cursor: pointer;">Fechar</button>
-          </div>
-    `;
-
-    if (reportName === "Relatório Financeiro Mensal") {
-      const { totalRevenue, totalExpenses, profitLoss, prevMonthComparison, revenueBySource, expensesByCategory } = reportData;
-      content += `
-        <div class="cover-page">
-            <h1>Relatório Financeiro Mensal</h1>
-            <p><strong>${companyName}</strong></p>
-            <p>Mês / Ano: ${reportMonthYear}</p>
-            <p>Responsável Financeiro: ${financialResponsible}</p>
-        </div>
-
-        <h1>Relatório Financeiro Mensal</h1>
-        <div class="header-info">
-            <p><strong>Data de Geração:</strong> ${currentDate}</p>
-            <p><strong>Empresa:</strong> ${companyName}</p>
-            <p><strong>Mês / Ano:</strong> ${reportMonthYear}</p>
-        </div>
-
-        <h2>Resumo Executivo</h2>
-        <div class="summary">
-            <p><strong>Receita total do mês:</strong> ${formatCurrency(totalRevenue)}</p>
-            <p><strong>Despesas totais:</strong> ${formatCurrency(totalExpenses)}</p>
-            <p><strong>Resultado (Lucro / Prejuízo):</strong> ${formatCurrency(profitLoss)} (${profitLoss >= 0 ? 'Lucro' : 'Prejuízo'})</p>
-            <p><strong>Comparação com mês anterior:</strong> ${prevMonthComparison.toFixed(1)}%</p>
-        </div>
-
-        <h2>Receitas</h2>
-        <table>
-            <thead>
-                <tr>
-                    <th>Fonte</th>
-                    <th style="text-align: right;">Valor (€)</th>
-                    <th style="text-align: right;">%</th>
-                </tr>
-            </thead>
-            <tbody>
-                ${revenueBySource.map((item: any) => `
-                  <tr><td>${item.source}</td><td style="text-align: right;">${formatCurrency(item.value)}</td><td style="text-align: right;">${item.percentage.toFixed(1)}%</td></tr>
-                `).join('')}
-                <tr><td><strong>Total</strong></td><td style="text-align: right;"><strong>${formatCurrency(totalRevenue)}</strong></td><td style="text-align: right;"><strong>100%</strong></td></tr>
-            </tbody>
-        </table>
-
-        <h2>Despesas</h2>
-        <table>
-            <thead>
-                <tr>
-                    <th>Categoria</th>
-                    <th style="text-align: right;">Valor (€)</th>
-                </tr>
-            </thead>
-            <tbody>
-                ${expensesByCategory.map((item: any) => `
-                  <tr><td>${item.category}</td><td style="text-align: right;">${formatCurrency(item.value)}</td></tr>
-                `).join('')}
-                <tr><td><strong>Total</strong></td><td style="text-align: right;"><strong>${formatCurrency(totalExpenses)}</strong></td></tr>
-            </tbody>
-        </table>
-
-        <h2>Resultado Financeiro</h2>
-        <div class="summary">
-            <p><strong>Lucro bruto:</strong> ${formatCurrency(totalRevenue - totalExpenses)}</p>
-            <p><strong>Lucro líquido:</strong> ${formatCurrency(profitLoss)}</p>
-            <p><strong>Margem (%):</strong> ${totalRevenue > 0 ? ((profitLoss / totalRevenue) * 100).toFixed(1) : 0}%</p>
-        </div>
-
-        <h2>Observações</h2>
-        <p>
-            <ul>
-                <li>Custos fora do padrão: N/A</li>
-                <li>Receitas extraordinárias: N/A</li>
-                <li>Alertas: N/A</li>
-            </ul>
-        </p>
-      `;
-    } else if (reportName === "Relatório de Fluxo de Caixa") {
-      const { initialBalance, totalEntries, totalExits, finalBalance, entries, exits, forecast } = reportData;
-      content += `
-        <div class="cover-page">
-            <h1>Relatório de Fluxo de Caixa</h1>
-            <p><strong>${companyName}</strong></p>
-            <p>Mês / Ano: ${reportData.period}</p>
-            <p>Responsável Financeiro: ${financialResponsible}</p>
-        </div>
-
-        <h1>Relatório de Fluxo de Caixa</h1>
-        <div class="header-info">
-            <p><strong>Data de Geração:</strong> ${currentDate}</p>
-            <p><strong>Empresa:</strong> ${companyName}</p>
-            <p><strong>Período:</strong> ${reportData.period}</p>
-        </div>
-
-        <h2>Entradas</h2>
-        <table>
-            <thead>
-                <tr>
-                    <th>Data</th>
-                    <th>Origem</th>
-                    <th style="text-align: right;">Valor (€)</th>
-                </tr>
-            </thead>
-            <tbody>
-                ${entries.map((entry: any) => `
-                  <tr><td>${format(parseISO(entry.date), "dd/MM/yyyy")}</td><td>${entry.origin}</td><td style="text-align: right;">${formatCurrency(entry.amount)}</td></tr>
-                `).join('')}
-            </tbody>
-        </table>
-
-        <h2>Saídas</h2>
-        <table>
-            <thead>
-                <tr>
-                    <th>Data</th>
-                    <th>Destino</th>
-                    <th style="text-align: right;">Valor (€)</th>
-                </tr>
-            </thead>
-            <tbody>
-                ${exits.map((exit: any) => `
-                  <tr><td>${format(parseISO(exit.date), "dd/MM/yyyy")}</td><td>${exit.destination}</td><td style="text-align: right;">${formatCurrency(exit.amount)}</td></tr>
-                `).join('')}
-            </tbody>
-        </table>
-
-        <h2>Resumo</h2>
-        <div class="summary">
-            <p><strong>Saldo inicial:</strong> ${formatCurrency(initialBalance)}</p>
-            <p><strong>Total entradas:</strong> ${formatCurrency(totalEntries)}</p>
-            <p><strong>Total saídas:</strong> ${formatCurrency(totalExits)}</p>
-            <p><strong>Saldo final:</strong> ${formatCurrency(finalBalance)}</p>
-        </div>
-
-        <h2>Previsão Próximos 30/60/90 dias</h2>
-        <table>
-            <thead>
-                <tr>
-                    <th>Período</th>
-                    <th style="text-align: right;">Saldo Previsto (€)</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr><td>Próximos 30 dias</td><td style="text-align: right;">${formatCurrency(forecast.next30Days)}</td></tr>
-                <tr><td>Próximos 60 dias</td><td style="text-align: right;">${formatCurrency(forecast.next60Days)}</td></tr>
-                <tr><td>Próximos 90 dias</td><td style="text-align: right;">${formatCurrency(forecast.next90Days)}</td></tr>
-            </tbody>
-        </table>
-      `;
-    } else if (reportName === "Relatório Financeiro por Projeto / Obra") {
-      const { project, budget, budgetItems, projectInvoices, projectAlerts } = reportData;
-      const totalBudgeted = budget?.total_planeado || 0;
-      const totalRealCost = budget?.total_executado || 0;
-      const totalInvoiced = projectInvoices.reduce((sum: number, inv: Invoice) => sum + inv.total_amount, 0);
-      const totalPaidInvoices = projectInvoices.reduce((sum: number, inv: Invoice) => sum + (inv.paid_amount || 0), 0);
-      const balanceToReceive = totalInvoiced - totalPaidInvoices;
-      const profitLoss = totalInvoiced - totalRealCost;
-      const margin = totalInvoiced > 0 ? (profitLoss / totalInvoiced) * 100 : 0;
-
-      content += `
-        <div class="cover-page">
-            <h1>Relatório Financeiro por Projeto / Obra</h1>
-            <p><strong>${companyName}</strong></p>
-            <p>Projeto: ${projectName}</p>
-            <p>Período: ${projectPeriod}</p>
-        </div>
-
-        <h1>Relatório Financeiro por Projeto / Obra</h1>
-        <div class="header-info">
-            <p><strong>Data de Geração:</strong> ${currentDate}</p>
-            <p><strong>Empresa:</strong> ${companyName}</p>
-            <p><strong>Projeto / Obra:</strong> ${projectName}</p>
-            <p><strong>Cliente:</strong> ${clientName}</p>
-            <p><strong>Período:</strong> ${projectPeriod}</p>
-        </div>
-
-        <h2>Orçamento Previsto</h2>
-        <table>
-            <thead>
-                <tr>
-                    <th>Item</th>
-                    <th style="text-align: right;">Valor (€)</th>
-                </tr>
-            </thead>
-            <tbody>
-                ${budgetItems.map((item: BudgetItemDB) => `
-                  <tr><td>${item.servico}</td><td style="text-align: right;">${formatCurrency(item.custo_planeado)}</td></tr>
-                `).join('')}
-                <tr><td><strong>Total Orçamento</strong></td><td style="text-align: right;"><strong>${formatCurrency(totalBudgeted)}</strong></td></tr>
-            </tbody>
-        </table>
-
-        <h2>Custos Reais</h2>
-        <table>
-            <thead>
-                <tr>
-                    <th>Categoria</th>
-                    <th style="text-align: right;">Previsto (€)</th>
-                    <th style="text-align: right;">Real (€)</th>
-                    <th style="text-align: right;">Diferença (€)</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr><td>Mão de Obra</td><td style="text-align: right;">${formatCurrency(budgetItems.reduce((sum: number, item: BudgetItemDB) => sum + (item.custo_planeado * (item.tipo === 'equipe' ? 1 : 0)), 0))}</td><td style="text-align: right;">${formatCurrency(budgetItems.reduce((sum: number, item: BudgetItemDB) => sum + (item.custo_real_mao_obra || 0), 0))}</td><td style="text-align: right;">${formatCurrency(budgetItems.reduce((sum: number, item: BudgetItemDB) => sum + (item.custo_real_mao_obra || 0) - (item.custo_planeado * (item.tipo === 'equipe' ? 1 : 0)), 0))}</td></tr>
-                <tr><td>Materiais</td><td style="text-align: right;">${formatCurrency(budgetItems.reduce((sum: number, item: BudgetItemDB) => sum + (item.custo_planeado * (item.tipo === 'material' ? 1 : 0)), 0))}</td><td style="text-align: right;">${formatCurrency(budgetItems.reduce((sum: number, item: BudgetItemDB) => sum + (item.custo_real_material || 0), 0))}</td><td style="text-align: right;">${formatCurrency(budgetItems.reduce((sum: number, item: BudgetItemDB) => sum + (item.custo_real_material || 0) - (item.custo_planeado * (item.tipo === 'material' ? 1 : 0)), 0))}</td></tr>
-                <tr><td>Serviços/Outros</td><td style="text-align: right;">${formatCurrency(budgetItems.reduce((sum: number, item: BudgetItemDB) => sum + (item.custo_planeado * (item.tipo === 'servico' ? 1 : 0)), 0))}</td><td style="text-align: right;">${formatCurrency(budgetItems.reduce((sum: number, item: BudgetItemDB) => sum + ((item.custo_executado || 0) - (item.custo_real_material || 0) - (item.custo_real_mao_obra || 0)), 0))}</td><td style="text-align: right;">${formatCurrency(budgetItems.reduce((sum: number, item: BudgetItemDB) => sum + ((item.custo_executado || 0) - (item.custo_real_material || 0) - (item.custo_real_mao_obra || 0)) - (item.custo_planeado * (item.tipo === 'servico' ? 1 : 0)), 0))}</td></tr>
-                <tr><td><strong>Total Custos</strong></td><td style="text-align: right;"><strong>${formatCurrency(totalBudgeted)}</strong></td><td style="text-align: right;"><strong>${formatCurrency(totalRealCost)}</strong></td><td style="text-align: right;"><strong>${formatCurrency(totalRealCost - totalBudgeted)}</strong></td></tr>
-            </tbody>
-        </table>
-
-        <h2>Receita</h2>
-        <div class="summary">
-            <p><strong>Valor contratado:</strong> ${formatCurrency(totalBudgeted)}</p>
-            <p><strong>Valores faturados:</strong> ${formatCurrency(totalInvoiced)}</p>
-            <p><strong>Saldo a receber:</strong> ${formatCurrency(balanceToReceive)}</p>
-        </div>
-
-        <h2>Resultado da Obra</h2>
-        <div class="summary">
-            <p><strong>Lucro / Prejuízo:</strong> ${formatCurrency(profitLoss)} (${profitLoss >= 0 ? 'Lucro' : 'Prejuízo'})</p>
-            <p><strong>Margem (%):</strong> ${margin.toFixed(2)}%</p>
-        </div>
-
-        <h2>Alertas</h2>
-        <p>
-            <ul>
-                ${projectAlerts.length > 0 ? projectAlerts.map((alert: AiAlert) => `
-                  <li><span style="font-weight: bold; color: ${alert.severity === 'critical' ? 'red' : alert.severity === 'warning' ? 'orange' : 'blue'};">[${alert.severity?.toUpperCase()}]</span> ${alert.title}: ${alert.message}</li>
-                `).join('') : '<li>Nenhum alerta crítico ou de aviso para este projeto.</li>'}
-            </ul>
-        </p>
-      `;
-    } else if (reportName === "Faturas") {
-      const { invoices } = reportData;
-      const totalInvoiced = invoices.reduce((sum: number, inv: InvoiceWithRelations) => sum + inv.total_amount, 0);
-      const totalPaidInvoices = invoices.reduce((sum: number, inv: InvoiceWithRelations) => sum + (inv.paid_amount || 0), 0);
-      const totalPendingInvoices = totalInvoiced - totalPaidInvoices;
-
-      content += `
-        <h1>Relatório de Faturas</h1>
-        <div class="header-info">
-            <p><strong>Data de Geração:</strong> ${currentDate}</p>
-            <p><strong>Empresa:</strong> ${companyName}</p>
-            <p><strong>Período:</strong> ${reportData.period}</p>
-        </div>
-        <h2>Visão Geral das Faturas</h2>
-        <table>
-            <thead>
-                <tr>
-                    <th>Nº Fatura</th>
-                    <th>Cliente</th>
-                    <th style="text-align: right;">Valor Total</th>
-                    <th style="text-align: right;">Valor Pago</th>
-                    <th>Estado</th>
-                    <th>Data Vencimento</th>
-                </tr>
-            </thead>
-            <tbody>
-                ${invoices.map((inv: InvoiceWithRelations) => `
-                  <tr>
-                    <td>${inv.invoice_number}</td>
-                    <td>${inv.clients?.nome || 'N/A'}</td>
-                    <td style="text-align: right;">${formatCurrency(inv.total_amount)}</td>
-                    <td style="text-align: right;">${formatCurrency(inv.paid_amount || 0)}</td>
-                    <td>${inv.status.replace('_', ' ')}</td>
-                    <td>${format(parseISO(inv.due_date), "dd/MM/yyyy")}</td>
-                  </tr>
-                `).join('')}
-            </tbody>
-        </table>
-        <div class="summary">
-            <p><strong>Total Faturado:</strong> ${formatCurrency(totalInvoiced)}</p>
-            <p><strong>Total Recebido:</strong> ${formatCurrency(totalPaidInvoices)}</p>
-            <p><strong>Total Pendente:</strong> ${formatCurrency(totalPendingInvoices)}</p>
-        </div>
-      `;
-    } else if (reportName === "Despesas") {
-      const { expenses } = reportData;
-      const totalExpenses = expenses.reduce((sum: number, exp: Expense) => sum + exp.amount, 0);
-      const totalPaidExpenses = expenses.filter((exp: Expense) => exp.status === "paid").reduce((sum: number, exp: Expense) => sum + exp.amount, 0);
-      const totalPendingExpenses = expenses.filter((exp: Expense) => exp.status === "pending" || exp.status === "overdue").reduce((sum: number, exp: Expense) => sum + exp.amount, 0);
-
-      content += `
-        <h1>Relatório de Despesas</h1>
-        <div class="header-info">
-            <p><strong>Data de Geração:</strong> ${currentDate}</p>
-            <p><strong>Empresa:</strong> ${companyName}</p>
-            <p><strong>Período:</strong> ${reportData.period}</p>
-        </div>
-        <h2>Análise Detalhada das Despesas</h2>
-        <table>
-            <thead>
-                <tr>
-                    <th>Fornecedor</th>
-                    <th>Descrição</th>
-                    <th style="text-align: right;">Valor</th>
-                    <th>Estado</th>
-                    <th>Data Vencimento</th>
-                </tr>
-            </thead>
-            <tbody>
-                ${expenses.map((exp: Expense) => `
-                  <tr>
-                    <td>${exp.supplier_name}</td>
-                    <td>${exp.description}</td>
-                    <td style="text-align: right;">${formatCurrency(exp.amount)}</td>
-                    <td>${exp.status.replace('_', ' ')}</td>
-                    <td>${format(parseISO(exp.due_date), "dd/MM/yyyy")}</td>
-                  </tr>
-                `).join('')}
-            </tbody>
-        </table>
-        <div class="summary">
-            <p><strong>Total de Despesas:</strong> ${formatCurrency(totalExpenses)}</p>
-            <p><strong>Total Pago:</strong> ${formatCurrency(totalPaidExpenses)}</p>
-            <p><strong>Total Pendente:</strong> ${formatCurrency(totalPendingExpenses)}</p>
-        </div>
-      `;
-    } else if (reportName === "Folha de Pagamento") {
-      const { payrollEntries } = reportData;
-      const totalPayrollCost = payrollEntries.reduce((sum: number, entry: any) => sum + entry.amount, 0);
-      const totalPaidPayroll = payrollEntries.filter((entry: any) => entry.status === "paid").reduce((sum: number, entry: any) => sum + entry.amount, 0);
-      const totalPendingPayroll = payrollEntries.filter((entry: any) => entry.status === "pending" || entry.status === "processed").reduce((sum: number, entry: any) => sum + entry.amount, 0);
-
-      content += `
-        <h1>Relatório de Folha de Pagamento</h1>
-        <div class="header-info">
-            <p><strong>Data de Geração:</strong> ${currentDate}</p>
-            <p><strong>Empresa:</strong> ${companyName}</p>
-            <p><strong>Período:</strong> ${reportData.period}</p>
-        </div>
-        <h2>Custos de Mão de Obra</h2>
-        <table>
-            <thead>
-                <tr>
-                    <th>Colaborador</th>
-                    <th>Obra</th>
-                    <th>Tipo</th>
-                    <th style="text-align: right;">Valor</th>
-                    <th>Data</th>
-                    <th>Estado</th>
-                </tr>
-            </thead>
-            <tbody>
-                ${payrollEntries.map((entry: any) => `
-                  <tr>
-                    <td>${entry.users?.first_name || 'N/A'} ${entry.users?.last_name || ''}</td>
-                    <td>${entry.projects?.nome || 'N/A'}</td>
-                    <td>${entry.type.replace('_', ' ')}</td>
-                    <td style="text-align: right;">${formatCurrency(entry.amount)}</td>
-                    <td>${format(parseISO(entry.entry_date), "dd/MM/yyyy")}</td>
-                    <td>${entry.status.replace('_', ' ')}</td>
-                  </tr>
-                `).join('')}
-            </tbody>
-        </table>
-        <div class="summary">
-            <p><strong>Custo Total de Mão de Obra:</strong> ${formatCurrency(totalPayrollCost)}</p>
-            <p><strong>Total Pago:</strong> ${formatCurrency(totalPaidPayroll)}</p>
-            <p><strong>Total Pendente/Processado:</strong> ${formatCurrency(totalPendingPayroll)}</p>
-        </div>
-      `;
-    } else if (reportName === "Progresso da Obra") {
-      const { project, scheduleTasks } = reportData;
-      const totalPlannedCost = project?.custo_planeado || 0;
-      const totalRealCost = project?.custo_real || 0;
-      const deviation = totalRealCost - totalPlannedCost;
-
-      content += `
-        <h1>Relatório de Progresso da Obra</h1>
-        <div class="cover-page">
-            <h1>Relatório de Progresso da Obra</h1>
-            <p><strong>${companyName}</strong></p>
-            <p>Projeto: ${projectName}</p>
-            <p>Período: ${projectPeriod}</p>
-        </div>
-
-        <h1>Relatório de Progresso da Obra</h1>
-        <div class="header-info">
-            <p><strong>Data de Geração:</strong> ${currentDate}</p>
-            <p><strong>Empresa:</strong> ${companyName}</p>
-            <p><strong>Projeto / Obra:</strong> ${projectName}</p>
-            <p><strong>Cliente:</strong> ${clientName}</p>
-            <p><strong>Período:</strong> ${projectPeriod}</p>
-        </div>
-        <h2>Acompanhamento de Progresso Físico e Financeiro</h2>
-        <table>
-            <thead>
-                <tr>
-                    <th>Fase / Capítulo</th>
-                    <th>Estado</th>
-                    <th style="text-align: right;">Progresso (%)</th>
-                    <th>Data Início</th>
-                    <th>Data Fim</th>
-                    <th>Duração (dias)</th>
-                </tr>
-            </thead>
-            <tbody>
-                ${scheduleTasks.map((task: any) => `
-                  <tr>
-                    <td>${task.capitulo}</td>
-                    <td>${task.estado}</td>
-                    <td style="text-align: right;">${task.progresso}%</td>
-                    <td>${task.data_inicio ? format(parseISO(task.data_inicio), "dd/MM/yyyy") : 'N/A'}</td>
-                    <td>${task.data_fim ? format(parseISO(task.data_fim), "dd/MM/yyyy") : 'N/A'}</td>
-                    <td style="text-align: right;">${task.duracao_dias || 'N/A'}</td>
-                  </tr>
-                `).join('')}
-            </tbody>
-        </table>
-        <div class="summary">
-            <p><strong>Progresso Geral da Obra:</strong> ${project?.progresso || 0}%</p>
-            <p><strong>Custo Planeado:</strong> ${formatCurrency(totalPlannedCost)}</p>
-            <p><strong>Custo Real:</strong> ${formatCurrency(totalRealCost)}</p>
-            <p><strong>Desvio de Custos:</strong> ${formatCurrency(deviation)}</p>
-        </div>
-      `;
-    } else if (reportName === "Orçamento da Obra") {
-      const { project, budget, budgetItems } = reportData;
-      const totalBudgeted = budget?.total_planeado || 0;
-      const totalExecuted = budget?.total_executado || 0;
-      const deviation = totalExecuted - totalBudgeted;
-      const deviationPercentage = totalBudgeted > 0 ? (deviation / totalBudgeted) * 100 : 0;
-
-      content += `
-        <div class="cover-page">
-            <h1>Relatório de Orçamento da Obra</h1>
-            <p><strong>${companyName}</strong></p>
-            <p>Projeto: ${projectName}</p>
-            <p>Período: ${projectPeriod}</p>
-        </div>
-
-        <h1>Relatório de Orçamento da Obra</h1>
-        <div class="header-info">
-            <p><strong>Data de Geração:</strong> ${currentDate}</p>
-            <p><strong>Empresa:</strong> ${companyName}</p>
-            <p><strong>Projeto / Obra:</strong> ${projectName}</p>
-            <p><strong>Cliente:</strong> ${clientName}</p>
-            <p><strong>Período:</strong> ${projectPeriod}</p>
-        </div>
-        <h2>Comparativo de Orçamento (Planeado vs Real)</h2>
-        <table>
-            <thead>
-                <tr>
-                    <th>Serviço / Item</th>
-                    <th style="text-align: right;">Qtd.</th>
-                    <th>Un.</th>
-                    <th style="text-align: right;">Preço Unit.</th>
-                    <th style="text-align: right;">Custo Planeado</th>
-                    <th style="text-align: right;">Custo Executado</th>
-                    <th style="text-align: right;">Desvio (€)</th>
-                </tr>
-            </thead>
-            <tbody>
-                ${budgetItems.map((item: BudgetItemDB) => `
-                  <tr>
-                    <td>${item.servico}</td>
-                    <td style="text-align: right;">${item.quantidade}</td>
-                    <td>${item.unidade}</td>
-                    <td style="text-align: right;">${formatCurrency(item.preco_unitario)}</td>
-                    <td style="text-align: right;">${formatCurrency(item.custo_planeado)}</td>
-                    <td style="text-align: right;">${formatCurrency(item.custo_executado)}</td>
-                    <td style="text-align: right;">${formatCurrency(item.custo_executado - item.custo_planeado)}</td>
-                  </tr>
-                `).join('')}
-            </tbody>
-        </table>
-        <div class="summary">
-            <p><strong>Orçamento Total:</strong> ${formatCurrency(totalBudgeted)}</p>
-            <p><strong>Custo Executado:</strong> ${formatCurrency(totalExecuted)}</p>
-            <p><strong>Desvio Total:</strong> ${formatCurrency(deviation)} (${deviationPercentage.toFixed(1)}%)</p>
-        </div>
-      `;
-    } else if (reportName === "Catálogo de Artigos") {
-      const { articles } = reportData;
-      const totalArticles = articles.length;
-      const averagePrice = totalArticles > 0 ? articles.reduce((sum: number, article: any) => sum + article.preco_unitario, 0) / totalArticles : 0;
-
-      content += `
-        <h1>Relatório de Catálogo de Artigos</h1>
-        <div class="cover-page">
-            <h1>Relatório de Catálogo de Artigos</h1>
-            <p><strong>${companyName}</strong></p>
-            <p>Data de Geração: ${currentDate}</p>
-        </div>
-
-        <h1>Relatório de Catálogo de Artigos</h1>
-        <div class="header-info">
-            <p><strong>Data de Geração:</strong> ${currentDate}</p>
-            <p><strong>Empresa:</strong> ${companyName}</p>
-        </div>
-        <h2>Lista Completa de Artigos de Trabalho</h2>
-        <table>
-            <thead>
-                <tr>
-                    <th>Código</th>
-                    <th>Descrição</th>
-                    <th>Unidade</th>
-                    <th>Tipo</th>
-                    <th style="text-align: right;">Preço Unitário</th>
-                    <th>Categoria</th>
-                </tr>
-            </thead>
-            <tbody>
-                ${articles.map((article: any) => `
-                  <tr>
-                    <td>${article.codigo}</td>
-                    <td>${article.descricao}</td>
-                    <td>${article.unidade}</td>
-                    <td>${article.tipo}</td>
-                    <td style="text-align: right;">${formatCurrency(article.preco_unitario)}</td>
-                    <td>${article.categories?.nome || 'N/A'}</td>
-                  </tr>
-                `).join('')}
-            </tbody>
-        </table>
-        <div class="summary">
-            <p><strong>Total de Artigos:</strong> ${totalArticles}</p>
-            <p><strong>Preço Médio por Artigo:</strong> ${formatCurrency(averagePrice)}</p>
-        </div>
-      `;
-    } else if (reportName === "Histórico de Preços") {
-      content += `
-        <h1>Relatório de Histórico de Preços</h1>
-        <div class="cover-page">
-            <h1>Relatório de Histórico de Preços</h1>
-            <p><strong>${companyName}</strong></p>
-            <p>Data de Geração: ${currentDate}</p>
-        </div>
-
-        <h1>Relatório de Histórico de Preços</h1>
-        <div class="header-info">
-            <p><strong>Data de Geração:</strong> ${currentDate}</p>
-            <p><strong>Empresa:</strong> ${companyName}</p>
-        </div>
-        <h2>Evolução dos Preços dos Artigos</h2>
-        <p>Este relatório requer dados de histórico de preços que ainda não estão implementados.</p>
-        <div class="summary">
-            <p><strong>Artigo Mais Volátil:</strong> Cimento (Exemplo)</p>
-            <p><strong>Aumento Médio Anual:</strong> 5% (Exemplo)</p>
-        </div>
-      `;
-    } else if (reportName === "Alertas de IA") {
-      const { alerts } = reportData;
-      content += `
-        <h1>Relatório de Alertas de IA</h1>
-        <div class="cover-page">
-            <h1>Relatório de Alertas de IA</h1>
-            <p><strong>${companyName}</strong></p>
-            <p>Data de Geração: ${currentDate}</p>
-        </div>
-
-        <h1>Relatório de Alertas de IA</h1>
-        <div class="header-info">
-            <p><strong>Data de Geração:</strong> ${currentDate}</p>
-            <p><strong>Empresa:</strong> ${companyName}</p>
-        </div>
-        <h2>Alertas Gerados pelo Assistente de IA</h2>
-        ${alerts.length > 0 ? `
-        <table>
-            <thead>
-                <tr>
-                    <th>Projeto</th>
-                    <th>Título</th>
-                    <th>Mensagem</th>
-                    <th>Severidade</th>
-                    <th>Data</th>
-                </tr>
-            </thead>
-            <tbody>
-                ${alerts.map((alert: AiAlert) => `
-                  <tr>
-                    <td>${alert.project_name || 'N/A'}</td>
-                    <td>${alert.title}</td>
-                    <td>${alert.message}</td>
-                    <td>${alert.severity?.replace('_', ' ') || 'N/A'}</td>
-                    <td>${alert.created_at ? format(parseISO(alert.created_at), "dd/MM/yyyy HH:mm") : 'N/A'}</td>
-                  </tr>
-                `).join('')}
-            </tbody>
-        </table>
-        ` : `<p style="text-align: center; margin-top: 20px; color: #777;">Nenhum alerta de IA encontrado.</p>`}
-      `;
-    } else if (reportName === "Checklist de Conformidade") {
-      content += `
-        <h1>Relatório de Checklist de Conformidade</h1>
-        <div class="cover-page">
-            <h1>Relatório de Checklist de Conformidade</h1>
-            <p><strong>${companyName}</strong></p>
-            <p>Data de Geração: ${currentDate}</p>
-        </div>
-
-        <h1>Relatório de Checklist de Conformidade</h1>
-        <div class="header-info">
-            <p><strong>Data de Geração:</strong> ${currentDate}</p>
-            <p><strong>Empresa:</strong> ${companyName}</p>
-        </div>
-        <h2>Estado das Verificações de Conformidade</h2>
-        <p>Este relatório apresentaria o estado atual do checklist de conformidade.</p>
-        <div class="summary">
-            <p><strong>Itens Concluídos:</strong> 20/25 (Exemplo)</p>
-            <p><strong>Conformidade Geral:</strong> 80% (Exemplo)</p>
-        </div>
-      `;
-    } else if (reportName === "Livro de Obra Digital") {
-      content += `
-        <h1>Relatório do Livro de Obra Digital</h1>
-        <div class="cover-page">
-            <h1>Relatório do Livro de Obra Digital</h1>
-            <p><strong>${companyName}</strong></p>
-            <p>Data de Geração: ${currentDate}</p>
-        </div>
-
-        <h1>Relatório do Livro de Obra Digital</h1>
-        <div class="header-info">
-            <p><strong>Data de Geração:</strong> ${currentDate}</p>
-            <p><strong>Empresa:</strong> ${companyName}</p>
-        </div>
-        <h2>Resumo dos Livros de Obra</h2>
-        <p>Este relatório apresentaria um resumo dos livros de obra existentes, com links para os detalhes.</p>
-        <div class="summary">
-            <p><strong>Livros de Obra Ativos:</strong> 3 (Exemplo)</p>
-            <p><strong>Última Atualização:</strong> ${currentDate}</p>
-        </div>
-      `;
-    }
-
-    content += `
-          <div class="footer">
-              <p>Documento gerado automaticamente pelo Obra Sys.</p>
-          </div>
-      </body>
-      </html>
-    `;
-
-    const printWindow = window.open('', '_blank');
-    if (printWindow) {
-      printWindow.document.write(content);
-      printWindow.document.close();
-      printWindow.focus();
-    } else {
-      toast.error("Não foi possível abrir a janela de impressão. Verifique as configurações de pop-up.");
-    }
-  }, [formatCurrency, formatDate]); // Added formatCurrency and formatDate to dependencies
-
   const handleGenerateReportClick = useCallback(async (reportName: string, selectedMonth: string, selectedProjectIdForReport: string | null) => {
     if (!userCompanyId) {
       toast.error("ID da empresa não encontrado. Por favor, faça login novamente.");
@@ -785,6 +115,8 @@ export function useReportGeneration(): UseReportGenerationResult {
     }
     setIsLoadingReport(true);
     let reportData: any = { company: null, monthYear: selectedMonth };
+    let reportContentHtml = '';
+    const currentDate = format(new Date(), "dd/MM/yyyy HH:mm", { locale: pt });
 
     try {
       // Fetch company data
@@ -795,6 +127,7 @@ export function useReportGeneration(): UseReportGenerationResult {
         .single();
       if (companyError) console.error("Error fetching company data:", companyError);
       reportData.company = company;
+      const companyName = company?.name || "Obra Sys Construções";
 
       const startOfSelectedMonth = startOfMonth(parseISO(selectedMonth));
       const endOfSelectedMonth = endOfMonth(parseISO(selectedMonth));
@@ -856,6 +189,7 @@ export function useReportGeneration(): UseReportGenerationResult {
           expensesByCategory,
           period: `${format(startOfSelectedMonth, "dd/MM/yyyy")} - ${format(endOfSelectedMonth, "dd/MM/yyyy")}`,
         };
+        reportContentHtml = generateMonthlyFinancialReportContent(reportData, companyName, currentDate);
 
       } else if (reportName === "Relatório de Fluxo de Caixa") {
         // Fetch all payments and expenses for the year to calculate initial balance
@@ -896,7 +230,7 @@ export function useReportGeneration(): UseReportGenerationResult {
         const totalEntries = (currentMonthPayments || []).reduce((sum, p) => sum + p.amount, 0);
         const entries = (currentMonthPayments || []).map(p => ({
           date: p.payment_date,
-          origin: `Pagamento Fatura ${p.invoices?.[0]?.invoice_number || 'N/A'}`, // Corrected access
+          origin: `Pagamento Fatura ${p.invoices?.[0]?.invoice_number || 'N/A'}`,
           amount: p.amount,
         }));
 
@@ -935,6 +269,7 @@ export function useReportGeneration(): UseReportGenerationResult {
           forecast,
           period: `${format(startOfSelectedMonth, "dd/MM/yyyy")} - ${format(endOfSelectedMonth, "dd/MM/yyyy")}`,
         };
+        reportContentHtml = generateCashFlowReportContent(reportData, companyName, currentDate);
 
       } else if (reportName === "Relatório Financeiro por Projeto / Obra") {
         if (!selectedProjectIdForReport) {
@@ -996,6 +331,7 @@ export function useReportGeneration(): UseReportGenerationResult {
           projectAlerts: projectAlerts || [],
           period: `${format(parseISO(project.created_at!), "dd/MM/yyyy")} - ${project.prazo ? format(parseISO(project.prazo), "dd/MM/yyyy") : 'N/A'}`,
         };
+        reportContentHtml = generateProjectFinancialReportContent(reportData, companyName, currentDate);
 
       } else if (reportName === "Faturas") {
         const { data: invoices, error: invError } = await supabase
@@ -1011,6 +347,7 @@ export function useReportGeneration(): UseReportGenerationResult {
           invoices: invoices || [],
           period: `${format(startOfSelectedMonth, "dd/MM/yyyy")} - ${format(endOfSelectedMonth, "dd/MM/yyyy")}`,
         };
+        reportContentHtml = generateInvoicesReportContent(reportData, companyName, currentDate);
 
       } else if (reportName === "Despesas") {
         const { data: expenses, error: expError } = await supabase
@@ -1026,6 +363,7 @@ export function useReportGeneration(): UseReportGenerationResult {
           expenses: expenses || [],
           period: `${format(startOfSelectedMonth, "dd/MM/yyyy")} - ${format(endOfSelectedMonth, "dd/MM/yyyy")}`,
         };
+        reportContentHtml = generateExpensesReportContent(reportData, companyName, currentDate);
 
       } else if (reportName === "Folha de Pagamento") {
         const { data: payrollEntries, error: payrollError } = await supabase
@@ -1041,6 +379,7 @@ export function useReportGeneration(): UseReportGenerationResult {
           payrollEntries: payrollEntries || [],
           period: `${format(startOfSelectedMonth, "dd/MM/yyyy")} - ${format(endOfSelectedMonth, "yyyy-MM-dd")}`,
         };
+        reportContentHtml = generatePayrollReportContent(reportData, companyName, currentDate);
 
       } else if (reportName === "Progresso da Obra") {
         if (!selectedProjectIdForReport) {
@@ -1079,6 +418,7 @@ export function useReportGeneration(): UseReportGenerationResult {
           scheduleTasks,
           period: `${format(parseISO(project.created_at!), "dd/MM/yyyy")} - ${project.prazo ? format(parseISO(project.prazo), "dd/MM/yyyy") : 'N/A'}`,
         };
+        reportContentHtml = generateProjectProgressReportContent(reportData, companyName, currentDate);
 
       } else if (reportName === "Orçamento da Obra") {
         if (!selectedProjectIdForReport) {
@@ -1118,6 +458,7 @@ export function useReportGeneration(): UseReportGenerationResult {
           budgetItems,
           period: `${format(parseISO(project.created_at!), "dd/MM/yyyy")} - ${project.prazo ? format(parseISO(project.prazo), "dd/MM/yyyy") : 'N/A'}`,
         };
+        reportContentHtml = generateProjectBudgetReportContent(reportData, companyName, currentDate);
 
       } else if (reportName === "Catálogo de Artigos") {
         const { data: articles, error: articlesError } = await supabase
@@ -1127,6 +468,7 @@ export function useReportGeneration(): UseReportGenerationResult {
           .order('codigo', { ascending: true });
         if (articlesError) throw articlesError;
         reportData = { ...reportData, articles: articles || [] };
+        reportContentHtml = generateArticlesCatalogReportContent(reportData, companyName, currentDate);
 
       } else if (reportName === "Histórico de Preços") {
         // This report is more complex and would require a dedicated price history table or more advanced logic.
@@ -1141,16 +483,30 @@ export function useReportGeneration(): UseReportGenerationResult {
           .order('created_at', { ascending: false });
         if (alertsError) throw alertsError;
         reportData = { ...reportData, alerts: alerts || [] };
+        reportContentHtml = generateAiAlertsReportContent(reportData, companyName, currentDate);
+      } else if (reportName === "Checklist de Conformidade") {
+        reportContentHtml = generateComplianceChecklistReportContent(reportData, companyName, currentDate);
+      } else if (reportName === "Livro de Obra Digital") {
+        reportContentHtml = generateLivroDeObraReportContent(reportData, companyName, currentDate);
       }
 
-      generatePdfContent(reportName, reportData);
+      const finalHtml = generateBasePdfTemplate(reportName, companyName, reportContentHtml, currentDate);
+
+      const printWindow = window.open('', '_blank');
+      if (printWindow) {
+        printWindow.document.write(finalHtml);
+        printWindow.document.close();
+        printWindow.focus();
+      } else {
+        toast.error("Não foi possível abrir a janela de impressão. Verifique as configurações de pop-up.");
+      }
     } catch (error: any) {
       toast.error(`Erro ao gerar relatório: ${error.message}`);
       console.error("Erro ao gerar relatório:", error);
     } finally {
       setIsLoadingReport(false);
     }
-  }, [userCompanyId, projects, generatePdfContent]);
+  }, [userCompanyId, projects]);
 
   return {
     userCompanyId,
