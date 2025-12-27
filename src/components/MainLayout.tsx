@@ -71,7 +71,7 @@ const MainLayout = () => {
       fetchProfile();
     }
     console.log("[MainLayout] User:", user, "Profile:", profile, "UserCompanyId from profile:", profile?.company_id);
-  }, [user, isSessionLoading, fetchProfile, profile]);
+  }, [user, isSessionLoading, fetchProfile]); // Removido 'profile' das dependências
 
 
   // NEW: Effect to seed default articles if not already seeded for the company
