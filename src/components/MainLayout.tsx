@@ -160,6 +160,7 @@ const MainLayout = () => {
       <EditProfileModal
         isOpen={isEditProfileModalOpen}
         onClose={() => setIsEditProfileModalOpen(false)}
+        onProfileUpdated={typeof fetchProfile === 'function' ? fetchProfile : () => {}}
       />
     </div>
   );
