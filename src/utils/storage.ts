@@ -16,18 +16,24 @@ export async function getSignedUrl(bucket: string, path: string, companyId: stri
   const { data: userRes } = await supabase.auth.getUser();
   const userId = userRes?.user?.id;
 
+  // Normalize path (strip leading slashes)
+  const normalizedPath = String(path).replace(/^\/+/, '');
+
   if (bucket === 'avatars') {
-    if (!userId || !String(path).startsWith(`${userId}/`)) {
+    if (!userId || !normalizedPath.startsWith(`${userId}/`)) {
       throw new Error("Invalid avatar path");
     }
   } else {
-    if (!companyId || !String(path).startsWith(`${companyId}/`)) {
+    if (!companyId || !normalizedPath.startsWith(`${companyId}/`)) {
       throw new Error("Invalid company path");
     }
   }
 
+  // Clamp expiration to match server constraints (10–300s)
+  const safeExpires = Math.max(10, Math.min(300, expiresIn));
+
   const { data, error } = await supabase.functions.invoke("generate-signed-url", {
-    body: { bucket, path, company_id: companyId, expiresIn },
+    body: { bucket, path: normalizedPath, company_id: companyId, expiresIn: safeExpires },
     headers: { Authorization: `Bearer ${token}` },
   });
 

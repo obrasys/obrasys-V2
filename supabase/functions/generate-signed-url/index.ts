@@ -16,6 +16,7 @@ function corsHeadersFor(origin: string | null) {
   return {
     'Access-Control-Allow-Origin': isAllowedOrigin(origin) ? (origin ?? '') : '',
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
   };
 }
 
@@ -38,6 +39,14 @@ serve(async (req) => {
   if (!isAllowedOrigin(origin)) {
     return new Response(JSON.stringify({ error: 'CORS origin not allowed' }), {
       status: 403,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
+
+  // Enforce POST-only
+  if (req.method !== 'POST') {
+    return new Response(JSON.stringify({ error: 'Method not allowed' }), {
+      status: 405,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
@@ -67,6 +76,9 @@ serve(async (req) => {
       });
     }
 
+    // Clamp expiration to a safe range (10s–300s)
+    const safeExpiresIn = Math.max(10, Math.min(300, Number(expiresIn) || 60));
+
     const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
     const supabaseAdminKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
     const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? '';
@@ -90,10 +102,10 @@ serve(async (req) => {
     const { data: userRes } = await supabaseUser.auth.getUser();
     const userId = userRes?.user?.id || null;
 
+    // Normalize path (strip leading slashes)
+    const normalizedPath = String(path).replace(/^\/+/, '');
+
     // Enforce strict path ownership
-    // - avatars bucket: only allow user's own prefix `${userId}/...`
-    // - other allowed buckets: only allow company prefix `${company_id}/...`
-    const normalizedPath = String(path);
     if (bucket === 'avatars') {
       if (!userId || !normalizedPath.startsWith(`${userId}/`)) {
         return new Response(JSON.stringify({ error: 'Invalid path for avatars bucket' }), {
@@ -110,11 +122,25 @@ serve(async (req) => {
       }
     }
 
+    // Basic audit logging
+    const ip = req.headers.get('x-forwarded-for') || 'unknown';
+    console.log(
+      JSON.stringify({
+        evt: 'generate-signed-url',
+        userId,
+        company_id,
+        bucket,
+        path: normalizedPath,
+        expires: safeExpiresIn,
+        ip
+      })
+    );
+
     const supabaseAdmin = createClient(supabaseUrl, supabaseAdminKey);
 
     const { data, error } = await supabaseAdmin.storage
       .from(bucket)
-      .createSignedUrl(normalizedPath, expiresIn);
+      .createSignedUrl(normalizedPath, safeExpiresIn);
 
     if (error || !data?.signedUrl) {
       return new Response(JSON.stringify({ error: 'Failed to create signed URL' }), {
