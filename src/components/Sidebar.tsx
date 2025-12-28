@@ -24,7 +24,8 @@ import {
   Archive, // Import Archive icon for Work Items
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
+// Removido Card (não será mais usado aqui)
+import TrialBanner from "@/components/TrialBanner";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import NavButton from "@/components/NavButton";
@@ -224,20 +225,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, toggleSidebar, profile }
 
       {/* Footer / Trial & Logout */}
       <div className="p-4 space-y-4 border-t border-sidebar-border">
-        {!isCollapsed && (
-          <Card className="bg-sidebar-accent border-sidebar-border text-sidebar-accent-foreground p-3">
-            <div className="flex items-center gap-2 text-sm font-medium">
-              <Zap className="h-4 w-4 text-blue-500" />
-              <span>Trial Gratuito</span>
-              <span className="ml-auto px-2 py-0.5 bg-blue-500 text-white rounded-full text-xs">
-                10d
-              </span>
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              10 dias restantes
-            </p>
-          </Card>
-        )}
+        {/* Trial dinâmico: mostra apenas quando status não está 'active' */}
+        {!isCollapsed && <TrialBanner />}
         <Button
           variant="ghost"
           onClick={() => navigate('/login')} // Use navigate for logout
