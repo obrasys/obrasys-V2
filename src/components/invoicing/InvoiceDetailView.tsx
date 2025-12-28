@@ -46,6 +46,17 @@ const InvoiceDetailView: React.FC<InvoiceDetailViewProps> = ({
   const [payments, setPayments] = React.useState<Payment[]>([]);
   const [companyData, setCompanyData] = React.useState<Company | null>(null); // NEW: State for company data
 
+  // Escape helper to neutralize HTML special chars
+  const escapeHtml = (value: unknown): string => {
+    if (value === null || value === undefined) return "";
+    return String(value)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+  };
+
   const fetchInvoiceDetails = React.useCallback(async () => {
     setIsLoadingDetails(true);
     const [itemsRes, paymentsRes] = await Promise.all([
@@ -200,27 +211,57 @@ const InvoiceDetailView: React.FC<InvoiceDetailViewProps> = ({
   const isOverdue = new Date(invoice.due_date) < new Date() && !isFullyPaid && invoice.status !== "cancelled";
 
   const generatePdfContent = (invoice: InvoiceWithRelations, items: InvoiceItem[], payments: Payment[], company: Company | null) => {
-    const clientName = invoice.clients?.nome || "N/A";
-    const projectName = invoice.projects?.nome || "N/A";
+    const clientName = escapeHtml(invoice.clients?.nome || "N/A");
+    const projectName = escapeHtml(invoice.projects?.nome || "N/A");
+    const invoiceNumber = escapeHtml(invoice.invoice_number);
+    const issueDate = escapeHtml(formatDate(invoice.issue_date));
+    const dueDate = escapeHtml(formatDate(invoice.due_date));
+    // Constrain status to a safe set for CSS class use
+    const allowedStatuses = new Set(["pending", "paid", "overdue", "cancelled"]);
+    const safeStatus = allowedStatuses.has(invoice.status) ? invoice.status : "pending";
+    const safeStatusLabel = escapeHtml(safeStatus.replace("_", " "));
+    const safeNotes = invoice.notes ? escapeHtml(invoice.notes) : "";
 
-    const itemRows = items.map(item => `
-      <tr>
-        <td style="border: 1px solid #ccc; padding: 8px;">${item.description}</td>
-        <td style="border: 1px solid #ccc; padding: 8px; text-align: right;">${item.quantity}</td>
-        <td style="border: 1px solid #ccc; padding: 8px;">${item.unit}</td>
-        <td style="border: 1px solid #ccc; padding: 8px; text-align: right;">${formatCurrency(item.unit_price)}</td>
-        <td style="border: 1px solid #ccc; padding: 8px; text-align: right;">${formatCurrency(item.line_total)}</td>
-      </tr>
-    `).join('');
+    const safeCompanyName = escapeHtml(company?.name || "N/A");
+    const safeCompanyNif = escapeHtml(company?.nif || "N/A");
+    const safeCompanyAddress = escapeHtml(company?.address || "N/A");
+    const safeCompanyLogoUrl = company?.logo_url ? escapeHtml(company.logo_url) : "";
 
-    const paymentRows = payments.map(payment => `
+    const itemRows = items.map(item => {
+      const desc = escapeHtml(item.description);
+      const unit = escapeHtml(item.unit);
+      const qty = escapeHtml(item.quantity);
+      const unitPrice = escapeHtml(formatCurrency(item.unit_price));
+      const lineTotal = escapeHtml(formatCurrency(item.line_total));
+      return `
       <tr>
-        <td style="border: 1px solid #ccc; padding: 8px;">${formatDate(payment.payment_date)}</td>
-        <td style="border: 1px solid #ccc; padding: 8px; text-align: right;">${formatCurrency(payment.amount)}</td>
-        <td style="border: 1px solid #ccc; padding: 8px;">${payment.payment_method.replace('_', ' ')}</td>
-        <td style="border: 1px solid #ccc; padding: 8px;">${payment.notes || 'N/A'}</td>
+        <td style="border: 1px solid #ccc; padding: 8px;">${desc}</td>
+        <td style="border: 1px solid #ccc; padding: 8px; text-align: right;">${qty}</td>
+        <td style="border: 1px solid #ccc; padding: 8px;">${unit}</td>
+        <td style="border: 1px solid #ccc; padding: 8px; text-align: right;">${unitPrice}</td>
+        <td style="border: 1px solid #ccc; padding: 8px; text-align: right;">${lineTotal}</td>
       </tr>
-    `).join('');
+    `;
+    }).join('');
+
+    const paymentRows = payments.map(payment => {
+      const date = escapeHtml(formatDate(payment.payment_date));
+      const amount = escapeHtml(formatCurrency(payment.amount));
+      const method = escapeHtml(payment.payment_method.replace('_', ' '));
+      const notes = escapeHtml(payment.notes || 'N/A');
+      return `
+      <tr>
+        <td style="border: 1px solid #ccc; padding: 8px;">${date}</td>
+        <td style="border: 1px solid #ccc; padding: 8px; text-align: right;">${amount}</td>
+        <td style="border: 1px solid #ccc; padding: 8px;">${method}</td>
+        <td style="border: 1px solid #ccc; padding: 8px;">${notes}</td>
+      </tr>
+    `;
+    }).join('');
+
+    const totalAmount = escapeHtml(formatCurrency(invoice.total_amount));
+    const paidAmount = escapeHtml(formatCurrency(invoice.paid_amount || 0));
+    const pendingAmount = escapeHtml(formatCurrency(remainingAmount));
 
     return `
       <!DOCTYPE html>
@@ -228,7 +269,20 @@ const InvoiceDetailView: React.FC<InvoiceDetailViewProps> = ({
       <head>
           <meta charset="UTF-8">
           <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <title>Fatura ${invoice.invoice_number}</title>
+          <!-- Strict CSP to block scripts and limit resources -->
+          <meta http-equiv="Content-Security-Policy" content="
+            default-src 'none';
+            img-src https: data: blob:;
+            style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+            font-src https://fonts.gstatic.com data:;
+            connect-src 'none';
+            frame-ancestors 'none';
+            base-uri 'none';
+            form-action 'none';
+            object-src 'none';
+            script-src 'none';
+          ">
+          <title>Fatura ${invoiceNumber}</title>
           <link href="https://fonts.googleapis.com/css2?family=Red+Hat+Display:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
           <style>
               body { font-family: 'Red Hat Display', sans-serif; margin: 40px; color: #333; line-height: 1.6; }
@@ -250,27 +304,22 @@ const InvoiceDetailView: React.FC<InvoiceDetailViewProps> = ({
               .company-logo { max-height: 60px; margin-bottom: 15px; }
               @media print {
                   body { margin: 0; }
-                  .no-print { display: none; }
               }
           </style>
       </head>
       <body>
-          <div class="no-print">
-            <button onclick="window.print()" style="position: fixed; top: 20px; right: 20px; padding: 10px 20px; background-color: #00679d; color: white; border: none; border-radius: 5px; cursor: pointer;">Imprimir PDF</button>
-            <button onclick="window.close()" style="position: fixed; top: 20px; right: 150px; padding: 10px 20px; background-color: #ccc; color: #333; border: none; border-radius: 5px; cursor: pointer;">Fechar</button>
-          </div>
-          <h1>FATURA Nº ${invoice.invoice_number}</h1>
+          <h1>FATURA Nº ${invoiceNumber}</h1>
           <div class="header-info">
-              ${company?.logo_url ? `<img src="${company.logo_url}" alt="${company.name} Logo" class="company-logo" />` : ''}
-              <p><strong>Empresa:</strong> ${company?.name || 'N/A'}</p>
-              <p><strong>NIF da Empresa:</strong> ${company?.nif || 'N/A'}</p>
-              <p><strong>Endereço da Empresa:</strong> ${company?.address || 'N/A'}</p>
+              ${safeCompanyLogoUrl ? `<img src="${safeCompanyLogoUrl}" alt="${safeCompanyName} Logo" class="company-logo" />` : ''}
+              <p><strong>Empresa:</strong> ${safeCompanyName}</p>
+              <p><strong>NIF da Empresa:</strong> ${safeCompanyNif}</p>
+              <p><strong>Endereço da Empresa:</strong> ${safeCompanyAddress}</p>
               <p><strong>Cliente:</strong> ${clientName}</p>
               <p><strong>Obra:</strong> ${projectName}</p>
-              <p><strong>Data de Emissão:</strong> ${formatDate(invoice.issue_date)}</p>
-              <p><strong>Data de Vencimento:</strong> ${formatDate(invoice.due_date)}</p>
-              <p><strong>Estado:</strong> <span class="status-badge status-${invoice.status}">${invoice.status.replace('_', ' ')}</span></p>
-              ${invoice.notes ? `<p><strong>Notas:</strong> ${invoice.notes}</p>` : ''}
+              <p><strong>Data de Emissão:</strong> ${issueDate}</p>
+              <p><strong>Data de Vencimento:</strong> ${dueDate}</p>
+              <p><strong>Estado:</strong> <span class="status-badge status-${safeStatus}">${safeStatusLabel}</span></p>
+              ${safeNotes ? `<p><strong>Notas:</strong> ${safeNotes}</p>` : ''}
           </div>
 
           <h2>Itens da Fatura</h2>
@@ -292,9 +341,9 @@ const InvoiceDetailView: React.FC<InvoiceDetailViewProps> = ({
           ` : `<p style="text-align: center; margin-top: 20px; color: #777;">Nenhum item na fatura.</p>`}
 
           <div class="summary">
-              <p><strong>Valor Total da Fatura:</strong> ${formatCurrency(invoice.total_amount)}</p>
-              <p><strong>Valor Pago:</strong> ${formatCurrency(invoice.paid_amount || 0)}</p>
-              <p><strong>Valor Pendente:</strong> ${formatCurrency(remainingAmount)}</p>
+              <p><strong>Valor Total da Fatura:</strong> ${totalAmount}</p>
+              <p><strong>Valor Pago:</strong> ${paidAmount}</p>
+              <p><strong>Valor Pendente:</strong> ${pendingAmount}</p>
           </div>
 
           <h2>Histórico de Pagamentos</h2>
@@ -324,11 +373,15 @@ const InvoiceDetailView: React.FC<InvoiceDetailViewProps> = ({
 
   const handleGeneratePdf = () => {
     const content = generatePdfContent(invoice, invoiceItems, payments, companyData);
-    const printWindow = window.open('', '_blank');
+    const printWindow = window.open('', '_blank', 'noopener,noreferrer');
     if (printWindow) {
+      // Ensure the new window cannot access the opener (defense-in-depth)
+      try { printWindow.opener = null; } catch {}
       printWindow.document.write(content);
       printWindow.document.close();
       printWindow.focus();
+      // Trigger print from the opener (no inline JS in the generated HTML)
+      printWindow.print();
     } else {
       toast.error("Não foi possível abrir a janela de impressão. Verifique as configurações de pop-up.");
     }
