@@ -2,18 +2,45 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
 import { format, differenceInDays, parseISO } from 'https://esm.sh/date-fns@3.6.0';
 
-const FRONTEND_ORIGIN = Deno.env.get('FRONTEND_URL') || '*';
+const FRONTEND_ORIGINS = (Deno.env.get('FRONTEND_URL') ?? '')
+  .split(',')
+  .map(o => o.trim())
+  .filter(Boolean);
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': FRONTEND_ORIGIN,
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+function isAllowedOrigin(origin: string | null): boolean {
+  if (!origin) return true; // allow server-to-server/no-origin calls
+  if (FRONTEND_ORIGINS.length === 0) return false;
+  return FRONTEND_ORIGINS.includes(origin);
+}
+
+function corsHeadersFor(origin: string | null) {
+  return {
+    'Access-Control-Allow-Origin': isAllowedOrigin(origin) ? (origin ?? '') : '',
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  };
+}
 
 serve(async (req) => {
+  const origin = req.headers.get('Origin');
+  const corsHeaders = corsHeadersFor(origin);
+
   try {
     // Handle CORS OPTIONS request
     if (req.method === 'OPTIONS') {
+      if (!isAllowedOrigin(origin)) {
+        return new Response(JSON.stringify({ error: 'CORS origin not allowed' }), {
+          status: 403,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
       return new Response(null, { headers: corsHeaders });
+    }
+
+    if (!isAllowedOrigin(origin)) {
+      return new Response(JSON.stringify({ error: 'CORS origin not allowed' }), {
+        status: 403,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
     // Extract JWT from Authorization header

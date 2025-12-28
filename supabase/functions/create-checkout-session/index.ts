@@ -2,16 +2,43 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
 import Stripe from 'https://esm.sh/stripe@16.2.0?target=deno';
 
-const FRONTEND_ORIGIN = Deno.env.get('FRONTEND_URL') || '*';
+const FRONTEND_ORIGINS = (Deno.env.get('FRONTEND_URL') ?? '')
+  .split(',')
+  .map(o => o.trim())
+  .filter(Boolean);
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': FRONTEND_ORIGIN,
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+function isAllowedOrigin(origin: string | null): boolean {
+  if (!origin) return true; // allow server-to-server/no-origin
+  if (FRONTEND_ORIGINS.length === 0) return false;
+  return FRONTEND_ORIGINS.includes(origin);
+}
+
+function corsHeadersFor(origin: string | null) {
+  return {
+    'Access-Control-Allow-Origin': isAllowedOrigin(origin) ? (origin ?? '') : '',
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  };
+}
 
 serve(async (req) => {
+  const origin = req.headers.get('Origin');
+  const corsHeaders = corsHeadersFor(origin);
+
   if (req.method === 'OPTIONS') {
+    if (!isAllowedOrigin(origin)) {
+      return new Response(JSON.stringify({ error: 'CORS origin not allowed' }), {
+        status: 403,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
     return new Response(null, { headers: corsHeaders });
+  }
+
+  if (!isAllowedOrigin(origin)) {
+    return new Response(JSON.stringify({ error: 'CORS origin not allowed' }), {
+      status: 403,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
   }
 
   try {
@@ -24,10 +51,9 @@ serve(async (req) => {
       });
     }
 
-    // Parse body AFTER basic auth presence check
-    const { company_id, plan_type, customer_email } = await req.json();
-
-    if (!company_id || !plan_type || !customer_email) {
+    // Parse body but do not trust client identifiers
+    const { plan_type } = await req.json();
+    if (!plan_type) {
       return new Response(JSON.stringify({ error: 'Missing required parameters' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -54,7 +80,32 @@ serve(async (req) => {
       { global: { headers: { Authorization: authHeader } } }
     );
 
-    // Authorize company: ensure caller is a member of the provided company_id
+    // Derive user and company from session
+    const { data: userRes, error: userErr } = await supabaseUser.auth.getUser();
+    if (userErr || !userRes?.user?.id) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    const userId = userRes.user.id;
+    const userEmail = userRes.user.email ?? undefined;
+
+    const { data: profile, error: profileErr } = await supabaseUser
+      .from('profiles')
+      .select('company_id')
+      .eq('id', userId)
+      .single();
+
+    if (profileErr || !profile?.company_id) {
+      return new Response(JSON.stringify({ error: 'Company not found for user' }), {
+        status: 403,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    const company_id = profile.company_id;
+
+    // Authorize: ensure caller is a member of the derived company_id
     const { data: isMember, error: memberErr } = await supabaseUser.rpc('is_company_member', { p_company_id: company_id });
     if (memberErr || !isMember) {
       return new Response(JSON.stringify({ error: 'Forbidden' }), {
@@ -75,7 +126,7 @@ serve(async (req) => {
     let stripeCustomerId: string | null = null;
     const { data: companyData, error: companyError } = await supabaseAdmin
       .from('companies')
-      .select('stripe_customer_id')
+      .select('stripe_customer_id, email')
       .eq('id', company_id)
       .single();
 
@@ -90,7 +141,7 @@ serve(async (req) => {
       stripeCustomerId = companyData.stripe_customer_id;
     } else {
       const customer = await stripe.customers.create({
-        email: customer_email,
+        email: companyData?.email || userEmail,
         metadata: { supabase_company_id: company_id },
       });
       stripeCustomerId = customer.id;

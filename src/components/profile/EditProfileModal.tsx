@@ -211,27 +211,38 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onClose, on
         // 2. Handle avatar removal if user explicitly cleared it and there was an old one
         console.log("[EditProfileModal] Attempting to remove old avatar from storage. Current URL in form:", currentAvatarUrlInForm);
         
-        // Extract the path relative to the bucket from the full public URL
-        // The public URL format is typically: [SUPABASE_URL]/storage/v1/object/public/avatars/[USER_ID]/[FILE_NAME]
-        const urlParts = currentAvatarUrlInForm.split('/public/avatars/');
-        if (urlParts.length > 1) {
-          const storagePath = urlParts[1]; // e.g., user_id/file_name.png
-          console.log("[EditProfileModal] Storage path for deletion:", storagePath);
-          const { error: deleteError } = await supabase.storage
-            .from('avatars')
-            .remove([storagePath]);
+        // Parse the public URL safely and extract the Storage path for 'avatars' bucket
+        try {
+          const url = new URL(currentAvatarUrlInForm);
+          const marker = '/storage/v1/object/public/avatars/';
+          const idx = url.pathname.indexOf('/object/public/avatars/');
+          const pathFromHost = idx >= 0 ? url.pathname.substring(idx + '/object/public/avatars/'.length) : null;
 
-          console.log("[EditProfileModal] Supabase Storage Delete Result - Error:", deleteError);
+          const storagePath = pathFromHost || currentAvatarUrlInForm.split('/public/avatars/')[1] || null;
 
-          if (deleteError) {
-            console.warn("[EditProfileModal] Erro ao remover avatar antigo do storage:", deleteError.message);
-            // Don't block save if old avatar deletion fails, just log a warning
+          if (!storagePath) {
+            console.warn("[EditProfileModal] Could not parse storage path from avatar URL for deletion:", currentAvatarUrlInForm);
+          } else if (!user?.id || !storagePath.startsWith(`${user.id}/`)) {
+            console.warn("[EditProfileModal] Refusing to delete avatar: path not owned by current user.", storagePath);
           } else {
-            console.log("[EditProfileModal] Old avatar removed from storage successfully.");
+            console.log("[EditProfileModal] Storage path for deletion:", storagePath);
+            const { error: deleteError } = await supabase.storage
+              .from('avatars')
+              .remove([storagePath]);
+
+            console.log("[EditProfileModal] Supabase Storage Delete Result - Error:", deleteError);
+
+            if (deleteError) {
+              console.warn("[EditProfileModal] Erro ao remover avatar antigo do storage:", deleteError.message);
+              // Don't block save if old avatar deletion fails, just log a warning
+            } else {
+              console.log("[EditProfileModal] Old avatar removed from storage successfully.");
+            }
           }
-        } else {
-          console.warn("[EditProfileModal] Could not parse storage path from currentAvatarUrlInForm for deletion:", currentAvatarUrlInForm);
+        } catch (e) {
+          console.warn("[EditProfileModal] Invalid avatar URL format; skipping deletion.", e);
         }
+
         finalAvatarUrl = null; // Ensure avatar_url is null in DB
       }
       // If no new file and no removal, finalAvatarUrl remains data.avatar_url (which is the existing one from form)

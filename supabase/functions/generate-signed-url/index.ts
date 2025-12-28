@@ -1,16 +1,45 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
 
-const FRONTEND_ORIGIN = Deno.env.get('FRONTEND_URL') || '*';
+const FRONTEND_ORIGINS = (Deno.env.get('FRONTEND_URL') ?? '')
+  .split(',')
+  .map(o => o.trim())
+  .filter(Boolean);
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': FRONTEND_ORIGIN,
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+function isAllowedOrigin(origin: string | null): boolean {
+  if (!origin) return true; // allow server-to-server calls with no origin
+  if (FRONTEND_ORIGINS.length === 0) return false; // fail closed if not configured
+  return FRONTEND_ORIGINS.includes(origin);
+}
+
+function corsHeadersFor(origin: string | null) {
+  return {
+    'Access-Control-Allow-Origin': isAllowedOrigin(origin) ? (origin ?? '') : '',
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  };
+}
+
+const ALLOWED_BUCKETS = new Set(['attachments', 'reports', 'avatars']);
 
 serve(async (req) => {
+  const origin = req.headers.get('Origin');
+  const corsHeaders = corsHeadersFor(origin);
+
   if (req.method === 'OPTIONS') {
+    if (!isAllowedOrigin(origin)) {
+      return new Response(JSON.stringify({ error: 'CORS origin not allowed' }), {
+        status: 403,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
     return new Response(null, { headers: corsHeaders });
+  }
+
+  if (!isAllowedOrigin(origin)) {
+    return new Response(JSON.stringify({ error: 'CORS origin not allowed' }), {
+      status: 403,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
   }
 
   try {
@@ -22,9 +51,17 @@ serve(async (req) => {
       });
     }
 
-    const { bucket, path, company_id, expiresIn = 60 } = await req.json();
+    const body = await req.json();
+    const { bucket, path, company_id, expiresIn = 60 } = body || {};
     if (!bucket || !path || !company_id) {
       return new Response(JSON.stringify({ error: 'Missing parameters' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (!ALLOWED_BUCKETS.has(bucket)) {
+      return new Response(JSON.stringify({ error: 'Bucket not allowed' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -49,11 +86,35 @@ serve(async (req) => {
       });
     }
 
+    // Get current user for user-scoped validations (e.g., avatars)
+    const { data: userRes } = await supabaseUser.auth.getUser();
+    const userId = userRes?.user?.id || null;
+
+    // Enforce strict path ownership
+    // - avatars bucket: only allow user's own prefix `${userId}/...`
+    // - other allowed buckets: only allow company prefix `${company_id}/...`
+    const normalizedPath = String(path);
+    if (bucket === 'avatars') {
+      if (!userId || !normalizedPath.startsWith(`${userId}/`)) {
+        return new Response(JSON.stringify({ error: 'Invalid path for avatars bucket' }), {
+          status: 403,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+    } else {
+      if (!normalizedPath.startsWith(`${company_id}/`)) {
+        return new Response(JSON.stringify({ error: 'Path does not belong to company' }), {
+          status: 403,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+    }
+
     const supabaseAdmin = createClient(supabaseUrl, supabaseAdminKey);
 
     const { data, error } = await supabaseAdmin.storage
       .from(bucket)
-      .createSignedUrl(path, expiresIn);
+      .createSignedUrl(normalizedPath, expiresIn);
 
     if (error || !data?.signedUrl) {
       return new Response(JSON.stringify({ error: 'Failed to create signed URL' }), {

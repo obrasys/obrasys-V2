@@ -100,11 +100,32 @@ export function useLivroDeObraActions({
     }
   }, [user, userCompanyId, selectedLivroObra, setIsManualRdoDialogOpen, fetchRdoEntries]);
 
+  const escapeHTML = (str: any) => {
+    const s = String(str ?? "");
+    return s
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+  };
+
+  const safeImageUrl = (url?: string | null) => {
+    if (!url) return null;
+    try {
+      const u = new URL(url);
+      if (u.protocol === "http:" || u.protocol === "https:" || u.protocol === "blob:") {
+        return url;
+      }
+    } catch (_) { /* ignore */ }
+    return null;
+  };
+
   const generatePdfContent = useCallback((livro: LivroObra, project: Project | undefined, rdos: RdoEntry[], users: { id: string; first_name: string; last_name: string; }[], company: Company | null) => {
     const totalDias = rdos.length;
     const custoTotal = rdos.reduce((sum, rdo) => {
       const costFromDetails = rdo.details?.new_executed_cost || rdo.details?.total_planeado || 0;
-      return sum + costFromDetails;
+      return sum + (Number(costFromDetails) || 0);
     }, 0);
 
     const getEventTypeText = (eventType: string) => {
@@ -121,18 +142,21 @@ export function useLivroDeObraActions({
       const responsibleUser = users.find(u => u.id === rdo.responsible_user_id);
       const userName = responsibleUser ? `${responsibleUser.first_name} ${responsibleUser.last_name}` : 'N/A';
       const eventTypeText = getEventTypeText(rdo.event_type);
-      const costImpact = rdo.details?.new_executed_cost || rdo.details?.total_planeado || 0;
+      const costImpactVal = rdo.details?.new_executed_cost || rdo.details?.total_planeado || 0;
+      const costImpact = Number(costImpactVal) || 0;
 
       return `
         <tr>
-          <td style="border: 1px solid #ccc; padding: 8px;">${formatDate(rdo.date)}</td>
-          <td style="border: 1px solid #ccc; padding: 8px;">${eventTypeText}</td>
-          <td style="border: 1px solid #ccc; padding: 8px;">${rdo.description || ''}</td>
-          <td style="border: 1px solid #ccc; padding: 8px;">${userName}</td>
-          <td style="border: 1px solid #ccc; padding: 8px; text-align: right;">${formatCurrency(costImpact)}</td>
+          <td style="border: 1px solid #ccc; padding: 8px;">${escapeHTML(formatDate(rdo.date))}</td>
+          <td style="border: 1px solid #ccc; padding: 8px;">${escapeHTML(eventTypeText)}</td>
+          <td style="border: 1px solid #ccc; padding: 8px;">${escapeHTML(rdo.description || '')}</td>
+          <td style="border: 1px solid #ccc; padding: 8px;">${escapeHTML(userName)}</td>
+          <td style="border: 1px solid #ccc; padding: 8px; text-align: right;">${escapeHTML(formatCurrency(costImpact))}</td>
         </tr>
       `;
     }).join('');
+
+    const safeLogo = safeImageUrl(company?.logo_url);
 
     return `
       <!DOCTYPE html>
@@ -140,7 +164,8 @@ export function useLivroDeObraActions({
       <head>
           <meta charset="UTF-8">
           <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <title>Livro de Obra Digital - ${project?.nome || 'N/A'}</title>
+          <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src https: data: blob:; style-src 'self' 'unsafe-inline' https:; font-src https: data:; connect-src 'none'; frame-ancestors 'none';">
+          <title>Livro de Obra Digital - ${escapeHTML(project?.nome || 'N/A')}</title>
           <link href="https://fonts.googleapis.com/css2?family=Red+Hat+Display:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
           <style>
               body { font-family: 'Red Hat Display', sans-serif; margin: 40px; color: #333; line-height: 1.6; }
@@ -161,27 +186,22 @@ export function useLivroDeObraActions({
               .company-logo { max-height: 60px; margin-bottom: 15px; }
               @media print {
                   body { margin: 0; }
-                  .no-print { display: none; }
               }
           </style>
       </head>
       <body>
-          <div class="no-print">
-            <button onclick="window.print()" style="position: fixed; top: 20px; right: 20px; padding: 10px 20px; background-color: #00679d; color: white; border: none; border-radius: 5px; cursor: pointer;">Imprimir PDF</button>
-            <button onclick="window.close()" style="position: fixed; top: 20px; right: 150px; padding: 10px 20px; background-color: #ccc; color: #333; border: none; border-radius: 5px; cursor: pointer;">Fechar</button>
-          </div>
           <h1>LIVRO DE OBRA DIGITAL</h1>
           <div class="header-info">
-              ${company?.logo_url ? `<img src="${company.logo_url}" alt="${company.name} Logo" class="company-logo" />` : ''}
-              <p><strong>Empresa:</strong> ${company?.name || 'N/A'}</p>
-              <p><strong>NIF da Empresa:</strong> ${company?.nif || 'N/A'}</p>
-              <p><strong>Endereço da Empresa:</strong> ${company?.address || 'N/A'}</p>
-              <p><strong>Obra:</strong> ${project?.nome || 'N/A'}</p>
-              <p><strong>Localização da Obra:</strong> ${project?.localizacao || 'N/A'}</p>
-              <p><strong>Cliente:</strong> ${project?.client_name || 'N/A'}</p>
-              <p><strong>Período do Livro:</strong> ${formatDate(livro.periodo_inicio)} a ${formatDate(livro.periodo_fim)}</p>
-              <p><strong>Estado do Livro:</strong> <span style="text-transform: capitalize;">${livro.estado.replace('_', ' ')}</span></p>
-              ${livro.observacoes ? `<p><strong>Observações do Livro:</strong> ${livro.observacoes}</p>` : ''}
+              ${safeLogo ? `<img src="${escapeHTML(safeLogo)}" alt="${escapeHTML(company?.name || 'Empresa')} Logo" class="company-logo" />` : ''}
+              <p><strong>Empresa:</strong> ${escapeHTML(company?.name || 'N/A')}</p>
+              <p><strong>NIF da Empresa:</strong> ${escapeHTML(company?.nif || 'N/A')}</p>
+              <p><strong>Endereço da Empresa:</strong> ${escapeHTML(company?.address || 'N/A')}</p>
+              <p><strong>Obra:</strong> ${escapeHTML(project?.nome || 'N/A')}</p>
+              <p><strong>Localização da Obra:</strong> ${escapeHTML(project?.localizacao || 'N/A')}</p>
+              <p><strong>Cliente:</strong> ${escapeHTML((project as any)?.client_name || 'N/A')}</p>
+              <p><strong>Período do Livro:</strong> ${escapeHTML(formatDate(livro.periodo_inicio))} a ${escapeHTML(formatDate(livro.periodo_fim))}</p>
+              <p><strong>Estado do Livro:</strong> <span style="text-transform: capitalize;">${escapeHTML(livro.estado.replace('_', ' '))}</span></p>
+              ${livro.observacoes ? `<p><strong>Observações do Livro:</strong> ${escapeHTML(livro.observacoes)}</p>` : ''}
           </div>
 
           <h2>Registos Diários de Obra (RDOs)</h2>
@@ -203,8 +223,8 @@ export function useLivroDeObraActions({
           ` : `<p style="text-align: center; margin-top: 20px; color: #777;">Nenhum RDO disponível para este período.</p>`}
 
           <div class="summary">
-              <p><strong>Total de registos no período:</strong> ${totalDias}</p>
-              <p><strong>Custo total registado no período:</strong> ${formatCurrency(custoTotal)}</p>
+              <p><strong>Total de registos no período:</strong> ${escapeHTML(String(totalDias))}</p>
+              <p><strong>Custo total registado no período:</strong> ${escapeHTML(formatCurrency(custoTotal))}</p>
           </div>
 
           <p class="declaration">
@@ -241,8 +261,14 @@ export function useLivroDeObraActions({
     }
     const project = projects.find(p => p.id === selectedLivroObra.project_id);
     const content = generatePdfContent(selectedLivroObra, project, rdoEntries, projectUsers, companyData);
-    const printWindow = window.open('', '_blank');
+    const printWindow = window.open('', '_blank', 'noopener,noreferrer');
     if (printWindow) {
+      try {
+        // Try to sever the opener reference defensively
+        // Some browsers ignore features; this is an additional safeguard.
+        // @ts-ignore
+        printWindow.opener = null;
+      } catch (_) {}
       printWindow.document.write(content);
       printWindow.document.close();
       printWindow.focus();
