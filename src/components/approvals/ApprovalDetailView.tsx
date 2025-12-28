@@ -42,6 +42,29 @@ import { RdoEntry } from "@/schemas/compliance-schema";
 import { formatCurrency } from "@/utils/formatters";
 import { Skeleton } from "@/components/ui/skeleton"; // Added import for Skeleton
 
+// SAFETY: Only render and navigate to http/https URLs
+const isSafeHttpUrl = (rawUrl: string): boolean => {
+  try {
+    const u = new URL(rawUrl);
+    return u.protocol === "http:" || u.protocol === "https:";
+  } catch {
+    return false;
+  }
+};
+
+// Create a safe, human-readable label from the URL
+const getSafeLinkLabel = (rawUrl: string, fallback: string): string => {
+  try {
+    const u = new URL(rawUrl);
+    const host = u.hostname.replace(/^www\./, "");
+    const path = u.pathname === "/" ? "" : u.pathname;
+    const label = `${host}${path}`;
+    return label.length > 60 ? `${label.slice(0, 57)}...` : label;
+  } catch {
+    return fallback;
+  }
+};
+
 interface ApprovalDetailViewProps {
   approval: ApprovalWithRelations;
   onApprovalAction: () => void; // Callback to refresh approvals list
@@ -290,11 +313,23 @@ const ApprovalDetailView: React.FC<ApprovalDetailViewProps> = ({
             {rdoEntry.attachments_url && rdoEntry.attachments_url.length > 0 && (
               <div className="md:col-span-2">
                 <span className="font-semibold">Anexos: </span>
-                {rdoEntry.attachments_url.map((url, i) => (
-                  <a key={i} href={url} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline mr-2">
-                    Anexo {i + 1} <Download className="inline-block h-3 w-3 ml-1" />
-                  </a>
-                ))}
+                {rdoEntry.attachments_url
+                  .filter((url: string) => isSafeHttpUrl(url))
+                  .map((url: string, i: number) => {
+                    const label = getSafeLinkLabel(url, `Anexo ${i + 1}`);
+                    return (
+                      <a
+                        key={i}
+                        href={url}
+                        target="_blank"
+                        rel="noopener noreferrer nofollow"
+                        className="text-blue-500 hover:underline mr-2 break-all"
+                        title={url}
+                      >
+                        {label} <Download className="inline-block h-3 w-3 ml-1" />
+                      </a>
+                    );
+                  })}
               </div>
             )}
           </div>
@@ -335,11 +370,23 @@ const ApprovalDetailView: React.FC<ApprovalDetailViewProps> = ({
             {approval.attachments_url && approval.attachments_url.length > 0 && (
               <div className="md:col-span-2">
                 <span className="font-semibold">Anexos: </span>
-                {approval.attachments_url.map((url, i) => (
-                  <a key={i} href={url} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline mr-2">
-                    Anexo {i + 1} <Download className="inline-block h-3 w-3 ml-1" />
-                  </a>
-                ))}
+                {approval.attachments_url
+                  .filter((url: string) => isSafeHttpUrl(url))
+                  .map((url: string, i: number) => {
+                    const label = getSafeLinkLabel(url, `Anexo ${i + 1}`);
+                    return (
+                      <a
+                        key={i}
+                        href={url}
+                        target="_blank"
+                        rel="noopener noreferrer nofollow"
+                        className="text-blue-500 hover:underline mr-2 break-all"
+                        title={url}
+                      >
+                        {label} <Download className="inline-block h-3 w-3 ml-1" />
+                      </a>
+                    );
+                  })}
               </div>
             )}
           </div>
