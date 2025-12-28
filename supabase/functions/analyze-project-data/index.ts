@@ -17,6 +17,7 @@ function corsHeadersFor(origin: string | null) {
   return {
     'Access-Control-Allow-Origin': isAllowedOrigin(origin) ? (origin ?? '') : '',
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
   };
 }
 
@@ -43,6 +44,14 @@ serve(async (req) => {
       });
     }
 
+    // Enforce POST-only
+    if (req.method !== 'POST') {
+      return new Response(JSON.stringify({ error: 'Method not allowed' }), {
+        status: 405,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     // Extract JWT from Authorization header
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
@@ -63,6 +72,15 @@ serve(async (req) => {
         },
       }
     );
+
+    // Explicitly verify the JWT/user before any access
+    const { data: userRes, error: userErr } = await supabase.auth.getUser();
+    if (userErr || !userRes?.user?.id) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
 
     const { project_id } = await req.json();
     console.log('Edge Function: Received project_id:', project_id);
