@@ -32,6 +32,8 @@ import NavButton from "@/components/NavButton";
 import { useSession } from "@/components/SessionContextProvider";
 import { Profile } from "@/schemas/profile-schema"; // Import Profile schema
 import { isAdmin, hasPlan } from "@/utils/access";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 interface SidebarProps {
   isCollapsed: boolean;
@@ -133,7 +135,13 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, toggleSidebar, profile }
     return adminBypass || hasPlan(userPlanType, requiredPlan);
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      toast.error(`Erro ao terminar sessão: ${error.message}`);
+      return;
+    }
+    toast.success("Sessão terminada com sucesso!");
     navigate('/login');
   };
 
@@ -229,7 +237,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, toggleSidebar, profile }
         {!isCollapsed && <TrialBanner />}
         <Button
           variant="ghost"
-          onClick={() => navigate('/login')} // Use navigate for logout
+          onClick={handleLogout}
           className={cn(
             "w-full flex items-center gap-3 justify-start text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
             isCollapsed && "justify-center px-0",

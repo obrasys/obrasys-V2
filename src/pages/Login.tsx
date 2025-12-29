@@ -18,6 +18,7 @@ import {
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { ArrowRight, Eye, EyeOff, Mail, Lock, ArrowLeft } from 'lucide-react';
+import { useSession } from '@/components/SessionContextProvider';
 
 const loginSchema = z.object({
   email: z.string().email("Formato de email inválido.").min(1, "O email é obrigatório."),
@@ -29,6 +30,7 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 const Login: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { session, isLoading: isSessionLoading } = useSession();
   const from = (location.state as any)?.from?.pathname || '/dashboard';
   const [showPassword, setShowPassword] = React.useState(false);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
@@ -46,6 +48,13 @@ const Login: React.FC = () => {
       toast.error("Configuração do Supabase ausente (URL ou ANON KEY). Verifique as variáveis de ambiente.");
     }
   }, []);
+
+  // Se já existe sessão, não permitir ficar na tela de login: redirecionar
+  React.useEffect(() => {
+    if (!isSessionLoading && session) {
+      navigate(from, { replace: true });
+    }
+  }, [session, isSessionLoading, navigate, from]);
 
   // Evitar travar no estado de envio: timeout de segurança para resetar o botão
   React.useEffect(() => {
