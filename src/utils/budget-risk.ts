@@ -1,6 +1,9 @@
 export type RiskLevel = "low" | "medium" | "high";
 
-export const getServiceRisk = (
+/**
+ * Avalia o risco com base no desvio financeiro
+ */
+export const getDeviationRisk = (
   planned: number,
   deviation: number
 ): RiskLevel => {
