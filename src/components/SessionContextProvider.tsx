@@ -45,29 +45,27 @@ export const SessionContextProvider: React.FC<{ children: React.ReactNode }> = (
       return null;
     }
 
-    // Não existe perfil: criar um mínimo para o utilizador atual
-    const email = currentUser.email ?? "";
-    const namePart = email.split("@")[0] || "Utilizador";
-    const firstName = namePart.charAt(0).toUpperCase() + namePart.slice(1);
+    // Não existe perfil: NÃO insere no cliente (evita falhas de RLS).
+    // Espera curta para o trigger server-side criar o perfil.
+    for (let attempt = 0; attempt < 10; attempt++) {
+      await new Promise((res) => setTimeout(res, 500));
+      const { data: pData, error: pErr } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", currentUser.id)
+        .maybeSingle();
 
-    const { data: created, error: insertErr } = await supabase
-      .from("profiles")
-      .insert({
-        id: currentUser.id,
-        first_name: firstName,
-        last_name: "",
-        role: "cliente",
-        plan_type: "trialing",
-      })
-      .select("*")
-      .single();
-
-    if (insertErr) {
-      console.error("[SessionContext] Falha ao criar perfil:", insertErr);
-      return null;
+      if (!pErr && pData) {
+        return pData as Profile;
+      }
+      if (pErr && pErr.code !== "PGRST116") {
+        console.error("[SessionContext] Erro ao aguardar profile:", pErr);
+        break;
+      }
     }
 
-    return created as Profile;
+    // Ainda sem perfil: devolve null e deixa o app seguir com user autenticado
+    return null;
   };
 
   /* ------------------------------------------------------------------ */
