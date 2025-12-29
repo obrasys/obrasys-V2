@@ -24,168 +24,206 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
-import { CalendarDays, PlusCircle, Upload } from "lucide-react";
+import { CalendarDays } from "lucide-react";
 import { toast } from "sonner";
-import { RdoEntry } from "@/schemas/compliance-schema";
-import { Project } from "@/schemas/project-schema";
 import { supabase } from "@/integrations/supabase/client";
-import { useSession } from "@/components/SessionContextProvider";
+
+/* =========================
+   SCHEMA
+========================= */
 
 const manualRdoEntrySchema = z.object({
-  date: z.string().min(1, "A data é obrigatória."),
-  description: z.string().min(1, "A descrição é obrigatória."),
-  observations: z.string().optional().nullable(),
-  attachments: z.any().optional(), // For file input
+  data: z.string().min(1, "A data é obrigatória."),
+  resumo: z.string().min(1, "O resumo é obrigatório."),
 });
 
-type ManualRdoEntryFormValues = z.infer<typeof manualRdoEntrySchema>;
+type ManualRdoEntryFormValues = z.infer<
+  typeof manualRdoEntrySchema
+>;
+
+/* =========================
+   PROPS
+========================= */
 
 interface ManualRdoEntryDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (rdo: RdoEntry) => void;
-  projectId: string;
-  companyId: string;
+  livroObraId: string;
+  onSaved?: () => void;
 }
 
-const ManualRdoEntryDialog: React.FC<ManualRdoEntryDialogProps> = ({
+/* =========================
+   COMPONENT
+========================= */
+
+const ManualRdoEntryDialog: React.FC<
+  ManualRdoEntryDialogProps
+> = ({
   isOpen,
   onClose,
-  onSave,
-  projectId,
-  companyId,
+  livroObraId,
+  onSaved,
 }) => {
-  const { user } = useSession();
-  const [isSaving, setIsSaving] = React.useState(false);
-  const [selectedFiles, setSelectedFiles] = React.useState<FileList | null>(null);
+  const [isSaving, setIsSaving] =
+    React.useState(false);
 
-  const form = useForm<ManualRdoEntryFormValues>({
-    resolver: zodResolver(manualRdoEntrySchema),
-    defaultValues: {
-      date: format(new Date(), "yyyy-MM-dd"),
-      description: "",
-      observations: "",
-    },
-  });
+  const form = useForm<ManualRdoEntryFormValues>(
+    {
+      resolver: zodResolver(
+        manualRdoEntrySchema
+      ),
+      defaultValues: {
+        data: format(new Date(), "yyyy-MM-dd"),
+        resumo: "",
+      },
+    }
+  );
 
   React.useEffect(() => {
     if (isOpen) {
       form.reset({
-        date: format(new Date(), "yyyy-MM-dd"),
-        description: "",
-        observations: "",
+        data: format(
+          new Date(),
+          "yyyy-MM-dd"
+        ),
+        resumo: "",
       });
-      setSelectedFiles(null);
     }
   }, [isOpen, form]);
 
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setSelectedFiles(event.target.files);
-  };
+  /* =========================
+     SUBMIT
+  ========================= */
 
-  const onSubmit = async (data: ManualRdoEntryFormValues) => {
-    if (!user) {
-      toast.error("Utilizador não autenticado.");
+  const onSubmit = async (
+    values: ManualRdoEntryFormValues
+  ) => {
+    setIsSaving(true);
+
+    const payload = {
+      id: uuidv4(),
+      livro_obra_id: livroObraId,
+      rdo_id: uuidv4(),
+      data: values.data,
+      resumo: values.resumo,
+      custos_diarios: 0,
+      created_at: new Date().toISOString(),
+    };
+
+    const { error } = await supabase
+      .from("livro_obra_rdos")
+      .insert([payload]);
+
+    if (error) {
+      console.error(error);
+      toast.error(
+        "Erro ao guardar RDO manual."
+      );
+      setIsSaving(false);
       return;
     }
-    setIsSaving(true);
-    let attachments_url: string[] = [];
 
-    try {
-      if (selectedFiles && selectedFiles.length > 0) {
-        const uploadPromises = Array.from(selectedFiles).map(async (file) => {
-          const fileExtension = file.name.split('.').pop();
-          const filePath = `${projectId}/rdo_attachments/${uuidv4()}.${fileExtension}`;
-          const { data: uploadData, error: uploadError } = await supabase.storage
-            .from('rdo_attachments') // Assuming a bucket named 'rdo_attachments' exists
-            .upload(filePath, file);
+    toast.success(
+      "Registo diário adicionado ao Livro de Obra."
+    );
 
-          if (uploadError) throw uploadError;
-
-          const { data: publicUrlData } = supabase.storage
-            .from('rdo_attachments')
-            .getPublicUrl(filePath);
-
-          if (!publicUrlData.publicUrl) throw new Error("Não foi possível obter o URL público do anexo.");
-          return publicUrlData.publicUrl;
-        });
-        attachments_url = await Promise.all(uploadPromises);
-        toast.success("Anexos carregados com sucesso!");
-      }
-
-      const newRdoEntry: RdoEntry = {
-        id: uuidv4(),
-        company_id: companyId,
-        project_id: projectId,
-        date: data.date,
-        responsible_user_id: user.id,
-        event_type: "manual_entry",
-        description: data.description,
-        observations: data.observations,
-        attachments_url: attachments_url.length > 0 ? attachments_url : null,
-        status: "pending", // Manual entries might need approval
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      };
-
-      // Call the onSave prop which will handle persistence to Supabase
-      onSave(newRdoEntry);
-      onClose();
-    } catch (error: any) {
-      toast.error(`Erro ao adicionar registo manual: ${error.message}`);
-      console.error("Erro ao adicionar registo manual:", error);
-    } finally {
-      setIsSaving(false);
-    }
+    onSaved?.();
+    onClose();
+    setIsSaving(false);
   };
+
+  /* =========================
+     RENDER
+  ========================= */
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[600px]">
+      <DialogContent className="sm:max-w-[520px]">
         <DialogHeader>
-          <DialogTitle>Adicionar Registo Manual (RDO)</DialogTitle>
+          <DialogTitle>
+            Registo Manual – Livro de Obra
+          </DialogTitle>
           <DialogDescription>
-            Adicione notas técnicas, ocorrências ou instruções à obra.
+            Adicione um resumo diário oficial
+            para o Livro de Obra.
           </DialogDescription>
         </DialogHeader>
+
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-4 py-4">
+          <form
+            onSubmit={form.handleSubmit(
+              onSubmit
+            )}
+            className="space-y-4"
+          >
+            {/* DATA */}
             <FormField
               control={form.control}
-              name="date"
+              name="data"
               render={({ field }) => (
                 <FormItem className="flex flex-col">
-                  <FormLabel>Data do Registo *</FormLabel>
+                  <FormLabel>
+                    Data do Registo *
+                  </FormLabel>
                   <Popover>
                     <PopoverTrigger asChild>
                       <FormControl>
                         <Button
-                          variant={"outline"}
+                          variant="outline"
                           className={cn(
-                            "w-full pl-3 text-left font-normal",
-                            !field.value && "text-muted-foreground"
+                            "justify-between",
+                            !field.value &&
+                              "text-muted-foreground"
                           )}
                           disabled={isSaving}
                         >
-                          {field.value ? (
-                            format(parseISO(field.value), "PPP", { locale: pt })
-                          ) : (
-                            <span>Selecione uma data</span>
-                          )}
-                          <CalendarDays className="ml-auto h-4 w-4 opacity-50" />
+                          {field.value
+                            ? format(
+                                parseISO(
+                                  field.value
+                                ),
+                                "PPP",
+                                {
+                                  locale: pt,
+                                }
+                              )
+                            : "Selecionar data"}
+                          <CalendarDays className="h-4 w-4 opacity-50" />
                         </Button>
                       </FormControl>
                     </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
+
+                    <PopoverContent
+                      className="w-auto p-0"
+                      align="start"
+                    >
                       <Calendar
                         mode="single"
-                        selected={field.value ? parseISO(field.value) : undefined}
-                        onSelect={(date) => field.onChange(date ? format(date, "yyyy-MM-dd") : "")}
+                        selected={
+                          field.value
+                            ? parseISO(
+                                field.value
+                              )
+                            : undefined
+                        }
+                        onSelect={(date) =>
+                          field.onChange(
+                            date
+                              ? format(
+                                  date,
+                                  "yyyy-MM-dd"
+                                )
+                              : ""
+                          )
+                        }
                         initialFocus
                         locale={pt}
                       />
@@ -195,51 +233,37 @@ const ManualRdoEntryDialog: React.FC<ManualRdoEntryDialogProps> = ({
                 </FormItem>
               )}
             />
+
+            {/* RESUMO */}
             <FormField
               control={form.control}
-              name="description"
+              name="resumo"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Descrição do Evento *</FormLabel>
+                  <FormLabel>
+                    Resumo do Dia *
+                  </FormLabel>
                   <FormControl>
-                    <Textarea {...field} disabled={isSaving} placeholder="Ex: Reunião de coordenação com subempreiteiro de eletricidade." />
+                    <Textarea
+                      {...field}
+                      rows={5}
+                      placeholder="Ex: Execução de cofragem no piso 1. Reunião com fiscalização. Sem ocorrências."
+                      disabled={isSaving}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
-            <FormField
-              control={form.control}
-              name="observations"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Observações Adicionais (opcional)</FormLabel>
-                  <FormControl>
-                    <Textarea {...field} disabled={isSaving} placeholder="Notas importantes ou seguimento necessário." />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormItem>
-              <FormLabel>Anexos (opcional)</FormLabel>
-              <FormControl>
-                <Input
-                  type="file"
-                  multiple
-                  onChange={handleFileChange}
-                  disabled={isSaving}
-                />
-              </FormControl>
-              {selectedFiles && selectedFiles.length > 0 && (
-                <p className="text-sm text-muted-foreground">
-                  {selectedFiles.length} ficheiro(s) selecionado(s).
-                </p>
-              )}
-              <FormMessage />
-            </FormItem>
-            <Button type="submit" className="mt-4" disabled={isSaving}>
-              {isSaving ? "A Guardar..." : "Adicionar Registo"}
+
+            <Button
+              type="submit"
+              disabled={isSaving}
+              className="w-full"
+            >
+              {isSaving
+                ? "A guardar..."
+                : "Guardar Registo"}
             </Button>
           </form>
         </Form>
