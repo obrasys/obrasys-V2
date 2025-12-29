@@ -1,12 +1,12 @@
 "use client";
 
-import React from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import React from "react";
+import { Link } from "react-router-dom";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Form,
   FormControl,
@@ -14,54 +14,26 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from '@/components/ui/form';
-import { toast } from 'sonner';
-import { supabase } from '@/integrations/supabase/client';
-import { ArrowRight, Eye, EyeOff, Mail, Lock, ArrowLeft } from 'lucide-react';
-import { useSession } from '@/components/SessionContextProvider';
+} from "@/components/ui/form";
+import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
+import { ArrowRight, Eye, EyeOff, Mail, Lock, ArrowLeft } from "lucide-react";
 
 const loginSchema = z.object({
-  email: z.string().email("Formato de email inválido.").min(1, "O email é obrigatório."),
+  email: z
+    .string()
+    .email("Formato de email inválido.")
+    .min(1, "O email é obrigatório."),
   password: z.string().min(1, "A palavra-passe é obrigatória."),
 });
 
 type LoginFormValues = z.infer<typeof loginSchema>;
 
 const Login: React.FC = () => {
-  const navigate = useNavigate();
-  const location = useLocation();
-  const { session, isLoading: isSessionLoading } = useSession();
-  const from = (location.state as any)?.from?.pathname || '/dashboard';
   const [showPassword, setShowPassword] = React.useState(false);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
-  const [needsEmailConfirmation, setNeedsEmailConfirmation] = React.useState(false);
-
-  const emailRedirectTo =
-    (import.meta.env.VITE_APP_BASE_URL as string) ||
-    (typeof window !== "undefined" ? window.location.origin : "https://app.obrasys.pt");
-
-  // NOVO: validar env do Supabase no carregamento
-  React.useEffect(() => {
-    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-    const supabaseAnon = import.meta.env.VITE_SUPABASE_ANON_KEY;
-    if (!supabaseUrl || !supabaseAnon) {
-      toast.error("Configuração do Supabase ausente (URL ou ANON KEY). Verifique as variáveis de ambiente.");
-    }
-  }, []);
-
-  // Se já existe sessão, não permitir ficar na tela de login: redirecionar
-  React.useEffect(() => {
-    if (!isSessionLoading && session) {
-      navigate(from, { replace: true });
-    }
-  }, [session, isSessionLoading, navigate, from]);
-
-  // Evitar travar no estado de envio: timeout de segurança para resetar o botão
-  React.useEffect(() => {
-    if (!isSubmitting) return;
-    const t = setTimeout(() => setIsSubmitting(false), 12000); // aumentado para 12s
-    return () => clearTimeout(t);
-  }, [isSubmitting]);
+  const [needsEmailConfirmation, setNeedsEmailConfirmation] =
+    React.useState(false);
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -71,181 +43,106 @@ const Login: React.FC = () => {
     },
   });
 
-  // NOVO: helper para timeout explícito
-  async function signInWithTimeout(params: { email: string; password: string }, ms = 12000) {
-    const timeout = new Promise<{ data: any; error: any }>((resolve) =>
-      setTimeout(() => resolve({ data: null, error: new Error("Tempo excedido ao tentar entrar. Verifique a conexão e tente novamente.") }), ms)
-    );
-    const request = supabase.auth.signInWithPassword(params);
-    // corrida entre request e timeout
-    const result = await Promise.race([request as unknown as Promise<{ data: any; error: any }>, timeout]);
-    return result;
-  }
-
+  /* ------------------------------------------------------------------ */
+  /* 🔐 SUBMIT — apenas autentica (sem redirects aqui)                   */
+  /* ------------------------------------------------------------------ */
   const onSubmit = async (data: LoginFormValues) => {
     setIsSubmitting(true);
+    setNeedsEmailConfirmation(false);
+
     try {
-      const { data: signInData, error } = await signInWithTimeout({
+      const { error } = await supabase.auth.signInWithPassword({
         email: data.email,
         password: data.password,
       });
 
       if (error) {
         const msg = (error.message || "").toLowerCase();
-        const needsConfirm = msg.includes("confirm");
-        setNeedsEmailConfirmation(needsConfirm);
 
-        if (needsConfirm) {
-          toast.error("Email não confirmado. Verifique o seu email ou reenvie a confirmação abaixo.");
-        } else if (msg.includes("tempo excedido") || msg.includes("timeout")) {
-          toast.error("Tempo excedido ao iniciar sessão. Verifique a sua ligação e tente novamente.");
+        if (msg.includes("confirm")) {
+          setNeedsEmailConfirmation(true);
+          toast.error(
+            "Email não confirmado. Verifique o seu email ou reenvie a confirmação."
+          );
         } else if (msg.includes("invalid") || msg.includes("credentials")) {
-          toast.error("Credenciais inválidas. Verifique o e-mail e a palavra-passe.");
+          toast.error(
+            "Credenciais inválidas. Verifique o e-mail e a palavra-passe."
+          );
         } else {
           toast.error(`Erro ao iniciar sessão: ${error.message}`);
         }
         return;
       }
 
-      if (signInData?.session) {
-        toast.success('Sessão iniciada com sucesso!');
-        // Redireciona sem reload, respeitando a rota original
-        navigate(from, { replace: true });
-        return;
-      }
-
-      // Caso raro: sem erro e sem session
-      toast.error('Não foi possível criar a sessão. Tente novamente ou redefina a palavra-passe.');
-    } catch (error: any) {
-      toast.error(`Ocorreu um erro inesperado: ${error.message}`);
+      // ❗ NÃO navegar aqui
+      // O SessionContextProvider + ProtectedRoute tratam da navegação
+      toast.success("Sessão iniciada com sucesso!");
+    } catch (err: any) {
+      toast.error(`Ocorreu um erro inesperado: ${err.message}`);
     } finally {
       setIsSubmitting(false);
     }
   };
 
+  /* ------------------------------------------------------------------ */
+  /* 🔁 Reenvio de confirmação de email                                  */
+  /* ------------------------------------------------------------------ */
   const handleResendConfirmation = async () => {
     const email = (form.getValues("email") || "").trim();
     if (!email) {
       toast.error("Insira o seu e-mail acima para reenviar a confirmação.");
       return;
     }
+
+    const emailRedirectTo =
+      import.meta.env.VITE_APP_BASE_URL ||
+      window.location.origin;
+
     const { error } = await supabase.auth.resend({
       type: "signup",
       email,
-      options: {
-        emailRedirectTo, // Garantir que o link aponte para app.obrasys.pt
-      },
+      options: { emailRedirectTo },
     });
+
     if (error) {
       toast.error(`Falha ao reenviar confirmação: ${error.message}`);
       return;
     }
-    toast.success("E-mail de confirmação reenviado! Verifique a sua caixa de entrada.");
+
+    toast.success(
+      "E-mail de confirmação reenviado! Verifique a sua caixa de entrada."
+    );
     setNeedsEmailConfirmation(false);
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100 p-4">
-      <div className="w-full max-w-sm sm:max-w-md p-6 sm:p-8 space-y-4 sm:space-y-6 bg-white dark:bg-gray-800 rounded-lg shadow-lg">
-        <div className="flex flex-col items-center mb-4 sm:mb-6">
-          <img src="/marca_nav_bar.png" alt="Obra Sys Logo" className="h-10 sm:h-12 w-auto mb-2 sm:mb-4" />
-          <h1 className="text-2xl sm:text-3xl font-bold text-center text-primary dark:text-primary-foreground">
+    <div className="min-h-screen flex items-center justify-center bg-gray-100 dark:bg-gray-900 p-4">
+      <div className="w-full max-w-sm sm:max-w-md p-6 sm:p-8 bg-white dark:bg-gray-800 rounded-lg shadow-lg space-y-6">
+        <div className="flex flex-col items-center">
+          <img
+            src="/marca_nav_bar.png"
+            alt="Obra Sys Logo"
+            className="h-12 mb-4"
+          />
+          <h1 className="text-2xl font-bold text-primary">
             Entrar na sua conta
           </h1>
-          <p className="text-center text-muted-foreground text-sm">
+          <p className="text-sm text-muted-foreground">
             Aceda à sua conta para gerir as suas obras
           </p>
         </div>
+
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <form
+            onSubmit={form.handleSubmit(onSubmit)}
+            className="space-y-4"
+          >
             <FormField
               control={form.control}
               name="email"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel htmlFor="login-email">E-mail</FormLabel>
+                  <FormLabel>E-mail</FormLabel>
                   <FormControl>
                     <div className="relative">
-                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input id="login-email" autoComplete="email" placeholder="email@exemplo.com" {...field} className="pl-10" />
-                    </div>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="password"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel htmlFor="login-password">Palavra-passe</FormLabel>
-                  <FormControl>
-                    <div className="relative">
-                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        id="login-password"
-                        type={showPassword ? "text" : "password"}
-                        autoComplete="current-password"
-                        placeholder="••••••••"
-                        {...field}
-                        className="pl-10 pr-10"
-                      />
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                        onClick={() => setShowPassword((prev) => !prev)}
-                      >
-                        {showPassword ? (
-                          <EyeOff className="h-4 w-4 text-muted-foreground" />
-                        ) : (
-                          <Eye className="h-4 w-4 text-muted-foreground" />
-                        )}
-                      </Button>
-                    </div>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <Button type="submit" className="w-full flex items-center gap-2" disabled={isSubmitting}>
-              {isSubmitting ? (
-                <>
-                  Entrando...
-                  <ArrowRight className="h-4 w-4" />
-                </>
-              ) : (
-                <>
-                  Entrar <ArrowRight className="h-4 w-4" />
-                </>
-              )}
-            </Button>
-          </form>
-        </Form>
-        <div className="flex flex-col items-center space-y-2 mt-4">
-          <Link to="/login" className="text-sm text-primary hover:underline">
-            Esqueceu a palavra-passe?
-          </Link>
-          {needsEmailConfirmation && (
-            <Button variant="outline" size="sm" onClick={handleResendConfirmation}>
-              Reenviar e-mail de confirmação
-            </Button>
-          )}
-          <p className="text-sm text-muted-foreground">
-            Ainda não tem conta?{" "}
-            <Link to="/signup" className="text-primary hover:underline">
-              Criar conta
-            </Link>
-          </p>
-          <Link to="/modules" className="text-sm text-muted-foreground hover:underline flex items-center gap-1 mt-4">
-            <ArrowLeft className="h-4 w-4" /> Voltar ao início
-          </Link>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-export default Login;
+                      <Mail className="absolu
