@@ -42,7 +42,7 @@ const TrialBanner: React.FC = () => {
         return;
       }
 
-      // Seleciona a subscrição mais recente da empresa (evita erro de múltiplas linhas)
+      // Seleciona a subscrição mais recente da empresa
       const { data: subData, error: subError } = await supabase
         .from('subscriptions')
         .select('*')
@@ -68,11 +68,14 @@ const TrialBanner: React.FC = () => {
     }
   }, [user, isSessionLoading]);
 
-  if (isLoadingSubscription || !subscription || subscription.status === "active") {
+  // Agora mostramos o banner mesmo quando status === "active"
+  if (isLoadingSubscription || !subscription) {
     return null;
   }
 
-  // Calcula dias restantes: usa trial_end; se ausente, fallback para trial_start + DEFAULT_TRIAL_DAYS
+  const now = new Date();
+
+  // Trial: calcular fim e dias restantes
   const trialEndDate = subscription.trial_end
     ? parseISO(subscription.trial_end)
     : (subscription.trial_start ? (() => {
@@ -82,24 +85,52 @@ const TrialBanner: React.FC = () => {
         return end;
       })() : null);
 
-  const rawDaysRemaining = trialEndDate ? differenceInDays(trialEndDate, new Date()) : 0;
-  const daysRemaining = Math.max(0, rawDaysRemaining);
+  const rawTrialDaysRemaining = trialEndDate ? differenceInDays(trialEndDate, now) : 0;
+  const trialDaysRemaining = Math.max(0, rawTrialDaysRemaining);
 
-  let bannerContent;
-  let icon;
-  let bgColorClass;
-  let textColorClass;
+  // Renovação: calcular próxima data e dias
+  const renewalDate = subscription.current_period_end ? parseISO(subscription.current_period_end) : null;
+  const rawRenewDays = renewalDate ? differenceInDays(renewalDate, now) : null;
+  const renewDays = rawRenewDays !== null ? Math.max(0, rawRenewDays) : null;
+
+  const prettyPlan = (subscription.plan_type || 'trialing').replace('_', ' ');
+
+  let bannerContent = "";
+  let subText = "";
+  let icon: React.ReactNode = null;
+  let bgColorClass = "";
+  let textColorClass = "";
   let buttonText = "Ver Planos";
   let buttonVariant: "default" | "outline" | "destructive" = "default";
   let buttonLink = "/plans";
+  let badgeText: string | null = null;
+  let badgeClass = "bg-blue-600 text-white";
 
-  if (subscription.status === "trialing") {
-    if (daysRemaining > 0) {
+  if (subscription.status === "active") {
+    icon = <CheckCircle className="h-5 w-5" />;
+    bgColorClass = "bg-emerald-50 dark:bg-emerald-950";
+    textColorClass = "text-emerald-800 dark:text-emerald-200";
+    bannerContent = `Plano ${prettyPlan} ativo.`;
+    if (renewDays !== null && renewalDate) {
+      subText = `Renova em ${renewDays} dia(s) • ${format(renewalDate, "dd/MM/yyyy")}`;
+      badgeText = `${renewDays}d`;
+      badgeClass = "bg-emerald-600 text-white";
+    } else {
+      subText = "Renovação automática ativa.";
+    }
+    buttonText = "Gerir Assinatura";
+    buttonVariant = "outline";
+    buttonLink = "/profile?tab=company";
+  } else if (subscription.status === "trialing") {
+    if (trialDaysRemaining > 0) {
       icon = <Clock className="h-5 w-5" />;
       bgColorClass = "bg-blue-50 dark:bg-blue-950";
       textColorClass = "text-blue-800 dark:text-blue-200";
-      bannerContent = `Trial gratuito - Faltam ${daysRemaining} dia(s).`;
+      bannerContent = `Trial gratuito`;
+      subText = `Faltam ${trialDaysRemaining} dia(s) • ${trialEndDate ? format(trialEndDate, "dd/MM/yyyy") : ""}`;
       buttonText = "Ativar Plano";
+      badgeText = `${trialDaysRemaining}d`;
+      badgeClass = "bg-blue-600 text-white";
     } else {
       icon = <XCircle className="h-5 w-5" />;
       bgColorClass = "bg-red-50 dark:bg-red-950";
@@ -107,21 +138,27 @@ const TrialBanner: React.FC = () => {
       bannerContent = "O seu trial gratuito terminou.";
       buttonText = "Ativar Assinatura";
       buttonVariant = "destructive";
+      badgeText = null;
     }
   } else if (subscription.status === "expired") {
     icon = <XCircle className="h-5 w-5" />;
     bgColorClass = "bg-red-50 dark:bg-red-950";
     textColorClass = "text-red-800 dark:text-red-200";
-    bannerContent = "A sua assinatura expirou. Ative para continuar a usar o Obra Sys.";
+    bannerContent = "A sua assinatura expirou.";
+    subText = "Ative para continuar a usar o Obra Sys.";
     buttonText = "Reativar Assinatura";
     buttonVariant = "destructive";
+    badgeText = null;
   } else if (subscription.status === "suspended" || subscription.status === "cancelled") {
     icon = <Info className="h-5 w-5" />;
     bgColorClass = "bg-yellow-50 dark:bg-yellow-950";
     textColorClass = "text-yellow-800 dark:text-yellow-200";
     bannerContent = `A sua assinatura está ${subscription.status === "suspended" ? "suspensa" : "cancelada"}.`;
+    subText = "Verifique dados de pagamento ou contacte suporte.";
     buttonText = "Gerir Assinatura";
+    buttonVariant = "outline";
     buttonLink = "/profile?tab=company";
+    badgeText = null;
   } else {
     return null;
   }
@@ -130,12 +167,13 @@ const TrialBanner: React.FC = () => {
     <Card className={cn("p-4 flex items-center justify-between gap-4", bgColorClass, textColorClass)}>
       <div className="flex items-center gap-3">
         {icon}
-        <p className="font-medium text-sm md:text-base">{bannerContent}</p>
+        <div className="flex flex-col">
+          <p className="font-medium text-sm md:text-base">{bannerContent}</p>
+          {subText && <p className="text-xs md:text-sm opacity-80">{subText}</p>}
+        </div>
       </div>
       <div className="flex items-center gap-3">
-        {subscription.status === "trialing" && (
-          <Badge className="bg-blue-600 text-white">{daysRemaining}d</Badge>
-        )}
+        {badgeText && <Badge className={badgeClass}>{badgeText}</Badge>}
         <Button asChild variant={buttonVariant} className="flex-shrink-0">
           <Link to={buttonLink}>{buttonText}</Link>
         </Button>
