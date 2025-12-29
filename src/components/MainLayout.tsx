@@ -21,6 +21,7 @@ import {
 
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useSession } from "@/components/SessionContextProvider";
+import { useSubscriptionStatus } from "@/hooks/useSubscriptionStatus";
 import { supabase } from "@/integrations/supabase/client";
 import { useNotification } from "@/contexts/NotificationContext";
 import { toast } from "sonner";
@@ -31,8 +32,21 @@ const MainLayout = () => {
 
   const { user, profile, isLoading } = useSession();
 
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = React.useState(isMobile);
-  const [isEditProfileModalOpen, setIsEditProfileModalOpen] = React.useState(false);
+  const companyId = profile?.company_id ?? null;
+
+  const {
+    data: subscriptionStatus,
+    loading: isLoadingSubscription,
+  } = useSubscriptionStatus(companyId ?? undefined);
+
+  const isSubscriptionBlocked =
+    subscriptionStatus?.computed_status !== "active";
+
+  const [isSidebarCollapsed, setIsSidebarCollapsed] =
+    React.useState(isMobile);
+
+  const [isEditProfileModalOpen, setIsEditProfileModalOpen] =
+    React.useState(false);
 
   React.useEffect(() => {
     setIsSidebarCollapsed(isMobile);
@@ -42,7 +56,7 @@ const MainLayout = () => {
   /* 🔐 PROTEÇÃO DE RENDER (CRÍTICO)                                     */
   /* ------------------------------------------------------------------ */
 
-  if (isLoading) {
+  if (isLoading || isLoadingSubscription) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         A carregar sessão…
@@ -72,6 +86,7 @@ const MainLayout = () => {
 
   const firstName = profile?.first_name || "";
   const lastName = profile?.last_name || "";
+
   const userInitials =
     firstName && lastName
       ? `${firstName[0]}${lastName[0]}`.toUpperCase()
@@ -85,6 +100,8 @@ const MainLayout = () => {
           isCollapsed={isSidebarCollapsed}
           toggleSidebar={toggleSidebar}
           profile={profile ?? null}
+          subscriptionStatus={subscriptionStatus ?? null}
+          isSubscriptionBlocked={isSubscriptionBlocked}
         />
       </div>
 
@@ -93,7 +110,11 @@ const MainLayout = () => {
         <header className="flex items-center justify-between pb-4 border-b mb-4">
           {/* Mobile menu */}
           <div className="md:hidden">
-            <MobileSidebar profile={profile ?? null}>
+            <MobileSidebar
+              profile={profile ?? null}
+              subscriptionStatus={subscriptionStatus ?? null}
+              isSubscriptionBlocked={isSubscriptionBlocked}
+            >
               <Button variant="ghost" size="icon">
                 <Menu className="h-5 w-5" />
               </Button>
@@ -113,7 +134,9 @@ const MainLayout = () => {
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="h-8 w-8 rounded-full">
                   <Avatar className="h-8 w-8">
-                    <AvatarImage src={profile?.avatar_url ?? undefined} />
+                    <AvatarImage
+                      src={profile?.avatar_url ?? undefined}
+                    />
                     <AvatarFallback>{userInitials}</AvatarFallback>
                   </Avatar>
                 </Button>
@@ -133,12 +156,18 @@ const MainLayout = () => {
 
                 <DropdownMenuSeparator />
 
-                <DropdownMenuItem onClick={() => setIsEditProfileModalOpen(true)}>
+                <DropdownMenuItem
+                  onClick={() => setIsEditProfileModalOpen(true)}
+                >
                   <User className="mr-2 h-4 w-4" />
                   Perfil
                 </DropdownMenuItem>
 
-                <DropdownMenuItem onClick={() => navigate("/profile?tab=company")}>
+                <DropdownMenuItem
+                  onClick={() =>
+                    navigate("/profile?tab=company")
+                  }
+                >
                   <Building2 className="mr-2 h-4 w-4" />
                   Gestão da Empresa
                 </DropdownMenuItem>
