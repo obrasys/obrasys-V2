@@ -18,26 +18,6 @@ import { MoreHorizontal, Eye, Edit } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/utils/formatters";
-import {
-  getServiceRisk,
-  riskBadgeMap,
-} from "@/utils/budget-risk";
-
-/* =========================
-   HELPERS
-========================= */
-
-const formatCurrency = (value: unknown): string => {
-  const number =
-    typeof value === "number"
-      ? value
-      : Number(value);
-
-  return new Intl.NumberFormat("pt-PT", {
-    style: "currency",
-    currency: "EUR",
-  }).format(Number.isFinite(number) ? number : 0);
-};
 
 interface ColumnsProps {
   onView: (budgetItem: BudgetItem) => void;
@@ -73,9 +53,7 @@ export const createBudgetColumns = ({
     ),
     cell: ({ row }) => (
       <div className="text-right font-medium">
-        {formatCurrency(
-          row.getValue("preco_unitario")
-        )}
+        {formatCurrency(row.getValue("preco_unitario"))}
       </div>
     ),
   },
@@ -88,9 +66,7 @@ export const createBudgetColumns = ({
     ),
     cell: ({ row }) => (
       <div className="text-right font-medium">
-        {formatCurrency(
-          row.getValue("custo_planeado")
-        )}
+        {formatCurrency(row.getValue("custo_planeado"))}
       </div>
     ),
   },
@@ -103,9 +79,7 @@ export const createBudgetColumns = ({
     ),
     cell: ({ row }) => (
       <div className="text-right font-medium">
-        {formatCurrency(
-          row.getValue("custo_executado")
-        )}
+        {formatCurrency(row.getValue("custo_executado"))}
       </div>
     ),
   },
@@ -117,9 +91,8 @@ export const createBudgetColumns = ({
       </div>
     ),
     cell: ({ row }) => {
-      const value = Number(
-        row.getValue("desvio")
-      );
+      const value = Number(row.getValue("desvio"));
+
       const colorClass =
         value > 0
           ? "text-red-600"
@@ -128,12 +101,7 @@ export const createBudgetColumns = ({
           : "text-muted-foreground";
 
       return (
-        <div
-          className={cn(
-            "text-right font-medium",
-            colorClass
-          )}
-        >
+        <div className={cn("text-right font-medium", colorClass)}>
           {formatCurrency(value)}
         </div>
       );
@@ -144,25 +112,20 @@ export const createBudgetColumns = ({
     header: "Estado",
     cell: ({ row }) => {
       const estado =
-        row.getValue(
-          "estado"
-        ) as BudgetItem["estado"];
+        row.getValue("estado") as BudgetItem["estado"];
 
       const map = {
         Planeado: {
           variant: "outline",
-          className:
-            "text-muted-foreground",
+          className: "text-muted-foreground",
         },
         "Em andamento": {
           variant: "default",
-          className:
-            "bg-blue-600 text-white",
+          className: "bg-blue-600 text-white",
         },
         Concluído: {
           variant: "default",
-          className:
-            "bg-green-600 text-white",
+          className: "bg-green-600 text-white",
         },
         Atrasado: {
           variant: "destructive",
@@ -173,10 +136,7 @@ export const createBudgetColumns = ({
       const cfg = map[estado];
 
       return (
-        <Badge
-          variant={cfg.variant}
-          className={cfg.className}
-        >
+        <Badge variant={cfg.variant} className={cfg.className}>
           {estado}
         </Badge>
       );
@@ -205,30 +165,19 @@ export const createBudgetColumns = ({
               Ações
             </DropdownMenuLabel>
 
-            <DropdownMenuItem
-              onClick={() =>
-                onView(budgetItem)
-              }
-            >
+            <DropdownMenuItem onClick={() => onView(budgetItem)}>
               <Eye className="mr-2 h-4 w-4" />
               Ver detalhes
             </DropdownMenuItem>
 
-            <DropdownMenuItem
-              onClick={() =>
-                onEdit(budgetItem)
-              }
-            >
+            <DropdownMenuItem onClick={() => onEdit(budgetItem)}>
               <Edit className="mr-2 h-4 w-4" />
               Editar
             </DropdownMenuItem>
 
             <DropdownMenuSeparator />
 
-            <DropdownMenuItem
-              disabled
-              className="text-red-600"
-            >
+            <DropdownMenuItem disabled className="text-red-600">
               Eliminar (em breve)
             </DropdownMenuItem>
           </DropdownMenuContent>
