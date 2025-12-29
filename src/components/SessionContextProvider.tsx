@@ -92,7 +92,6 @@ export const SessionContextProvider: React.FC<{
 
     setCompanyId(newCompanyId);
 
-    // Storage POR UTILIZADOR (nunca global)
     const storageKey = `active_company_id:${user.id}`;
     try {
       if (newCompanyId) {
@@ -106,11 +105,44 @@ export const SessionContextProvider: React.FC<{
   };
 
   /* ------------------------------------------------------------------ */
-  /* 🚀 Auth bootstrap: onAuthStateChange como fonte ÚNICA               */
+  /* 🟢 BOOTSTRAP INICIAL — ESSENCIAL PARA NOVAS ABAS                    */
   /* ------------------------------------------------------------------ */
   useEffect(() => {
     let mounted = true;
-    setIsLoading(true);
+
+    const bootstrap = async () => {
+      setIsLoading(true);
+
+      const { data, error } = await supabase.auth.getSession();
+
+      if (!mounted) return;
+
+      if (error) {
+        console.error("[SessionContext] getSession falhou:", error);
+        setIsLoading(false);
+        return;
+      }
+
+      if (data.session) {
+        setSession(data.session);
+        setUser(data.session.user);
+      }
+
+      setIsLoading(false);
+    };
+
+    bootstrap();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  /* ------------------------------------------------------------------ */
+  /* 🚀 onAuthStateChange como fonte ÚNICA de eventos de auth            */
+  /* ------------------------------------------------------------------ */
+  useEffect(() => {
+    let mounted = true;
 
     const { data: listener } = supabase.auth.onAuthStateChange(
       async (event, currentSession) => {
@@ -141,18 +173,15 @@ export const SessionContextProvider: React.FC<{
 
         const currentUser = currentSession.user;
 
-        // Carrega profile apenas quando necessário
         if (
           currentUser &&
           lastLoadedUserIdRef.current !== currentUser.id
         ) {
           const profileData = await loadProfile(currentUser);
-
           if (!mounted) return;
 
           setProfile(profileData);
 
-          // Só marca como carregado se profile existir
           if (profileData) {
             lastLoadedUserIdRef.current = currentUser.id;
 
@@ -168,7 +197,6 @@ export const SessionContextProvider: React.FC<{
                 /* ignore */
               }
             } else {
-              // fallback apenas para ESTE utilizador
               let stored: string | null = null;
               try {
                 stored = localStorage.getItem(storageKey);
@@ -184,7 +212,7 @@ export const SessionContextProvider: React.FC<{
       }
     );
 
-    // 🔁 Sincroniza abas quando empresa ativa muda (por user)
+    // 🔁 Sincronização entre abas (empresa ativa POR USER)
     const onStorage = (e: StorageEvent) => {
       if (!user?.id) return;
       const expectedKey = `active_company_id:${user.id}`;
