@@ -16,7 +16,7 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
     );
   }
 
-  if (!session) {
+  if (!session && !isLoading) {
     return <Navigate to="/login" replace state={{ from: location }} />;
   }
 

@@ -27,26 +27,22 @@ export const SessionContextProvider: React.FC<{ children: React.ReactNode }> = (
   /* 🔐 Função única para carregar profile                               */
   /* ------------------------------------------------------------------ */
   const loadProfile = async (currentUser: User) => {
-    // Tenta obter perfil
     const { data, error } = await supabase
       .from("profiles")
       .select("*")
       .eq("id", currentUser.id)
       .maybeSingle();
 
-    // Se encontrou, devolve
     if (!error && data) {
       return data as Profile;
     }
 
-    // Se houve erro inesperado, regista e devolve null
     if (error && error.code !== "PGRST116") {
       console.error("[SessionContext] Erro ao carregar profile:", error);
       return null;
     }
 
-    // Não existe perfil: NÃO insere no cliente (evita falhas de RLS).
-    // Espera curta para o trigger server-side criar o perfil.
+    // Não existe perfil: não inserir no cliente. Aguarda curto prazo pela criação server-side.
     for (let attempt = 0; attempt < 10; attempt++) {
       await new Promise((res) => setTimeout(res, 500));
       const { data: pData, error: pErr } = await supabase
@@ -64,7 +60,6 @@ export const SessionContextProvider: React.FC<{ children: React.ReactNode }> = (
       }
     }
 
-    // Ainda sem perfil: devolve null e deixa o app seguir com user autenticado
     return null;
   };
 
@@ -73,13 +68,13 @@ export const SessionContextProvider: React.FC<{ children: React.ReactNode }> = (
   /* ------------------------------------------------------------------ */
   useEffect(() => {
     let mounted = true;
+    setIsLoading(true);
 
     const { data: listener } = supabase.auth.onAuthStateChange(
       async (event, currentSession) => {
         if (!mounted) return;
 
         if (!currentSession || event === "SIGNED_OUT") {
-          // SIGNED_OUT: limpar tudo
           setSession(null);
           setUser(null);
           setProfile(null);
@@ -88,11 +83,10 @@ export const SessionContextProvider: React.FC<{ children: React.ReactNode }> = (
           return;
         }
 
-        // INITIAL_SESSION / SIGNED_IN / outros eventos com sessão válida
+        // INITIAL_SESSION, SIGNED_IN, TOKEN_REFRESHED, USER_UPDATED, etc.
         setSession(currentSession);
         setUser(currentSession.user);
 
-        // Carrega perfil apenas uma vez por utilizador
         const currentUser = currentSession.user;
         if (currentUser && lastLoadedUserIdRef.current !== currentUser.id) {
           const profileData = await loadProfile(currentUser);
@@ -110,14 +104,6 @@ export const SessionContextProvider: React.FC<{ children: React.ReactNode }> = (
       mounted = false;
       listener.subscription.unsubscribe();
     };
-  }, []);
-
-  // Failsafe: caso algo trave, garantir que loading termina
-  useEffect(() => {
-    const t = setTimeout(() => {
-      setIsLoading(false);
-    }, 7000);
-    return () => clearTimeout(t);
   }, []);
 
   return (
