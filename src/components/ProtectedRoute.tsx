@@ -5,8 +5,12 @@ import { Navigate, useLocation } from "react-router-dom";
 import { useSession } from "@/components/SessionContextProvider";
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { session, isLoading } = useSession();
+  const { session, isLoading, companyId } = useSession();
   const location = useLocation();
+
+  const path = location.pathname;
+  const isAuthPage = path === "/login" || path === "/signup";
+  const isSelectCompanyPage = path === "/select-company";
 
   if (isLoading) {
     return (
@@ -16,8 +20,13 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
     );
   }
 
-  if (!session && !isLoading) {
+  if (!session) {
     return <Navigate to="/login" replace state={{ from: location }} />;
+  }
+
+  // Empresa ativa obrigatória para páginas protegidas (exceto a própria seleção)
+  if (!companyId && !isAuthPage && !isSelectCompanyPage) {
+    return <Navigate to="/select-company" replace state={{ from: location }} />;
   }
 
   return <>{children}</>;

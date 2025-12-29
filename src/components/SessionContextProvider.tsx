@@ -11,6 +11,7 @@ interface SessionContextType {
   profile: Profile | null;
   isLoading: boolean;
   companyId?: string | null;
+  setActiveCompany?: (companyId: string | null) => Promise<void>;
 }
 
 const SessionContext = createContext<SessionContextType | undefined>(undefined);
@@ -44,7 +45,7 @@ export const SessionContextProvider: React.FC<{ children: React.ReactNode }> = (
       return null;
     }
 
-    // Não existe perfil: não inserir no cliente. Aguarda curto prazo pela criação server-side.
+    // Aguarda curto prazo pela criação server-side.
     for (let attempt = 0; attempt < 10; attempt++) {
       await new Promise((res) => setTimeout(res, 500));
       const { data: pData, error: pErr } = await supabase
@@ -65,8 +66,32 @@ export const SessionContextProvider: React.FC<{ children: React.ReactNode }> = (
     return null;
   };
 
+  // Define explicitamente a empresa ativa (grava em perfil e sincroniza abas)
+  const setActiveCompany = async (newCompanyId: string | null) => {
+    if (!user) return;
+    const { error } = await supabase
+      .from("profiles")
+      .update({ active_company_id: newCompanyId })
+      .eq("id", user.id);
+    if (error) {
+      console.error("[SessionContext] Falha ao definir active_company_id:", error);
+      throw error;
+    }
+    // Atualiza estado local e sincroniza via storage
+    setCompanyId(newCompanyId);
+    try {
+      if (newCompanyId) {
+        localStorage.setItem("active_company_id", newCompanyId);
+      } else {
+        localStorage.removeItem("active_company_id");
+      }
+    } catch (_) {
+      // ignore storage errors
+    }
+  };
+
   /* ------------------------------------------------------------------ */
-  /* 🚀 Gestão de sessão: única fonte via onAuthStateChange              */
+  /* 🚀 onAuthStateChange como fonte única                               */
   /* ------------------------------------------------------------------ */
   useEffect(() => {
     let mounted = true;
@@ -86,25 +111,27 @@ export const SessionContextProvider: React.FC<{ children: React.ReactNode }> = (
           return;
         }
 
-        // INITIAL_SESSION, SIGNED_IN, TOKEN_REFRESHED, USER_UPDATED, etc.
         setSession(currentSession);
         setUser(currentSession.user);
-
-        // Fonte única da empresa ativa: função RPC current_company_id()
-        const { data: rpcCompanyId, error: rpcErr } = await supabase.rpc('current_company_id');
-        if (rpcErr) {
-          console.error("[SessionContext] Erro ao obter company_id via RPC:", rpcErr);
-          setCompanyId(null);
-        } else {
-          // rpcCompanyId pode ser null; normal se não houver membership
-          setCompanyId(rpcCompanyId ? String(rpcCompanyId) : null);
-        }
 
         const currentUser = currentSession.user;
         if (currentUser && lastLoadedUserIdRef.current !== currentUser.id) {
           const profileData = await loadProfile(currentUser);
           if (mounted) {
             setProfile(profileData);
+
+            // Empresa ativa: primeiro tenta perfil.active_company_id
+            const activeFromProfile = (profileData as any)?.active_company_id as string | null;
+            if (activeFromProfile) {
+              setCompanyId(activeFromProfile);
+              try { localStorage.setItem("active_company_id", activeFromProfile); } catch (_) {}
+            } else {
+              // Sem empresa ativa definida: tenta sincronizar com localStorage
+              let stored = null;
+              try { stored = localStorage.getItem("active_company_id"); } catch (_) {}
+              setCompanyId(stored || null);
+            }
+
             lastLoadedUserIdRef.current = currentUser.id;
           }
         }
@@ -113,14 +140,23 @@ export const SessionContextProvider: React.FC<{ children: React.ReactNode }> = (
       }
     );
 
+    // Sincroniza abas quando active_company_id muda em outra aba
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === "active_company_id") {
+        setCompanyId(e.newValue);
+      }
+    };
+    window.addEventListener("storage", onStorage);
+
     return () => {
       mounted = false;
       listener.subscription.unsubscribe();
+      window.removeEventListener("storage", onStorage);
     };
   }, []);
 
   return (
-    <SessionContext.Provider value={{ session, user, profile, isLoading, companyId }}>
+    <SessionContext.Provider value={{ session, user, profile, isLoading, companyId, setActiveCompany }}>
       {children}
     </SessionContext.Provider>
   );

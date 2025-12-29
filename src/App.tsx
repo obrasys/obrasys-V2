@@ -32,6 +32,7 @@ import CollaboratorsPage from "@/pages/CollaboratorsPage";
 import ReportsPage from "@/pages/ReportsPage";
 import SchedulePage from "@/pages/SchedulePage";
 import PlansPage from "@/pages/PlansPage"; // NEW: Import PlansPage
+import SelectCompany from "@/pages/SelectCompany"; // NEW: Import SelectCompany
 
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -79,6 +80,7 @@ const App = () => {
                 <Route path="collaborators" element={<ProtectedRoute><CollaboratorsPage /></ProtectedRoute>} />
                 <Route path="reports" element={<ProtectedRoute><ReportsPage /></ProtectedRoute>} />
                 <Route path="plans" element={<ProtectedRoute><PlansPage /></ProtectedRoute>} />
+                <Route path="select-company" element={<ProtectedRoute><SelectCompany /></ProtectedRoute>} />
                 <Route path="*" element={<NotFound />} />
               </Route>
             </Routes>
