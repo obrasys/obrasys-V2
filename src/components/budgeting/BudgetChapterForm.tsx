@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useMemo, useRef } from "react";
 import { UseFormReturn } from "react-hook-form";
 import {
   ChevronDown,
@@ -52,14 +52,22 @@ interface BudgetChapterFormProps {
   chapterFieldsLength: number;
   articles: Article[];
   handleAddService: (chapterIndex: number) => void;
-  handleRemoveService: (chapterIndex: number, itemIndex: number) => void;
-  handleDuplicateService: (chapterIndex: number, itemIndex: number) => void;
+  handleRemoveService: (
+    chapterIndex: number,
+    itemIndex: number
+  ) => void;
+  handleDuplicateService: (
+    chapterIndex: number,
+    itemIndex: number
+  ) => void;
   removeChapter: (index: number) => void;
   moveChapter: (from: number, to: number) => void;
   userCompanyId: string | null;
 }
 
-const BudgetChapterForm: React.FC<BudgetChapterFormProps> = ({
+const BudgetChapterForm: React.FC<
+  BudgetChapterFormProps
+> = ({
   form,
   isApproved,
   chapterIndex,
@@ -73,40 +81,55 @@ const BudgetChapterForm: React.FC<BudgetChapterFormProps> = ({
   moveChapter,
   userCompanyId,
 }) => {
-  const chapterItems = form.watch(`chapters.${chapterIndex}.items`);
-  const serviceInputRef = React.useRef<HTMLInputElement>(null);
+  const chapterItems =
+    form.watch(`chapters.${chapterIndex}.items`) ?? [];
 
-  const isChapterValid = chapterItems.every(
-    (item) =>
-      item.servico && item.quantidade > 0 && item.preco_unitario > 0
-  );
+  const serviceInputRef = useRef<HTMLInputElement>(null);
+
+  const isChapterValid = useMemo(() => {
+    if (chapterItems.length === 0) return false;
+
+    return chapterItems.every(
+      (item) =>
+        Boolean(item.servico) &&
+        Number(item.quantidade) > 0 &&
+        Number(item.preco_unitario) > 0
+    );
+  }, [chapterItems]);
 
   const handleAddServiceAndFocus = () => {
     handleAddService(chapterIndex);
+
+    // Aguarda render da nova linha
     setTimeout(() => {
       serviceInputRef.current?.focus();
     }, 100);
   };
 
   const handleRemoveChapter = () => {
-    if (
-      window.confirm(
-        "Tem certeza que deseja eliminar este capítulo e todos os seus serviços?"
-      )
-    ) {
-      removeChapter(chapterIndex);
-      toast.success("Capítulo removido com sucesso!");
-    }
+    const confirmed = window.confirm(
+      "Tem certeza que deseja eliminar este capítulo e todos os seus serviços?"
+    );
+
+    if (!confirmed) return;
+
+    removeChapter(chapterIndex);
+    toast.success("Capítulo removido com sucesso!");
   };
 
   return (
     <AccordionItem value={chapterId}>
       <AccordionTrigger asChild>
         <div className="flex w-full items-center justify-between py-2">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <span className="font-semibold">
-              {form.watch(`chapters.${chapterIndex}.codigo`)}.{" "}
-              {form.watch(`chapters.${chapterIndex}.nome`)}
+              {form.watch(
+                `chapters.${chapterIndex}.codigo`
+              )}
+              .{" "}
+              {form.watch(
+                `chapters.${chapterIndex}.nome`
+              )}
             </span>
 
             <Badge variant="secondary">
@@ -133,21 +156,21 @@ const BudgetChapterForm: React.FC<BudgetChapterFormProps> = ({
               </span>
             )}
           </div>
-          {/* REMOVIDO: O AccordionTrigger já adiciona o seu próprio ChevronDown */}
-          {/* <ChevronDown className="h-4 w-4 shrink-0 opacity-60" /> */}
         </div>
       </AccordionTrigger>
 
       <AccordionContent>
-        <div className="p-4 border rounded-md space-y-4 bg-muted/20">
-          {/* Dados do Capítulo */}
+        <div className="p-4 space-y-4 rounded-md border bg-muted/20">
+          {/* DADOS DO CAPÍTULO */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <FormField
               control={form.control}
               name={`chapters.${chapterIndex}.codigo`}
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Código do Capítulo *</FormLabel>
+                  <FormLabel>
+                    Código do Capítulo *
+                  </FormLabel>
                   <FormControl>
                     <Input
                       {...field}
@@ -165,7 +188,9 @@ const BudgetChapterForm: React.FC<BudgetChapterFormProps> = ({
               name={`chapters.${chapterIndex}.nome`}
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Nome do Capítulo *</FormLabel>
+                  <FormLabel>
+                    Nome do Capítulo *
+                  </FormLabel>
                   <FormControl>
                     <Input
                       {...field}
@@ -183,7 +208,9 @@ const BudgetChapterForm: React.FC<BudgetChapterFormProps> = ({
               name={`chapters.${chapterIndex}.observacoes`}
               render={({ field }) => (
                 <FormItem className="md:col-span-2">
-                  <FormLabel>Observações</FormLabel>
+                  <FormLabel>
+                    Observações
+                  </FormLabel>
                   <FormControl>
                     <Textarea
                       {...field}
@@ -198,14 +225,15 @@ const BudgetChapterForm: React.FC<BudgetChapterFormProps> = ({
             />
           </div>
 
-          {/* Ações */}
-          <div className="flex justify-end gap-2">
+          {/* AÇÕES DO CAPÍTULO */}
+          <div className="flex flex-wrap justify-end gap-2">
             <Button
               type="button"
               size="sm"
               variant="outline"
               onClick={handleAddServiceAndFocus}
               disabled={isApproved}
+              aria-disabled={isApproved}
             >
               <PlusCircle className="h-4 w-4 mr-2" />
               Adicionar Serviço
@@ -217,9 +245,17 @@ const BudgetChapterForm: React.FC<BudgetChapterFormProps> = ({
               variant="outline"
               onClick={() =>
                 chapterIndex > 0 &&
-                moveChapter(chapterIndex, chapterIndex - 1)
+                moveChapter(
+                  chapterIndex,
+                  chapterIndex - 1
+                )
               }
-              disabled={chapterIndex === 0 || isApproved}
+              disabled={
+                chapterIndex === 0 || isApproved
+              }
+              aria-disabled={
+                chapterIndex === 0 || isApproved
+              }
             >
               <ChevronUp className="h-4 w-4" />
             </Button>
@@ -229,11 +265,22 @@ const BudgetChapterForm: React.FC<BudgetChapterFormProps> = ({
               size="sm"
               variant="outline"
               onClick={() =>
-                chapterIndex < chapterFieldsLength - 1 &&
-                moveChapter(chapterIndex, chapterIndex + 1)
+                chapterIndex <
+                  chapterFieldsLength - 1 &&
+                moveChapter(
+                  chapterIndex,
+                  chapterIndex + 1
+                )
               }
               disabled={
-                chapterIndex === chapterFieldsLength - 1 || isApproved
+                chapterIndex ===
+                  chapterFieldsLength - 1 ||
+                isApproved
+              }
+              aria-disabled={
+                chapterIndex ===
+                  chapterFieldsLength - 1 ||
+                isApproved
               }
             >
               <ChevronDown className="h-4 w-4" />
@@ -245,6 +292,7 @@ const BudgetChapterForm: React.FC<BudgetChapterFormProps> = ({
               variant="destructive"
               onClick={handleRemoveChapter}
               disabled={isApproved}
+              aria-disabled={isApproved}
             >
               <Trash2 className="h-4 w-4 mr-2" />
               Remover Capítulo
@@ -253,7 +301,7 @@ const BudgetChapterForm: React.FC<BudgetChapterFormProps> = ({
 
           <Separator />
 
-          {/* Serviços */}
+          {/* SERVIÇOS */}
           {chapterItems.length === 0 ? (
             <EmptyState
               icon={ClipboardList}
@@ -268,8 +316,12 @@ const BudgetChapterForm: React.FC<BudgetChapterFormProps> = ({
                 <TableHeader>
                   <TableRow>
                     <TableHead>Serviço *</TableHead>
-                    <TableHead className="w-[80px]">Qtd.</TableHead>
-                    <TableHead className="w-[80px]">Un.</TableHead>
+                    <TableHead className="w-[80px]">
+                      Qtd.
+                    </TableHead>
+                    <TableHead className="w-[80px]">
+                      Un.
+                    </TableHead>
                     <TableHead className="w-[120px] text-right">
                       Preço Unit.
                     </TableHead>
@@ -285,7 +337,9 @@ const BudgetChapterForm: React.FC<BudgetChapterFormProps> = ({
                     <TableHead className="w-[120px] text-right">
                       Executado
                     </TableHead>
-                    <TableHead className="w-[100px]">Estado</TableHead>
+                    <TableHead className="w-[100px]">
+                      Estado
+                    </TableHead>
                     <TableHead className="w-[100px] text-right">
                       Ações
                     </TableHead>
@@ -293,20 +347,26 @@ const BudgetChapterForm: React.FC<BudgetChapterFormProps> = ({
                 </TableHeader>
 
                 <TableBody>
-                  {chapterItems.map((item, itemIndex) => (
-                    <BudgetServiceRow
-                      key={item.id}
-                      form={form}
-                      isApproved={isApproved}
-                      chapterIndex={chapterIndex}
-                      itemIndex={itemIndex}
-                      articles={articles}
-                      handleRemoveService={handleRemoveService}
-                      handleDuplicateService={handleDuplicateService}
-                      focusRef={serviceInputRef}
-                      userCompanyId={userCompanyId}
-                    />
-                  ))}
+                  {chapterItems.map(
+                    (item, itemIndex) => (
+                      <BudgetServiceRow
+                        key={item.id}
+                        form={form}
+                        isApproved={isApproved}
+                        chapterIndex={chapterIndex}
+                        itemIndex={itemIndex}
+                        articles={articles}
+                        handleRemoveService={
+                          handleRemoveService
+                        }
+                        handleDuplicateService={
+                          handleDuplicateService
+                        }
+                        focusRef={serviceInputRef}
+                        userCompanyId={userCompanyId}
+                      />
+                    )
+                  )}
                 </TableBody>
               </Table>
             </div>
