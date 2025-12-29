@@ -2,7 +2,9 @@
 
 import { ColumnDef } from "@tanstack/react-table";
 import { BudgetItem } from "@/schemas/budget-schema";
+
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,13 +13,15 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  MoreHorizontal,
-  Eye,
-  Edit,
-} from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+
+import { MoreHorizontal, Eye, Edit } from "lucide-react";
+
 import { cn } from "@/lib/utils";
+import { formatCurrency } from "@/utils/formatters";
+import {
+  getServiceRisk,
+  riskBadgeMap,
+} from "@/utils/budget-risk";
 
 /* =========================
    HELPERS
