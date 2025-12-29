@@ -73,7 +73,11 @@ export function useLivroDeObraActions({
 
   const handleSaveManualRdoEntry = useCallback(async (rdo: RdoEntry) => {
     try {
-      if (!user || !userCompanyId || !selectedLivroObra) {
+      // Priorizar IDs vindos do próprio RDO (do dialog), com fallback ao contexto
+      const companyIdToUse = rdo.company_id ?? userCompanyId;
+      const projectIdToUse = rdo.project_id ?? selectedLivroObra?.project_id;
+
+      if (!user || !companyIdToUse || !projectIdToUse) {
         throw new Error("Dados insuficientes para guardar o RDO manual.");
       }
 
@@ -81,9 +85,9 @@ export function useLivroDeObraActions({
         .from('rdo_entries')
         .insert({
           ...rdo,
-          company_id: userCompanyId,
-          project_id: selectedLivroObra.project_id,
-          budget_id: selectedLivroObra.budget_id,
+          company_id: companyIdToUse,
+          project_id: projectIdToUse,
+          budget_id: selectedLivroObra?.budget_id ?? null,
           responsible_user_id: user.id,
           event_type: 'manual_entry',
           status: 'pending',
