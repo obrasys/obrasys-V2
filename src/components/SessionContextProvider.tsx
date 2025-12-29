@@ -22,7 +22,6 @@ export const SessionContextProvider: React.FC<{ children: React.ReactNode }> = (
   const [profile, setProfile] = useState<Profile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const lastLoadedUserIdRef = useRef<string | null>(null);
-  const authEventReceivedRef = useRef<boolean>(false);
 
   /* ------------------------------------------------------------------ */
   /* 🔐 Função única para carregar profile                               */
@@ -43,7 +42,7 @@ export const SessionContextProvider: React.FC<{ children: React.ReactNode }> = (
       return null;
     }
 
-    // Poll curto aguardando criação server-side (sem inserir no cliente)
+    // Não existe perfil: não inserir no cliente. Aguarda curto prazo pela criação server-side.
     for (let attempt = 0; attempt < 10; attempt++) {
       await new Promise((res) => setTimeout(res, 500));
       const { data: pData, error: pErr } = await supabase
@@ -65,20 +64,17 @@ export const SessionContextProvider: React.FC<{ children: React.ReactNode }> = (
   };
 
   /* ------------------------------------------------------------------ */
-  /* 🚀 Fonte única: onAuthStateChange + failsafe de loading             */
+  /* 🚀 Gestão de sessão: única fonte via onAuthStateChange              */
   /* ------------------------------------------------------------------ */
   useEffect(() => {
     let mounted = true;
     setIsLoading(true);
-    authEventReceivedRef.current = false;
 
     const { data: listener } = supabase.auth.onAuthStateChange(
       async (event, currentSession) => {
         if (!mounted) return;
-        authEventReceivedRef.current = true;
 
         if (!currentSession || event === "SIGNED_OUT") {
-          // Limpa tudo ao sair
           setSession(null);
           setUser(null);
           setProfile(null);
@@ -87,7 +83,7 @@ export const SessionContextProvider: React.FC<{ children: React.ReactNode }> = (
           return;
         }
 
-        // INITIAL_SESSION / SIGNED_IN / TOKEN_REFRESHED / USER_UPDATED
+        // INITIAL_SESSION, SIGNED_IN, TOKEN_REFRESHED, USER_UPDATED, etc.
         setSession(currentSession);
         setUser(currentSession.user);
 
@@ -104,17 +100,9 @@ export const SessionContextProvider: React.FC<{ children: React.ReactNode }> = (
       }
     );
 
-    // Failsafe: se nenhum evento chegar, terminar loading para evitar travar
-    const failsafe = setTimeout(() => {
-      if (!authEventReceivedRef.current) {
-        setIsLoading(false);
-      }
-    }, 5000);
-
     return () => {
       mounted = false;
       listener.subscription.unsubscribe();
-      clearTimeout(failsafe);
     };
   }, []);
 
