@@ -69,66 +69,46 @@ export const SessionContextProvider: React.FC<{ children: React.ReactNode }> = (
   };
 
   /* ------------------------------------------------------------------ */
-  /* 🚀 Inicialização da sessão                                          */
+  /* 🚀 Gestão de sessão: única fonte via onAuthStateChange              */
   /* ------------------------------------------------------------------ */
   useEffect(() => {
     let mounted = true;
 
-    const init = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!mounted) return;
-        setSession(session ?? null);
-        setUser(session?.user ?? null);
-
-        if (session?.user) {
-          if (lastLoadedUserIdRef.current !== session.user.id || profile === null) {
-            const profileData = await loadProfile(session.user);
-            if (mounted) {
-              setProfile(profileData);
-              lastLoadedUserIdRef.current = session.user.id;
-            }
-          }
-        } else {
-          setProfile(null);
-        }
-      } catch (err) {
-        console.error("[SessionContext] getSession falhou:", err);
-      } finally {
-        if (mounted) setIsLoading(false);
-      }
-    };
-
-    init();
-
-    const { data: authListener } = supabase.auth.onAuthStateChange(
-      async (_event, currentSession) => {
-
+    const { data: listener } = supabase.auth.onAuthStateChange(
+      async (event, currentSession) => {
         if (!mounted) return;
 
-        setSession(currentSession ?? null);
-        setUser(currentSession?.user ?? null);
-
-        if (currentSession?.user) {
-          if (lastLoadedUserIdRef.current !== currentSession.user.id || profile === null) {
-            const profileData = await loadProfile(currentSession.user);
-            if (mounted) {
-              setProfile(profileData);
-              lastLoadedUserIdRef.current = currentSession.user.id;
-            }
-          }
-        } else {
+        if (!currentSession || event === "SIGNED_OUT") {
+          // SIGNED_OUT: limpar tudo
+          setSession(null);
+          setUser(null);
           setProfile(null);
+          lastLoadedUserIdRef.current = null;
+          setIsLoading(false);
+          return;
         }
 
-        // Qualquer evento de auth deve garantir fim do loading
+        // INITIAL_SESSION / SIGNED_IN / outros eventos com sessão válida
+        setSession(currentSession);
+        setUser(currentSession.user);
+
+        // Carrega perfil apenas uma vez por utilizador
+        const currentUser = currentSession.user;
+        if (currentUser && lastLoadedUserIdRef.current !== currentUser.id) {
+          const profileData = await loadProfile(currentUser);
+          if (mounted) {
+            setProfile(profileData);
+            lastLoadedUserIdRef.current = currentUser.id;
+          }
+        }
+
         setIsLoading(false);
       }
     );
 
     return () => {
       mounted = false;
-      authListener.subscription.unsubscribe();
+      listener.subscription.unsubscribe();
     };
   }, []);
 
