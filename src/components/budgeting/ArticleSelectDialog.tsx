@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useMemo, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -36,24 +36,54 @@ const ArticleSelectDialog: React.FC<ArticleSelectDialogProps> = ({
   articles,
   onSelectArticle,
 }) => {
-  const [searchTerm, setSearchTerm] = React.useState("");
+  const [searchTerm, setSearchTerm] = useState("");
 
-  const filteredArticles = articles.filter(
-    (article) =>
-      article.codigo.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      article.descricao.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      article.unidade.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      article.tipo.toLowerCase().includes(searchTerm.toLowerCase())
+  const normalizedSearch = searchTerm.trim().toLowerCase();
+
+  const filteredArticles = useMemo(() => {
+    if (!normalizedSearch) return articles;
+
+    return articles.filter((article) => {
+      return (
+        article.codigo?.toLowerCase().includes(normalizedSearch) ||
+        article.descricao?.toLowerCase().includes(normalizedSearch) ||
+        article.unidade?.toLowerCase().includes(normalizedSearch) ||
+        article.tipo?.toLowerCase().includes(normalizedSearch)
+      );
+    });
+  }, [articles, normalizedSearch]);
+
+  const currencyFormatter = useMemo(
+    () =>
+      new Intl.NumberFormat("pt-PT", {
+        style: "currency",
+        currency: "EUR",
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      }),
+    []
   );
 
   const handleSelect = (article: Article) => {
     onSelectArticle(article);
+    setSearchTerm("");
     onClose();
-    setSearchTerm(""); // Clear search term on close
+  };
+
+  const handleClearSearch = () => {
+    setSearchTerm("");
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (!open) {
+          setSearchTerm("");
+          onClose();
+        }
+      }}
+    >
       <DialogContent className="sm:max-w-[800px] flex flex-col max-h-[90vh] p-0">
         <DialogHeader className="p-6 pb-4">
           <DialogTitle>Selecionar Artigo</DialogTitle>
@@ -61,27 +91,36 @@ const ArticleSelectDialog: React.FC<ArticleSelectDialogProps> = ({
             Pesquise e selecione um artigo da sua base de dados.
           </DialogDescription>
         </DialogHeader>
+
+        {/* SEARCH */}
         <div className="px-6 pb-4">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+
             <Input
               placeholder="Pesquisar por código, descrição, unidade ou tipo..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
+              className="pl-10 pr-10"
+              autoFocus
             />
+
             {searchTerm && (
               <Button
+                type="button"
                 variant="ghost"
                 size="icon"
-                className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                onClick={() => setSearchTerm("")}
+                aria-label="Limpar pesquisa"
+                className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 hover:bg-transparent"
+                onClick={handleClearSearch}
               >
                 <XCircle className="h-4 w-4 text-muted-foreground" />
               </Button>
             )}
           </div>
         </div>
+
+        {/* LIST */}
         <ScrollArea className="flex-grow px-6 pb-6">
           {filteredArticles.length > 0 ? (
             <Table>
@@ -91,25 +130,48 @@ const ArticleSelectDialog: React.FC<ArticleSelectDialogProps> = ({
                   <TableHead>Descrição</TableHead>
                   <TableHead className="w-[80px]">Unidade</TableHead>
                   <TableHead className="w-[80px]">Tipo</TableHead>
-                  <TableHead className="w-[120px] text-right">Preço Unit.</TableHead>
-                  <TableHead className="w-[80px] text-center">Ações</TableHead>
+                  <TableHead className="w-[120px] text-right">
+                    Preço Unit.
+                  </TableHead>
+                  <TableHead className="w-[90px] text-center">
+                    Ações
+                  </TableHead>
                 </TableRow>
               </TableHeader>
+
               <TableBody>
                 {filteredArticles.map((article) => (
                   <TableRow key={article.id}>
-                    <TableCell className="font-medium">{article.codigo}</TableCell>
-                    <TableCell>{article.descricao}</TableCell>
-                    <TableCell>{article.unidade}</TableCell>
-                    <TableCell className="capitalize">{article.tipo}</TableCell>
-                    <TableCell className="text-right">
-                      {new Intl.NumberFormat("pt-PT", {
-                        style: "currency",
-                        currency: "EUR",
-                      }).format(article.preco_unitario)}
+                    <TableCell className="font-medium">
+                      {article.codigo || "—"}
                     </TableCell>
+
+                    <TableCell className="max-w-[300px] truncate">
+                      {article.descricao || "—"}
+                    </TableCell>
+
+                    <TableCell>
+                      {article.unidade || "—"}
+                    </TableCell>
+
+                    <TableCell className="capitalize">
+                      {article.tipo || "—"}
+                    </TableCell>
+
+                    <TableCell className="text-right">
+                      {typeof article.preco_unitario === "number"
+                        ? currencyFormatter.format(
+                            article.preco_unitario
+                          )
+                        : "—"}
+                    </TableCell>
+
                     <TableCell className="text-center">
-                      <Button variant="outline" size="sm" onClick={() => handleSelect(article)}>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleSelect(article)}
+                      >
                         Selecionar
                       </Button>
                     </TableCell>
