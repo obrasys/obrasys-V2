@@ -10,6 +10,7 @@ interface SessionContextType {
   user: User | null;
   profile: Profile | null;
   isLoading: boolean;
+  companyId?: string | null;
 }
 
 const SessionContext = createContext<SessionContextType | undefined>(undefined);
@@ -21,6 +22,7 @@ export const SessionContextProvider: React.FC<{ children: React.ReactNode }> = (
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [companyId, setCompanyId] = useState<string | null>(null);
   const lastLoadedUserIdRef = useRef<string | null>(null);
 
   /* ------------------------------------------------------------------ */
@@ -78,6 +80,7 @@ export const SessionContextProvider: React.FC<{ children: React.ReactNode }> = (
           setSession(null);
           setUser(null);
           setProfile(null);
+          setCompanyId(null);
           lastLoadedUserIdRef.current = null;
           setIsLoading(false);
           return;
@@ -86,6 +89,16 @@ export const SessionContextProvider: React.FC<{ children: React.ReactNode }> = (
         // INITIAL_SESSION, SIGNED_IN, TOKEN_REFRESHED, USER_UPDATED, etc.
         setSession(currentSession);
         setUser(currentSession.user);
+
+        // Fonte única da empresa ativa: função RPC current_company_id()
+        const { data: rpcCompanyId, error: rpcErr } = await supabase.rpc('current_company_id');
+        if (rpcErr) {
+          console.error("[SessionContext] Erro ao obter company_id via RPC:", rpcErr);
+          setCompanyId(null);
+        } else {
+          // rpcCompanyId pode ser null; normal se não houver membership
+          setCompanyId(rpcCompanyId ? String(rpcCompanyId) : null);
+        }
 
         const currentUser = currentSession.user;
         if (currentUser && lastLoadedUserIdRef.current !== currentUser.id) {
@@ -107,7 +120,7 @@ export const SessionContextProvider: React.FC<{ children: React.ReactNode }> = (
   }, []);
 
   return (
-    <SessionContext.Provider value={{ session, user, profile, isLoading }}>
+    <SessionContext.Provider value={{ session, user, profile, isLoading, companyId }}>
       {children}
     </SessionContext.Provider>
   );

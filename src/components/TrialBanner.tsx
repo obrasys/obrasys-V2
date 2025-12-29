@@ -15,7 +15,7 @@ import { Subscription } from "@/schemas/subscription-schema";
 import { Badge } from "@/components/ui/badge";
 
 const TrialBanner: React.FC = () => {
-  const { user, isLoading: isSessionLoading } = useSession();
+  const { companyId, isLoading: isSessionLoading } = useSession();
   const [subscription, setSubscription] = React.useState<Subscription | null>(null);
   const [isLoadingSubscription, setIsLoadingSubscription] = React.useState(true);
 
@@ -23,20 +23,7 @@ const TrialBanner: React.FC = () => {
 
   React.useEffect(() => {
     const fetchSubscription = async () => {
-      if (!user) {
-        setSubscription(null);
-        setIsLoadingSubscription(false);
-        return;
-      }
-
-      const { data: profileData, error: profileError } = await supabase
-        .from('profiles')
-        .select('company_id')
-        .eq('id', user.id)
-        .single();
-
-      if (profileError || !profileData?.company_id) {
-        console.error("Erro ao carregar company_id do perfil:", profileError);
+      if (!companyId) {
         setSubscription(null);
         setIsLoadingSubscription(false);
         return;
@@ -46,7 +33,7 @@ const TrialBanner: React.FC = () => {
       const { data: subData, error: subError } = await supabase
         .from('subscriptions')
         .select('*')
-        .eq('company_id', profileData.company_id)
+        .eq('company_id', companyId)
         .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle();
@@ -66,16 +53,15 @@ const TrialBanner: React.FC = () => {
     if (!isSessionLoading) {
       fetchSubscription();
     }
-  }, [user, isSessionLoading]);
+  }, [companyId, isSessionLoading]);
 
-  // Agora mostramos o banner mesmo quando status === "active"
+  // Mostrar apenas quando há subscrição conhecida
   if (isLoadingSubscription || !subscription) {
     return null;
   }
 
   const now = new Date();
 
-  // Trial: calcular fim e dias restantes
   const trialEndDate = subscription.trial_end
     ? parseISO(subscription.trial_end)
     : (subscription.trial_start ? (() => {
@@ -88,7 +74,6 @@ const TrialBanner: React.FC = () => {
   const rawTrialDaysRemaining = trialEndDate ? differenceInDays(trialEndDate, now) : 0;
   const trialDaysRemaining = Math.max(0, rawTrialDaysRemaining);
 
-  // Renovação: calcular próxima data e dias
   const renewalDate = subscription.current_period_end ? parseISO(subscription.current_period_end) : null;
   const rawRenewDays = renewalDate ? differenceInDays(renewalDate, now) : null;
   const renewDays = rawRenewDays !== null ? Math.max(0, rawRenewDays) : null;
