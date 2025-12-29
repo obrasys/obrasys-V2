@@ -19,6 +19,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Form } from "@/components/ui/form";
 import { Loader2 } from "lucide-react";
+import { toast } from "sonner";
 
 import {
   Invoice,
@@ -27,51 +28,49 @@ import {
 } from "@/schemas/invoicing-schema";
 import { Project } from "@/schemas/project-schema";
 import { Client } from "@/schemas/client-schema";
-import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/components/SessionContextProvider";
 
 import InvoiceGeneralForm from "./InvoiceGeneralForm";
 import InvoiceItemsSection from "./InvoiceItemsSection";
 import InvoiceTotalDisplay from "./InvoiceTotalDisplay";
+import InvoiceFiscalSummary from "./InvoiceFiscalSummary";
+import { calculateInvoiceFiscal } from "@/utils/invoice-calculations";
 
-/* =========================
+/* ======================================================
    SCHEMA COMPLETO
-========================= */
+====================================================== */
 
-const fullInvoiceSchema = invoiceSchema.extend({
-  vat_rate: z.number().optional().default(23),
+export const fullInvoiceSchema = invoiceSchema.extend({
   items: z
     .array(invoiceItemSchema)
     .min(1, "A fatura deve ter pelo menos um item."),
 });
 
-export type FullInvoiceFormValues = z.infer<typeof fullInvoiceSchema>;
+export type FullInvoiceFormValues = z.infer<
+  typeof fullInvoiceSchema
+>;
 
 interface CreateEditInvoiceDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (invoice: Invoice & { items: any[] }) => void;
+  onSave: (invoice: FullInvoiceFormValues) => void;
   invoiceToEdit?: Invoice | null;
 }
 
-const CreateEditInvoiceDialog: React.FC<CreateEditInvoiceDialogProps> = ({
-  isOpen,
-  onClose,
-  onSave,
-  invoiceToEdit,
-}) => {
+const CreateEditInvoiceDialog: React.FC<
+  CreateEditInvoiceDialogProps
+> = ({ isOpen, onClose, onSave, invoiceToEdit }) => {
   const { user } = useSession();
 
-  const [userCompanyId, setUserCompanyId] = React.useState<string | null>(null);
+  const [userCompanyId, setUserCompanyId] =
+    React.useState<string | null>(null);
   const [projects, setProjects] = React.useState<Project[]>([]);
   const [clients, setClients] = React.useState<Client[]>([]);
-  const [isLoadingData, setIsLoadingData] = React.useState(true);
-  const [isSaving, setIsSaving] = React.useState(false);
-
-  /* =========================
-     FORM
-  ========================= */
+  const [isLoadingData, setIsLoadingData] =
+    React.useState(true);
+  const [isSaving, setIsSaving] =
+    React.useState(false);
 
   const form = useForm<FullInvoiceFormValues>({
     resolver: zodResolver(fullInvoiceSchema),
@@ -81,239 +80,204 @@ const CreateEditInvoiceDialog: React.FC<CreateEditInvoiceDialogProps> = ({
       project_id: null,
       issue_date: format(new Date(), "yyyy-MM-dd"),
       due_date: format(
-        new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        new Date(
+          new Date().setDate(
+            new Date().getDate() + 30
+          )
+        ),
         "yyyy-MM-dd"
       ),
-      vat_rate: 23,
       total_amount: 0,
+      vat_rate: 23,
+      vat_amount: 0,
+      withholding_rate: 11.5,
+      withholding_amount: 0,
+      total_to_receive: 0,
       paid_amount: 0,
       status: "pending",
       notes: "",
-      items: [],
+      items: [
+        {
+          id: uuidv4(),
+          description: "",
+          quantity: 1,
+          unit: "un",
+          unit_price: 0,
+          line_total: 0,
+          budget_item_id: null,
+          schedule_task_id: null,
+        },
+      ],
     },
   });
 
-  const { fields, append, remove } = useFieldArray({
+  const {
+    fields: itemFields,
+    append: appendItem,
+    remove: removeItem,
+  } = useFieldArray({
     control: form.control,
     name: "items",
   });
 
-  /* =========================
-     LOAD COMPANY
-  ========================= */
+  /* ======================================================
+     LOAD COMPANY / DATA
+  ====================================================== */
 
   React.useEffect(() => {
-    if (!user) return;
-
-    supabase
-      .from("profiles")
-      .select("company_id")
-      .eq("id", user.id)
-      .single()
-      .then(({ data, error }) => {
-        if (error) {
-          toast.error("Erro ao obter empresa do utilizador");
-          return;
-        }
-        setUserCompanyId(data.company_id);
-      });
+    const loadCompany = async () => {
+      if (!user) return;
+      const { data } = await supabase
+        .from("profiles")
+        .select("company_id")
+        .eq("id", user.id)
+        .single();
+      setUserCompanyId(data?.company_id ?? null);
+    };
+    loadCompany();
   }, [user]);
-
-  /* =========================
-     LOAD PROJECTS & CLIENTS
-  ========================= */
 
   React.useEffect(() => {
     if (!userCompanyId) return;
 
-    setIsLoadingData(true);
+    const loadData = async () => {
+      setIsLoadingData(true);
 
-    Promise.all([
-      supabase
-        .from("projects")
-        .select("id, nome")
-        .eq("company_id", userCompanyId),
-      supabase
-        .from("clients")
-        .select("id, nome")
-        .eq("company_id", userCompanyId),
-    ]).then(([projectsRes, clientsRes]) => {
-      if (!projectsRes.error)
-        setProjects(projectsRes.data || []);
-      if (!clientsRes.error)
-        setClients(clientsRes.data || []);
+      const [projectsRes, clientsRes] =
+        await Promise.all([
+          supabase
+            .from("projects")
+            .select("id, nome")
+            .eq("company_id", userCompanyId),
+          supabase
+            .from("clients")
+            .select("id, nome")
+            .eq("company_id", userCompanyId),
+        ]);
+
+      setProjects(projectsRes.data || []);
+      setClients(clientsRes.data || []);
+
       setIsLoadingData(false);
-    });
+    };
+
+    loadData();
   }, [userCompanyId]);
 
-  /* =========================
-     POPULATE EDIT
-  ========================= */
+  /* ======================================================
+     CÁLCULOS AUTOMÁTICOS (IVA + RETENÇÃO)
+  ====================================================== */
 
   React.useEffect(() => {
-    if (!isOpen || isLoadingData) return;
-
-    if (invoiceToEdit) {
-      form.reset({
-        ...invoiceToEdit,
-        issue_date: format(parseISO(invoiceToEdit.issue_date), "yyyy-MM-dd"),
-        due_date: format(parseISO(invoiceToEdit.due_date), "yyyy-MM-dd"),
-        vat_rate: invoiceToEdit.vat_rate ?? 23,
-      });
-
-      supabase
-        .from("invoice_items")
-        .select("*")
-        .eq("invoice_id", invoiceToEdit.id)
-        .then(({ data }) => {
-          form.setValue("items", data || []);
-        });
-    } else {
-      form.reset({
-        invoice_number: "",
-        client_id: null,
-        project_id: null,
-        issue_date: format(new Date(), "yyyy-MM-dd"),
-        due_date: format(
-          new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-          "yyyy-MM-dd"
-        ),
-        vat_rate: 23,
-        status: "pending",
-        paid_amount: 0,
-        notes: "",
-        items: [
-          {
-            id: uuidv4(),
-            description: "",
-            quantity: 1,
-            unit: "un",
-            unit_price: 0,
-            line_total: 0,
-            budget_item_id: null,
-            schedule_task_id: null,
-          },
-        ],
-      });
-    }
-  }, [isOpen, isLoadingData, invoiceToEdit, form]);
-
-  /* =========================
-     CALCULATE TOTALS
-  ========================= */
-
-  React.useEffect(() => {
-    const sub = form.watch((values) => {
+    const subscription = form.watch(() => {
+      const items = form.getValues("items") || [];
       let subtotal = 0;
 
-      values.items?.forEach((item, i) => {
-        const lineTotal =
-          (item.quantity || 0) * (item.unit_price || 0);
-        subtotal += lineTotal;
-        form.setValue(`items.${i}.line_total`, lineTotal);
+      items.forEach((item, index) => {
+        const line =
+          (item.quantity || 0) *
+          (item.unit_price || 0);
+        subtotal += line;
+
+        if (
+          form.getValues(
+            `items.${index}.line_total`
+          ) !== line
+        ) {
+          form.setValue(
+            `items.${index}.line_total`,
+            line,
+            { shouldDirty: false }
+          );
+        }
       });
 
-      const vatRate = values.vat_rate ?? 0;
-      const vatAmount = subtotal * (vatRate / 100);
-      const total = subtotal + vatAmount;
+      const fiscal = calculateInvoiceFiscal(
+        subtotal,
+        form.getValues("vat_rate"),
+        form.getValues("withholding_rate")
+      );
 
-      form.setValue("total_amount", total);
+      form.setValue("total_amount", fiscal.subtotal);
+      form.setValue("vat_amount", fiscal.vatAmount);
+      form.setValue(
+        "withholding_amount",
+        fiscal.withholdingAmount
+      );
+      form.setValue(
+        "total_to_receive",
+        fiscal.totalToReceive
+      );
     });
 
-    return () => sub.unsubscribe();
+    return () => subscription.unsubscribe();
   }, [form]);
 
-  /* =========================
+  /* ======================================================
      SUBMIT
-  ========================= */
+  ====================================================== */
 
   const onSubmit = async (data: FullInvoiceFormValues) => {
     if (!userCompanyId) {
-      toast.error("Empresa não encontrada.");
+      toast.error("Empresa não identificada.");
       return;
     }
 
     setIsSaving(true);
 
     try {
-      const invoiceId = data.id ?? uuidv4();
+      const invoiceId = data.id || uuidv4();
 
-      const subtotal = data.items.reduce(
-        (s, i) => s + i.line_total,
-        0
-      );
-      const vatAmount = subtotal * ((data.vat_rate ?? 0) / 100);
-
-      const invoiceToSave = {
+      const invoiceData: Invoice = {
+        ...data,
         id: invoiceId,
         company_id: userCompanyId,
-        client_id: data.client_id,
-        project_id: data.project_id,
-        invoice_number: data.invoice_number,
-        issue_date: data.issue_date,
-        due_date: data.due_date,
-        subtotal,
-        vat_rate: data.vat_rate,
-        vat_amount: vatAmount,
-        total_amount: subtotal + vatAmount,
-        paid_amount: data.paid_amount ?? 0,
-        status: data.status,
-        notes: data.notes ?? null,
       };
 
-      const { data: savedInvoice, error } = await supabase
-        .from("invoices")
-        .upsert(invoiceToSave, { onConflict: "id" })
-        .select()
-        .single();
-
-      if (error) throw error;
+      await supabase.from("invoices").upsert(invoiceData);
 
       await supabase
         .from("invoice_items")
         .delete()
-        .eq("invoice_id", savedInvoice.id);
+        .eq("invoice_id", invoiceId);
 
-      const itemsToInsert = data.items.map((item) => ({
-        id: item.id ?? uuidv4(),
-        invoice_id: savedInvoice.id,
-        description: item.description,
-        quantity: item.quantity,
-        unit: item.unit,
-        unit_price: item.unit_price,
-        line_total: item.line_total,
-        budget_item_id: item.budget_item_id ?? null,
-        schedule_task_id: item.schedule_task_id ?? null,
-      }));
+      await supabase.from("invoice_items").insert(
+        data.items.map((item) => ({
+          ...item,
+          id: uuidv4(),
+          invoice_id: invoiceId,
+        }))
+      );
 
-      await supabase.from("invoice_items").insert(itemsToInsert);
+      toast.success(
+        invoiceToEdit
+          ? "Fatura atualizada com sucesso!"
+          : "Fatura criada com sucesso!"
+      );
 
-      toast.success("Fatura guardada com sucesso.");
-      onSave({ ...savedInvoice, items: itemsToInsert });
+      onSave(data);
       onClose();
-    } catch (e: any) {
-      toast.error(e.message);
+    } catch (error: any) {
+      toast.error(
+        `Erro ao guardar fatura: ${error.message}`
+      );
     } finally {
       setIsSaving(false);
     }
   };
 
   if (isLoadingData) {
-    return (
-      <Dialog open={isOpen}>
-        <DialogContent>
-          <Loader2 className="mx-auto h-8 w-8 animate-spin" />
-        </DialogContent>
-      </Dialog>
-    );
+    return null;
   }
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[900px] max-h-[90vh] p-0">
-        <DialogHeader className="p-6">
+        <DialogHeader className="p-6 pb-4">
           <DialogTitle>
-            {invoiceToEdit ? "Editar Fatura" : "Nova Fatura"}
+            {invoiceToEdit
+              ? "Editar Fatura"
+              : "Criar Nova Fatura"}
           </DialogTitle>
           <DialogDescription>
             Preencha os dados da fatura.
@@ -322,7 +286,10 @@ const CreateEditInvoiceDialog: React.FC<CreateEditInvoiceDialogProps> = ({
 
         <ScrollArea className="px-6 pb-6">
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            <form
+              onSubmit={form.handleSubmit(onSubmit)}
+              className="space-y-6"
+            >
               <InvoiceGeneralForm
                 form={form}
                 projects={projects}
@@ -331,19 +298,43 @@ const CreateEditInvoiceDialog: React.FC<CreateEditInvoiceDialogProps> = ({
 
               <InvoiceItemsSection
                 form={form}
-                itemFields={fields}
-                appendItem={append}
-                removeItem={remove}
+                itemFields={itemFields}
+                appendItem={appendItem}
+                removeItem={removeItem}
               />
 
-              <InvoiceTotalDisplay totalAmount={form.watch("total_amount")} />
+              <InvoiceTotalDisplay
+                totalAmount={form.watch("total_amount")}
+              />
+
+              <InvoiceFiscalSummary
+                subtotal={form.watch("total_amount")}
+                vatAmount={form.watch("vat_amount")}
+                withholdingAmount={form.watch(
+                  "withholding_amount"
+                )}
+                totalToReceive={form.watch(
+                  "total_to_receive"
+                )}
+              />
 
               <DialogFooter>
-                <Button variant="outline" type="button" onClick={onClose}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={onClose}
+                  disabled={isSaving}
+                >
                   Cancelar
                 </Button>
-                <Button type="submit" disabled={isSaving}>
-                  {isSaving ? "A guardar..." : "Guardar"}
+                <Button
+                  type="submit"
+                  disabled={isSaving}
+                >
+                  {isSaving && (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  )}
+                  Guardar Fatura
                 </Button>
               </DialogFooter>
             </form>
