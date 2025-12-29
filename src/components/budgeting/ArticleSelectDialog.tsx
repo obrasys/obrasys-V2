@@ -70,10 +70,6 @@ const ArticleSelectDialog: React.FC<ArticleSelectDialogProps> = ({
     onClose();
   };
 
-  const handleClearSearch = () => {
-    setSearchTerm("");
-  };
-
   return (
     <Dialog
       open={isOpen}
@@ -85,9 +81,12 @@ const ArticleSelectDialog: React.FC<ArticleSelectDialogProps> = ({
       }}
     >
       <DialogContent className="sm:max-w-[800px] flex flex-col max-h-[90vh] p-0">
+        {/* HEADER */}
         <DialogHeader className="p-6 pb-4">
-          <DialogTitle>Selecionar Artigo</DialogTitle>
-          <DialogDescription>
+          <DialogTitle className="tracking-tight">
+            Selecionar Artigo
+          </DialogTitle>
+          <DialogDescription className="text-sm leading-relaxed">
             Pesquise e selecione um artigo da sua base de dados.
           </DialogDescription>
         </DialogHeader>
@@ -112,7 +111,7 @@ const ArticleSelectDialog: React.FC<ArticleSelectDialogProps> = ({
                 size="icon"
                 aria-label="Limpar pesquisa"
                 className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 hover:bg-transparent"
-                onClick={handleClearSearch}
+                onClick={() => setSearchTerm("")}
               >
                 <XCircle className="h-4 w-4 text-muted-foreground" />
               </Button>
@@ -158,7 +157,7 @@ const ArticleSelectDialog: React.FC<ArticleSelectDialogProps> = ({
                       {article.tipo || "—"}
                     </TableCell>
 
-                    <TableCell className="text-right">
+                    <TableCell className="text-right tabular-nums">
                       {typeof article.preco_unitario === "number"
                         ? currencyFormatter.format(
                             article.preco_unitario
