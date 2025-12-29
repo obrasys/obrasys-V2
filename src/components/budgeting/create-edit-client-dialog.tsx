@@ -1,11 +1,10 @@
 "use client";
 
-import React from "react";
+import React, { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { v4 as uuidv4 } from "uuid";
 
-import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -23,9 +22,11 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/ui/button";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+
 import { Client, clientSchema } from "@/schemas/client-schema";
 import { toast } from "sonner";
-import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 
 interface CreateEditClientDialogProps {
   isOpen: boolean;
@@ -33,6 +34,17 @@ interface CreateEditClientDialogProps {
   onSave: (client: Client) => void;
   clientToEdit?: Client | null;
 }
+
+const emptyClient: Client = {
+  id: "",
+  nome: "",
+  nif: "",
+  email: "",
+  telefone: "",
+  empresa: "",
+  endereco: "",
+  observacoes: "",
+};
 
 const CreateEditClientDialog: React.FC<CreateEditClientDialogProps> = ({
   isOpen,
@@ -42,55 +54,61 @@ const CreateEditClientDialog: React.FC<CreateEditClientDialogProps> = ({
 }) => {
   const form = useForm<Client>({
     resolver: zodResolver(clientSchema),
-    defaultValues: clientToEdit || {
-      nome: "",
-      nif: "",
-      email: "",
-      telefone: "",
-      empresa: "",
-      endereco: "",
-      observacoes: "",
-    },
+    defaultValues: emptyClient,
+    mode: "onBlur",
   });
 
-  React.useEffect(() => {
-    if (clientToEdit) {
-      form.reset(clientToEdit);
-    } else {
-      form.reset({
-        nome: "",
-        nif: "",
-        email: "",
-        telefone: "",
-        empresa: "",
-        endereco: "",
-        observacoes: "",
-      });
+  /* =========================
+     RESET CONTROLADO
+  ========================= */
+
+  useEffect(() => {
+    if (isOpen) {
+      form.reset(clientToEdit ?? emptyClient);
     }
-  }, [clientToEdit, form]);
+  }, [isOpen, clientToEdit, form]);
+
+  /* =========================
+     SUBMIT
+  ========================= */
 
   const onSubmit = (data: Client) => {
-    const newClient: Client = {
+    const client: Client = {
       ...data,
-      id: data.id || uuidv4(), // Generate ID if new client
+      id: data.id || uuidv4(),
     };
-    onSave(newClient);
-    toast.success(`Cliente ${clientToEdit ? "atualizado" : "registado"} com sucesso!`);
+
+    onSave(client);
+
+    toast.success(
+      clientToEdit
+        ? "Cliente atualizado com sucesso!"
+        : "Cliente registado com sucesso!"
+    );
+
     onClose();
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[600px] flex flex-col max-h-[90vh] p-0"> {/* Removido padding padrão */}
-        <DialogHeader className="p-6 pb-4"> {/* Adicionado padding ao cabeçalho */}
-          <DialogTitle>{clientToEdit ? "Editar Cliente" : "Registar Novo Cliente"}</DialogTitle>
+      <DialogContent className="sm:max-w-[600px] max-h-[90vh] p-0 flex flex-col">
+        <DialogHeader className="p-6 pb-4">
+          <DialogTitle>
+            {clientToEdit
+              ? "Editar Cliente"
+              : "Registar Novo Cliente"}
+          </DialogTitle>
           <DialogDescription>
-            Preencha os detalhes do cliente.
+            Preencha os dados do cliente.
           </DialogDescription>
         </DialogHeader>
-        <ScrollArea className="flex-grow px-6 pb-6"> {/* Adicionado padding ao ScrollArea */}
+
+        <ScrollArea className="flex-1 px-6 pb-6">
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-4"> {/* Removido py-4 */}
+            <form
+              onSubmit={form.handleSubmit(onSubmit)}
+              className="grid gap-4"
+            >
               <FormField
                 control={form.control}
                 name="nome"
@@ -98,12 +116,17 @@ const CreateEditClientDialog: React.FC<CreateEditClientDialogProps> = ({
                   <FormItem>
                     <FormLabel>Nome *</FormLabel>
                     <FormControl>
-                      <Input placeholder="Nome e Apelido" {...field} />
+                      <Input
+                        {...field}
+                        autoFocus
+                        placeholder="Nome e apelido"
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
@@ -112,12 +135,16 @@ const CreateEditClientDialog: React.FC<CreateEditClientDialogProps> = ({
                     <FormItem>
                       <FormLabel>NIF *</FormLabel>
                       <FormControl>
-                        <Input placeholder="123456789" {...field} />
+                        <Input
+                          {...field}
+                          placeholder="123456789"
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
+
                 <FormField
                   control={form.control}
                   name="telefone"
@@ -125,13 +152,17 @@ const CreateEditClientDialog: React.FC<CreateEditClientDialogProps> = ({
                     <FormItem>
                       <FormLabel>Telefone *</FormLabel>
                       <FormControl>
-                        <Input placeholder="(+351) 912 345 678" {...field} />
+                        <Input
+                          {...field}
+                          placeholder="(+351) 912 345 678"
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
               </div>
+
               <FormField
                 control={form.control}
                 name="email"
@@ -139,25 +170,36 @@ const CreateEditClientDialog: React.FC<CreateEditClientDialogProps> = ({
                   <FormItem>
                     <FormLabel>Email *</FormLabel>
                     <FormControl>
-                      <Input type="email" placeholder="email@exemplo.com" {...field} />
-                    </FormControl>
-                  <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="empresa"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Empresa (opcional)</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Nome da empresa" {...field} />
+                      <Input
+                        {...field}
+                        type="email"
+                        placeholder="email@exemplo.com"
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
+
+              <FormField
+                control={form.control}
+                name="empresa"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>
+                      Empresa (opcional)
+                    </FormLabel>
+                    <FormControl>
+                      <Input
+                        {...field}
+                        placeholder="Nome da empresa"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
               <FormField
                 control={form.control}
                 name="endereco"
@@ -165,27 +207,41 @@ const CreateEditClientDialog: React.FC<CreateEditClientDialogProps> = ({
                   <FormItem>
                     <FormLabel>Endereço *</FormLabel>
                     <FormControl>
-                      <Textarea placeholder="Endereço completo" {...field} />
+                      <Textarea
+                        {...field}
+                        placeholder="Endereço completo"
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
+
               <FormField
                 control={form.control}
                 name="observacoes"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Observações</FormLabel>
+                    <FormLabel>
+                      Observações
+                    </FormLabel>
                     <FormControl>
-                      <Textarea placeholder="Notas adicionais sobre o cliente" {...field} />
+                      <Textarea
+                        {...field}
+                        placeholder="Notas adicionais"
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-              <div className="flex justify-end gap-2 pt-4"> {/* Adicionado pt-4 em vez de mt-4 */}
-                <Button variant="outline" onClick={onClose} type="button">
+
+              <div className="flex justify-end gap-2 pt-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={onClose}
+                >
                   Cancelar
                 </Button>
                 <Button type="submit">
@@ -194,6 +250,7 @@ const CreateEditClientDialog: React.FC<CreateEditClientDialogProps> = ({
               </div>
             </form>
           </Form>
+
           <ScrollBar orientation="vertical" />
         </ScrollArea>
       </DialogContent>
