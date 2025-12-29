@@ -1,33 +1,41 @@
 export type RiskLevel = "low" | "medium" | "high";
 
+/* =========================
+   DESVIO ORÇAMENTAL
+========================= */
+
 /**
- * Avalia o risco com base no desvio financeiro
+ * Avalia risco com base no desvio percentual
  */
 export const getDeviationRisk = (
-  planned: number,
-  deviation: number
+  deviationPercentage: number
 ): RiskLevel => {
-  if (deviation <= 0) return "low";
-  if (planned > 0 && deviation / planned <= 0.1) {
-    return "medium";
-  }
+  if (deviationPercentage <= 0) return "low";
+  if (deviationPercentage <= 10) return "medium";
   return "high";
 };
 
-export const riskBadgeMap: Record<
-  RiskLevel,
-  { label: string; className: string }
-> = {
-  low: {
-    label: "Risco Baixo",
-    className: "bg-green-100 text-green-700",
-  },
-  medium: {
-    label: "Risco Médio",
-    className: "bg-yellow-100 text-yellow-800",
-  },
-  high: {
-    label: "Risco Alto",
-    className: "bg-red-100 text-red-700",
-  },
+/* =========================
+   MARGEM
+========================= */
+
+/**
+ * Avalia risco com base na margem atual
+ */
+export const getMarginRisk = (
+  marginPercentage: number
+): RiskLevel => {
+  if (marginPercentage >= 15) return "low";
+  if (marginPercentage >= 5) return "medium";
+  return "high";
+};
+
+/* =========================
+   MAPAS VISUAIS
+========================= */
+
+export const riskColorMap: Record<RiskLevel, string> = {
+  low: "bg-green-100 text-green-700",
+  medium: "bg-yellow-100 text-yellow-800",
+  high: "bg-red-100 text-red-700",
 };
