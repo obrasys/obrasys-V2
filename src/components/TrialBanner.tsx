@@ -12,11 +12,14 @@ import { format, differenceInDays, parseISO } from "date-fns";
 import { pt } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { Subscription } from "@/schemas/subscription-schema";
+import { Badge } from "@/components/ui/badge";
 
 const TrialBanner: React.FC = () => {
   const { user, isLoading: isSessionLoading } = useSession();
   const [subscription, setSubscription] = React.useState<Subscription | null>(null);
   const [isLoadingSubscription, setIsLoadingSubscription] = React.useState(true);
+
+  const DEFAULT_TRIAL_DAYS = 14;
 
   React.useEffect(() => {
     const fetchSubscription = async () => {
@@ -39,20 +42,23 @@ const TrialBanner: React.FC = () => {
         return;
       }
 
+      // Seleciona a subscrição mais recente da empresa (evita erro de múltiplas linhas)
       const { data: subData, error: subError } = await supabase
         .from('subscriptions')
         .select('*')
         .eq('company_id', profileData.company_id)
-        .single();
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
 
-      if (subError && subError.code !== 'PGRST116') { // PGRST116 means no rows found
+      if (subError && subError.code !== 'PGRST116') {
         console.error("Erro ao carregar subscrição:", subError);
         toast.error(`Erro ao carregar dados da subscrição: ${subError.message}`);
         setSubscription(null);
       } else if (subData) {
-        setSubscription(subData);
+        setSubscription(subData as Subscription);
       } else {
-        setSubscription(null); // No subscription found
+        setSubscription(null);
       }
       setIsLoadingSubscription(false);
     };
@@ -63,11 +69,21 @@ const TrialBanner: React.FC = () => {
   }, [user, isSessionLoading]);
 
   if (isLoadingSubscription || !subscription || subscription.status === "active") {
-    return null; // Don't show banner if loading, no subscription, or active
+    return null;
   }
 
-  const trialEndDate = subscription.trial_end ? parseISO(subscription.trial_end) : null;
-  const daysRemaining = trialEndDate ? differenceInDays(trialEndDate, new Date()) : 0;
+  // Calcula dias restantes: usa trial_end; se ausente, fallback para trial_start + DEFAULT_TRIAL_DAYS
+  const trialEndDate = subscription.trial_end
+    ? parseISO(subscription.trial_end)
+    : (subscription.trial_start ? (() => {
+        const start = parseISO(subscription.trial_start);
+        const end = new Date(start);
+        end.setDate(end.getDate() + DEFAULT_TRIAL_DAYS);
+        return end;
+      })() : null);
+
+  const rawDaysRemaining = trialEndDate ? differenceInDays(trialEndDate, new Date()) : 0;
+  const daysRemaining = Math.max(0, rawDaysRemaining);
 
   let bannerContent;
   let icon;
@@ -105,9 +121,9 @@ const TrialBanner: React.FC = () => {
     textColorClass = "text-yellow-800 dark:text-yellow-200";
     bannerContent = `A sua assinatura está ${subscription.status === "suspended" ? "suspensa" : "cancelada"}.`;
     buttonText = "Gerir Assinatura";
-    buttonLink = "/profile?tab=company"; // Link to profile/company tab to manage subscription
+    buttonLink = "/profile?tab=company";
   } else {
-    return null; // Should not happen with defined statuses
+    return null;
   }
 
   return (
@@ -116,9 +132,14 @@ const TrialBanner: React.FC = () => {
         {icon}
         <p className="font-medium text-sm md:text-base">{bannerContent}</p>
       </div>
-      <Button asChild variant={buttonVariant} className="flex-shrink-0">
-        <Link to={buttonLink}>{buttonText}</Link>
-      </Button>
+      <div className="flex items-center gap-3">
+        {subscription.status === "trialing" && (
+          <Badge className="bg-blue-600 text-white">{daysRemaining}d</Badge>
+        )}
+        <Button asChild variant={buttonVariant} className="flex-shrink-0">
+          <Link to={buttonLink}>{buttonText}</Link>
+        </Button>
+      </div>
     </Card>
   );
 };
