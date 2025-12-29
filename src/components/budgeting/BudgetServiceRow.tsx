@@ -1,8 +1,16 @@
 "use client";
 
 import React from "react";
-import { UseFormReturn } from "react-hook-form";
-import { Trash2, Copy, Search, XCircle, AlertTriangle, CheckCircle, Play } from "lucide-react";
+import { UseFormReturn, useWatch } from "react-hook-form";
+import {
+  Trash2,
+  Copy,
+  Search,
+  XCircle,
+  AlertTriangle,
+  CheckCircle,
+  Play,
+} from "lucide-react";
 
 import { TableCell, TableRow } from "@/components/ui/table";
 import {
@@ -18,14 +26,18 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
-import { NewBudgetFormValues, BudgetItem } from "@/schemas/budget-schema";
+import {
+  NewBudgetFormValues,
+  BudgetItem,
+} from "@/schemas/budget-schema";
 import { Article } from "@/schemas/article-schema";
 import { formatCurrency } from "@/utils/formatters";
+
 import ArticleSelectDialog from "./ArticleSelectDialog";
-import ArticleAutocompleteInput from "./ArticleAutocompleteInput"; // NEW: Import ArticleAutocompleteInput
-import { Badge } from "@/components/ui/badge"; // Importar Badge diretamente
+import ArticleAutocompleteInput from "./ArticleAutocompleteInput";
 
 interface BudgetServiceRowProps {
   form: UseFormReturn<NewBudgetFormValues>;
@@ -33,295 +45,431 @@ interface BudgetServiceRowProps {
   chapterIndex: number;
   itemIndex: number;
   articles: Article[];
-  handleRemoveService: (chapterIndex: number, itemIndex: number) => void;
-  handleDuplicateService: (chapterIndex: number, itemIndex: number) => void;
+  handleRemoveService: (
+    chapterIndex: number,
+    itemIndex: number
+  ) => void;
+  handleDuplicateService: (
+    chapterIndex: number,
+    itemIndex: number
+  ) => void;
   focusRef: React.RefObject<HTMLInputElement>;
-  userCompanyId: string | null; // NEW: Pass userCompanyId
+  userCompanyId: string | null;
 }
 
-const BudgetServiceRow: React.FC<BudgetServiceRowProps> = ({
+const BudgetServiceRow: React.FC<
+  BudgetServiceRowProps
+> = ({
   form,
   isApproved,
   chapterIndex,
   itemIndex,
-  articles, // Keep for the full dialog
+  articles,
   handleRemoveService,
   handleDuplicateService,
   focusRef,
-  userCompanyId, // Destructure userCompanyId
+  userCompanyId,
 }) => {
-  const item = form.watch(`chapters.${chapterIndex}.items.${itemIndex}`);
-  const [isArticleSelectDialogOpen, setIsArticleSelectDialogOpen] = React.useState(false);
+  const item = useWatch({
+    control: form.control,
+    name: `chapters.${chapterIndex}.items.${itemIndex}`,
+  });
 
-  const handleSelectArticle = (selectedArticle: Article) => {
-    form.setValue(`chapters.${chapterIndex}.items.${itemIndex}.servico`, selectedArticle.descricao);
-    form.setValue(`chapters.${chapterIndex}.items.${itemIndex}.unidade`, selectedArticle.unidade);
-    form.setValue(`chapters.${chapterIndex}.items.${itemIndex}.preco_unitario`, selectedArticle.preco_unitario);
-    form.setValue(`chapters.${chapterIndex}.items.${itemIndex}.article_id`, selectedArticle.id);
-    form.trigger(`chapters.${chapterIndex}.items.${itemIndex}.quantidade`);
-    form.trigger(`chapters.${chapterIndex}.items.${itemIndex}.preco_unitario`); // Trigger price validation too
+  const [
+    isArticleSelectDialogOpen,
+    setIsArticleSelectDialogOpen,
+  ] = React.useState(false);
+
+  /* =========================
+     HELPERS
+  ========================= */
+
+  const setField = (
+    path: keyof BudgetItem,
+    value: any
+  ) =>
+    form.setValue(
+      `chapters.${chapterIndex}.items.${itemIndex}.${path}`,
+      value,
+      { shouldDirty: true }
+    );
+
+  const handleSelectArticle = (
+    article: Article
+  ) => {
+    setField("servico", article.descricao);
+    setField("unidade", article.unidade);
+    setField(
+      "preco_unitario",
+      article.preco_unitario
+    );
+    setField("article_id", article.id);
   };
 
   const handleClearArticle = () => {
-    form.setValue(`chapters.${chapterIndex}.items.${itemIndex}.article_id`, null);
-    form.setValue(`chapters.${chapterIndex}.items.${itemIndex}.servico`, "");
-    form.setValue(`chapters.${chapterIndex}.items.${itemIndex}.unidade`, "");
-    form.setValue(`chapters.${chapterIndex}.items.${itemIndex}.preco_unitario`, 0);
-    form.trigger(`chapters.${chapterIndex}.items.${itemIndex}.quantidade`);
-    form.trigger(`chapters.${chapterIndex}.items.${itemIndex}.preco_unitario`);
+    setField("article_id", null);
+    setField("servico", "");
+    setField("unidade", "");
+    setField("preco_unitario", 0);
   };
 
-  const isArticleSelected = !!item.article_id;
-  const isQuantityInvalid = item.quantidade === 0 || isNaN(item.quantidade);
-  const isPriceInvalid = item.preco_unitario === 0 || isNaN(item.preco_unitario);
-
-  const getStatusBadge = (status: BudgetItem["estado"]) => {
-    let variant: "default" | "secondary" | "destructive" | "outline" = "secondary";
-    let colorClass = "";
-    let tooltipText = "";
-    let icon = null;
-
-    switch (status) {
-      case "Planeado":
-        variant = "outline";
-        colorClass = "text-gray-600 dark:text-gray-400 border-gray-300 dark:border-gray-700";
-        tooltipText = "Ainda não executado";
-        break;
-      case "Em andamento":
-        variant = "default";
-        colorClass = "bg-blue-500 hover:bg-blue-600 text-white";
-        tooltipText = "Trabalho em progresso";
-        icon = <Play className="h-3 w-3 mr-1" />;
-        break;
-      case "Concluído":
-        variant = "default";
-        colorClass = "bg-green-500 hover:bg-green-600 text-white";
-        tooltipText = "Serviço concluído";
-        icon = <CheckCircle className="h-3 w-3 mr-1" />;
-        break;
-      case "Atrasado":
-        variant = "destructive";
-        colorClass = "bg-orange-500 hover:bg-orange-600 text-white";
-        tooltipText = "Serviço com atraso";
-        icon = <AlertTriangle className="h-3 w-3 mr-1" />;
-        break;
+  const handleRemove = () => {
+    const confirmed = window.confirm(
+      "Tem certeza que deseja remover este serviço?"
+    );
+    if (confirmed) {
+      handleRemoveService(
+        chapterIndex,
+        itemIndex
+      );
     }
+  };
+
+  const quantity =
+    Number(item?.quantidade) || 0;
+  const price =
+    Number(item?.preco_unitario) || 0;
+
+  const isQuantityInvalid = quantity <= 0;
+  const isPriceInvalid = price <= 0;
+  const isArticleSelected = !!item?.article_id;
+
+  const renderStatusBadge = (
+    status: BudgetItem["estado"]
+  ) => {
+    const map = {
+      Planeado: {
+        label: "Planeado",
+        className:
+          "border border-muted text-muted-foreground",
+        tooltip: "Ainda não executado",
+      },
+      "Em andamento": {
+        label: "Em andamento",
+        className:
+          "bg-blue-500 text-white",
+        icon: (
+          <Play className="h-3 w-3 mr-1" />
+        ),
+        tooltip: "Trabalho em progresso",
+      },
+      Concluído: {
+        label: "Concluído",
+        className:
+          "bg-green-500 text-white",
+        icon: (
+          <CheckCircle className="h-3 w-3 mr-1" />
+        ),
+        tooltip: "Serviço concluído",
+      },
+      Atrasado: {
+        label: "Atrasado",
+        className:
+          "bg-orange-500 text-white",
+        icon: (
+          <AlertTriangle className="h-3 w-3 mr-1" />
+        ),
+        tooltip: "Serviço com atraso",
+      },
+    } as const;
+
+    const cfg = map[status];
 
     return (
       <Tooltip>
         <TooltipTrigger asChild>
-          <Badge className={cn("w-fit", colorClass)} variant={variant}>
-            {icon} {status}
+          <Badge
+            variant="outline"
+            className={cn(
+              "w-fit",
+              cfg.className
+            )}
+          >
+            {cfg.icon}
+            {cfg.label}
           </Badge>
         </TooltipTrigger>
-        <TooltipContent>{tooltipText}</TooltipContent>
+        <TooltipContent>
+          {cfg.tooltip}
+        </TooltipContent>
       </Tooltip>
     );
   };
 
-  const handleRemoveClick = () => {
-    if (window.confirm("Tem certeza que deseja remover este serviço?")) {
-      handleRemoveService(chapterIndex, itemIndex);
-    }
-  };
+  /* =========================
+     RENDER
+  ========================= */
 
   return (
     <TableRow>
-      <TableCell className="relative py-2">
+      {/* SERVIÇO */}
+      <TableCell className="py-2">
         <FormField
           control={form.control}
           name={`chapters.${chapterIndex}.items.${itemIndex}.servico`}
           render={({ field }) => (
-            <FormItem className="mb-0">
+            <FormItem>
               <div className="flex items-center gap-1">
                 <FormControl>
                   <ArticleAutocompleteInput
                     value={field.value}
-                    onValueChange={field.onChange}
-                    onSelectArticle={handleSelectArticle}
-                    userCompanyId={userCompanyId || ""}
-                    disabled={isApproved || isArticleSelected}
+                    onValueChange={
+                      field.onChange
+                    }
+                    onSelectArticle={
+                      handleSelectArticle
+                    }
+                    userCompanyId={
+                      userCompanyId || ""
+                    }
+                    disabled={
+                      isApproved ||
+                      isArticleSelected
+                    }
                     placeholder="Pesquisar ou digitar serviço..."
                   />
                 </FormControl>
+
                 {!isApproved && (
-                  isArticleSelected ? (
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button type="button" variant="ghost" size="icon" onClick={handleClearArticle} className="flex-shrink-0">
-                          <XCircle className="h-4 w-4 text-muted-foreground" />
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>Limpar artigo selecionado</TooltipContent>
-                    </Tooltip>
-                  ) : (
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button type="button" variant="ghost" size="icon" onClick={() => setIsArticleSelectDialogOpen(true)} className="flex-shrink-0">
-                          <Search className="h-4 w-4 text-muted-foreground" />
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>Selecionar artigo da base de dados</TooltipContent>
-                    </Tooltip>
-                  )
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        aria-label={
+                          isArticleSelected
+                            ? "Limpar artigo"
+                            : "Selecionar artigo"
+                        }
+                        onClick={() =>
+                          isArticleSelected
+                            ? handleClearArticle()
+                            : setIsArticleSelectDialogOpen(
+                                true
+                              )
+                        }
+                      >
+                        {isArticleSelected ? (
+                          <XCircle className="h-4 w-4" />
+                        ) : (
+                          <Search className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      {isArticleSelected
+                        ? "Limpar artigo"
+                        : "Selecionar artigo da base"}
+                    </TooltipContent>
+                  </Tooltip>
                 )}
               </div>
               <FormMessage />
             </FormItem>
           )}
         />
+
         <ArticleSelectDialog
           isOpen={isArticleSelectDialogOpen}
-          onClose={() => setIsArticleSelectDialogOpen(false)}
+          onClose={() =>
+            setIsArticleSelectDialogOpen(false)
+          }
           articles={articles}
           onSelectArticle={handleSelectArticle}
         />
       </TableCell>
-      <TableCell className="w-[100px] py-2">
+
+      {/* QUANTIDADE */}
+      <TableCell className="w-[100px]">
         <FormField
           control={form.control}
           name={`chapters.${chapterIndex}.items.${itemIndex}.quantidade`}
           render={({ field }) => (
-            <FormItem className="mb-0">
+            <FormItem>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <FormControl>
                     <Input
+                      {...field}
                       type="number"
                       step="0.01"
-                      {...field}
                       disabled={isApproved}
-                      placeholder="Ex: 50"
-                      className={cn("h-10 px-3 py-2", {
-                        "border-orange-500 focus-visible:ring-orange-500": isQuantityInvalid,
+                      className={cn({
+                        "border-orange-500":
+                          isQuantityInvalid,
                       })}
                     />
                   </FormControl>
                 </TooltipTrigger>
-                {isQuantityInvalid && <TooltipContent>Quantidade inválida</TooltipContent>}
+                {isQuantityInvalid && (
+                  <TooltipContent>
+                    Quantidade inválida
+                  </TooltipContent>
+                )}
               </Tooltip>
               <FormMessage />
             </FormItem>
           )}
         />
       </TableCell>
-      <TableCell className="w-[80px] py-2">
+
+      {/* UNIDADE */}
+      <TableCell className="w-[80px]">
         <FormField
           control={form.control}
           name={`chapters.${chapterIndex}.items.${itemIndex}.unidade`}
           render={({ field }) => (
-            <FormItem className="mb-0">
+            <FormItem>
               <FormControl>
                 <Input
                   {...field}
-                  disabled={isApproved || isArticleSelected}
-                  placeholder="m², m³, un"
-                  className="h-10 px-3 py-2"
+                  disabled={
+                    isApproved ||
+                    isArticleSelected
+                  }
                 />
               </FormControl>
-              <FormMessage />
             </FormItem>
           )}
         />
       </TableCell>
-      <TableCell className="w-[120px] text-right py-2">
+
+      {/* PREÇO UNITÁRIO */}
+      <TableCell className="w-[120px]">
         <FormField
           control={form.control}
           name={`chapters.${chapterIndex}.items.${itemIndex}.preco_unitario`}
           render={({ field }) => (
-            <FormItem className="mb-0">
+            <FormItem>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <FormControl>
                     <Input
+                      {...field}
                       type="number"
                       step="0.01"
-                      {...field}
-                      disabled={isApproved || isArticleSelected}
-                      placeholder="€"
-                      className={cn("h-10 px-3 py-2", {
-                        "border-orange-500 focus-visible:ring-orange-500": isPriceInvalid,
+                      disabled={
+                        isApproved ||
+                        isArticleSelected
+                      }
+                      className={cn({
+                        "border-orange-500":
+                          isPriceInvalid,
                       })}
                     />
                   </FormControl>
                 </TooltipTrigger>
-                {isPriceInvalid && <TooltipContent>Preço unitário em falta</TooltipContent>}
+                {isPriceInvalid && (
+                  <TooltipContent>
+                    Preço inválido
+                  </TooltipContent>
+                )}
               </Tooltip>
-              <FormMessage />
             </FormItem>
           )}
         />
       </TableCell>
-      <TableCell className="w-[120px] text-right font-medium py-2">
-        {formatCurrency(item.custo_planeado)}
+
+      {/* CUSTO PLANEADO */}
+      <TableCell className="text-right font-medium">
+        {formatCurrency(
+          item?.custo_planeado || 0
+        )}
       </TableCell>
-      {/* NOVOS CAMPOS PARA CUSTO REAL */}
-      <TableCell className="w-[120px] text-right py-2">
+
+      {/* MATERIAL */}
+      <TableCell className="w-[120px]">
         <FormField
           control={form.control}
           name={`chapters.${chapterIndex}.items.${itemIndex}.custo_real_material`}
           render={({ field }) => (
-            <FormItem className="mb-0">
+            <FormItem>
               <FormControl>
                 <Input
+                  {...field}
                   type="number"
                   step="0.01"
-                  {...field}
                   disabled={isApproved}
-                  placeholder="Material (€)"
-                  className="h-10 px-3 py-2"
                 />
               </FormControl>
-              <FormMessage />
             </FormItem>
           )}
         />
       </TableCell>
-      <TableCell className="w-[120px] text-right py-2">
+
+      {/* MÃO DE OBRA */}
+      <TableCell className="w-[120px]">
         <FormField
           control={form.control}
           name={`chapters.${chapterIndex}.items.${itemIndex}.custo_real_mao_obra`}
           render={({ field }) => (
-            <FormItem className="mb-0">
+            <FormItem>
               <FormControl>
                 <Input
+                  {...field}
                   type="number"
                   step="0.01"
-                  {...field}
                   disabled={isApproved}
-                  placeholder="Mão de Obra (€)"
-                  className="h-10 px-3 py-2"
                 />
               </FormControl>
-              <FormMessage />
             </FormItem>
           )}
         />
       </TableCell>
-      <TableCell className="w-[100px] text-right font-medium py-2">
-        {formatCurrency(item.custo_executado)}
+
+      {/* EXECUTADO */}
+      <TableCell className="text-right font-medium">
+        {formatCurrency(
+          item?.custo_executado || 0
+        )}
       </TableCell>
-      {/* FIM DOS NOVOS CAMPOS */}
-      <TableCell className="w-[100px] py-2">
-        {getStatusBadge(item.estado)}
+
+      {/* ESTADO */}
+      <TableCell>
+        {renderStatusBadge(item?.estado)}
       </TableCell>
-      <TableCell className="w-[100px] text-right py-2">
+
+      {/* AÇÕES */}
+      <TableCell className="text-right">
         <div className="flex justify-end gap-1">
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button type="button" variant="ghost" size="icon" onClick={() => handleDuplicateService(chapterIndex, itemIndex)} disabled={isApproved}>
+              <Button
+                size="icon"
+                variant="ghost"
+                disabled={isApproved}
+                aria-label="Duplicar serviço"
+                onClick={() =>
+                  handleDuplicateService(
+                    chapterIndex,
+                    itemIndex
+                  )
+                }
+              >
                 <Copy className="h-4 w-4" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent>Duplicar serviço</TooltipContent>
+            <TooltipContent>
+              Duplicar serviço
+            </TooltipContent>
           </Tooltip>
+
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button type="button" variant="ghost" size="icon" onClick={handleRemoveClick} disabled={isApproved}>
+              <Button
+                size="icon"
+                variant="ghost"
+                disabled={isApproved}
+                aria-label="Remover serviço"
+                onClick={handleRemove}
+              >
                 <Trash2 className="h-4 w-4 text-red-500" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent>Remover serviço</TooltipContent>
+            <TooltipContent>
+              Remover serviço
+            </TooltipContent>
           </Tooltip>
         </div>
       </TableCell>
