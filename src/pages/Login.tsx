@@ -1,7 +1,7 @@
 "use client";
 
 import React from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -28,6 +28,8 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 
 const Login: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const from = (location.state as any)?.from?.pathname || '/dashboard';
   const [showPassword, setShowPassword] = React.useState(false);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [needsEmailConfirmation, setNeedsEmailConfirmation] = React.useState(false);
@@ -98,8 +100,8 @@ const Login: React.FC = () => {
 
       if (signInData?.session) {
         toast.success('Sessão iniciada com sucesso!');
-        // Redirecionamento robusto para evitar competição de navegação
-        window.location.assign('/dashboard');
+        // Redireciona sem reload, respeitando a rota original
+        navigate(from, { replace: true });
         return;
       }
 
