@@ -35,7 +35,7 @@ import InvoiceGeneralForm from "./InvoiceGeneralForm";
 import InvoiceItemsSection from "./InvoiceItemsSection";
 import InvoiceTotalDisplay from "./InvoiceTotalDisplay";
 import InvoiceFiscalSummary from "./InvoiceFiscalSummary";
-import { calculateInvoiceFiscal } from "@/utils/invoice-calculation";
+import { calculateInvoiceFiscal } from "@/utils/invoice-calculations";
 
 /* ======================================================
    SCHEMA COMPLETO
