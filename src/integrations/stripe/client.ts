@@ -1,22 +1,24 @@
 "use client";
 
-import { loadStripe, type Stripe } from '@stripe/stripe-js';
+import { loadStripe, Stripe } from "@stripe/stripe-js";
 
-// Client-side only: NEVER use secret keys here
 const pk = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY as string | undefined;
 
-if (!pk && import.meta.env.DEV) {
-  // eslint-disable-next-line no-console
-  console.error(
-    'Missing VITE_STRIPE_PUBLISHABLE_KEY. Set it in your environment for client builds.'
-  );
+if (!pk) {
+  if (import.meta.env.DEV) {
+    console.error(
+      "❌ VITE_STRIPE_PUBLISHABLE_KEY não definida. Stripe não será inicializado."
+    );
+  }
 }
 
-/**
- * Stripe.js singleton
- * Initialized once and reused across the app
- */
-export const stripePromise: Promise<Stripe | null> | null =
-  pk ? loadStripe(pk) : null;
+let stripePromise: Promise<Stripe | null> | null = null;
 
-export default stripePromise;
+export function getStripe() {
+  if (!stripePromise) {
+    stripePromise = loadStripe(pk ?? "");
+  }
+  return stripePromise;
+}
+
+export default getStripe;
