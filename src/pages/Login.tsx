@@ -5,6 +5,7 @@ import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -15,6 +16,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -25,8 +27,12 @@ import {
   Lock,
   ArrowLeft,
 } from "lucide-react";
+
 import { useSession } from "@/components/SessionContextProvider";
 
+/* ------------------------------------------------------------------ */
+/* Schema                                                             */
+/* ------------------------------------------------------------------ */
 const loginSchema = z.object({
   email: z.string().email("Formato de email inválido."),
   password: z.string().min(1, "A palavra-passe é obrigatória."),
@@ -42,20 +48,31 @@ const Login: React.FC = () => {
   const from =
     (location.state as any)?.from?.pathname || "/dashboard";
 
-  const [showPassword, setShowPassword] =
-    React.useState(false);
-  const [isSubmitting, setIsSubmitting] =
-    React.useState(false);
+  const [showPassword, setShowPassword] = React.useState(false);
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [needsEmailConfirmation, setNeedsEmailConfirmation] =
     React.useState(false);
 
-  // 🔐 Redireciona APENAS quando a sessão existir
+  /* ------------------------------------------------------------------ */
+  /* 🧹 LIMPEZA PREVENTIVA (RESOLVE O PROBLEMA DO HISTÓRICO)             */
+  /* ------------------------------------------------------------------ */
+  React.useEffect(() => {
+    // Remove tokens locais corrompidos sem afetar outros dispositivos
+    supabase.auth.signOut({ scope: "local" });
+  }, []);
+
+  /* ------------------------------------------------------------------ */
+  /* 🔐 REDIRECT AUTOMÁTICO QUANDO A SESSÃO EXISTIR                     */
+  /* ------------------------------------------------------------------ */
   React.useEffect(() => {
     if (!isSessionLoading && session) {
       navigate(from, { replace: true });
     }
   }, [session, isSessionLoading, navigate, from]);
 
+  /* ------------------------------------------------------------------ */
+  /* Form                                                              */
+  /* ------------------------------------------------------------------ */
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
@@ -64,69 +81,48 @@ const Login: React.FC = () => {
     },
   });
 
-  async function signInWithTimeout(
-    params: { email: string; password: string },
-    ms = 12000
-  ) {
-    const timeout = new Promise<{ data: any; error: any }>(
-      (resolve) =>
-        setTimeout(
-          () =>
-            resolve({
-              data: null,
-              error: new Error(
-                "Tempo excedido ao tentar entrar."
-              ),
-            }),
-          ms
-        )
-    );
-
-    const request =
-      supabase.auth.signInWithPassword(params);
-
-    return Promise.race([request as any, timeout]);
-  }
-
+  /* ------------------------------------------------------------------ */
+  /* Submit                                                            */
+  /* ------------------------------------------------------------------ */
   const onSubmit = async (data: LoginFormValues) => {
     setIsSubmitting(true);
     setNeedsEmailConfirmation(false);
 
     try {
-      const { data: signInData, error } =
-        await signInWithTimeout({
+      const { error } =
+        await supabase.auth.signInWithPassword({
           email: data.email,
           password: data.password,
         });
 
       if (error) {
         const msg = error.message.toLowerCase();
-        const needsConfirm = msg.includes("confirm");
 
-        setNeedsEmailConfirmation(needsConfirm);
-
-        toast.error(
-          needsConfirm
-            ? "Email não confirmado."
-            : "Credenciais inválidas."
-        );
+        if (msg.includes("confirm")) {
+          setNeedsEmailConfirmation(true);
+          toast.error("Email ainda não confirmado.");
+        } else {
+          toast.error("Credenciais inválidas.");
+        }
         return;
       }
 
-      // ✅ NÃO navegar aqui
-      if (signInData?.session) {
-        toast.success("Sessão iniciada com sucesso!");
-        // navegação acontece pelo useEffect
-      }
+      toast.success("Sessão iniciada com sucesso!");
+      // ❌ NÃO navegar aqui
+      // O redirect é controlado pelo estado global (SessionContext)
+
     } catch (err: any) {
       toast.error(
-        err?.message || "Erro inesperado."
+        err?.message || "Erro inesperado ao iniciar sessão."
       );
     } finally {
       setIsSubmitting(false);
     }
   };
 
+  /* ------------------------------------------------------------------ */
+  /* Reenviar confirmação de email                                     */
+  /* ------------------------------------------------------------------ */
   const handleResendConfirmation = async () => {
     const email = form.getValues("email");
     if (!email) {
@@ -142,13 +138,14 @@ const Login: React.FC = () => {
     if (error) {
       toast.error(error.message);
     } else {
-      toast.success(
-        "Email de confirmação reenviado."
-      );
+      toast.success("Email de confirmação reenviado.");
       setNeedsEmailConfirmation(false);
     }
   };
 
+  /* ------------------------------------------------------------------ */
+  /* Render                                                            */
+  /* ------------------------------------------------------------------ */
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100 dark:bg-gray-900 p-4">
       <div className="w-full max-w-md bg-white dark:bg-gray-800 p-8 rounded-lg shadow">
@@ -183,6 +180,7 @@ const Login: React.FC = () => {
                       <Input
                         {...field}
                         className="pl-10"
+                        autoComplete="email"
                       />
                     </div>
                   </FormControl>
@@ -208,6 +206,7 @@ const Login: React.FC = () => {
                             : "password"
                         }
                         className="pl-10 pr-10"
+                        autoComplete="current-password"
                       />
                       <button
                         type="button"
