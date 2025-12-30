@@ -31,10 +31,12 @@ export const SessionContextProvider: React.FC<{
   const [companyId, setCompanyId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  // 🔒 refs para evitar loops e re-subscribes
   const lastLoadedUserIdRef = useRef<string | null>(null);
+  const userIdRef = useRef<string | null>(null);
 
   /* ------------------------------------------------------------------ */
-  /* 🔐 Carrega profile (APENAS SELECT, sem inserts no cliente)          */
+  /* 🔐 Carrega profile (apenas SELECT, aguarda trigger server-side)     */
   /* ------------------------------------------------------------------ */
   const loadProfile = async (currentUser: User): Promise<Profile | null> => {
     const { data, error } = await supabase
@@ -50,7 +52,7 @@ export const SessionContextProvider: React.FC<{
 
     if (data) return data as Profile;
 
-    // Aguarda criação server-side (trigger)
+    // aguarda trigger server-side criar o profile
     for (let attempt = 0; attempt < 10; attempt++) {
       await new Promise((res) => setTimeout(res, 500));
 
@@ -61,7 +63,10 @@ export const SessionContextProvider: React.FC<{
         .maybeSingle();
 
       if (retryErr && retryErr.code !== "PGRST116") {
-        console.error("[SessionContext] Erro ao aguardar profile:", retryErr);
+        console.error(
+          "[SessionContext] Erro ao aguardar profile:",
+          retryErr
+        );
         return null;
       }
 
@@ -105,7 +110,7 @@ export const SessionContextProvider: React.FC<{
   };
 
   /* ------------------------------------------------------------------ */
-  /* 🟢 BOOTSTRAP INICIAL — ESSENCIAL PARA NOVAS ABAS                    */
+  /* 🟢 BOOTSTRAP INICIAL (nova aba / refresh)                           */
   /* ------------------------------------------------------------------ */
   useEffect(() => {
     let mounted = true;
@@ -126,6 +131,7 @@ export const SessionContextProvider: React.FC<{
       if (data.session) {
         setSession(data.session);
         setUser(data.session.user);
+        userIdRef.current = data.session.user.id;
       }
 
       setIsLoading(false);
@@ -139,7 +145,7 @@ export const SessionContextProvider: React.FC<{
   }, []);
 
   /* ------------------------------------------------------------------ */
-  /* 🚀 onAuthStateChange como fonte ÚNICA de eventos de auth            */
+  /* 🚀 onAuthStateChange — REGISTRADO UMA ÚNICA VEZ                     */
   /* ------------------------------------------------------------------ */
   useEffect(() => {
     let mounted = true;
@@ -148,11 +154,12 @@ export const SessionContextProvider: React.FC<{
       async (event, currentSession) => {
         if (!mounted) return;
 
-        // SIGNED OUT
+        // 🔴 SIGNED OUT
         if (!currentSession || event === "SIGNED_OUT") {
-          if (user?.id) {
+          const uid = userIdRef.current;
+          if (uid) {
             try {
-              localStorage.removeItem(`active_company_id:${user.id}`);
+              localStorage.removeItem(`active_company_id:${uid}`);
             } catch {
               /* ignore */
             }
@@ -162,14 +169,16 @@ export const SessionContextProvider: React.FC<{
           setUser(null);
           setProfile(null);
           setCompanyId(null);
+          userIdRef.current = null;
           lastLoadedUserIdRef.current = null;
           setIsLoading(false);
           return;
         }
 
-        // SIGNED IN / TOKEN REFRESH
+        // 🟢 SIGNED IN / TOKEN REFRESH
         setSession(currentSession);
         setUser(currentSession.user);
+        userIdRef.current = currentSession.user.id;
 
         const currentUser = currentSession.user;
 
@@ -181,10 +190,9 @@ export const SessionContextProvider: React.FC<{
           if (!mounted) return;
 
           setProfile(profileData);
+          lastLoadedUserIdRef.current = currentUser.id;
 
           if (profileData) {
-            lastLoadedUserIdRef.current = currentUser.id;
-
             const storageKey = `active_company_id:${currentUser.id}`;
             const activeFromProfile =
               (profileData as any)?.active_company_id ?? null;
@@ -212,10 +220,12 @@ export const SessionContextProvider: React.FC<{
       }
     );
 
-    // 🔁 Sincronização entre abas (empresa ativa POR USER)
+    // 🔁 sincronização entre abas (empresa ativa)
     const onStorage = (e: StorageEvent) => {
-      if (!user?.id) return;
-      const expectedKey = `active_company_id:${user.id}`;
+      const uid = userIdRef.current;
+      if (!uid) return;
+
+      const expectedKey = `active_company_id:${uid}`;
       if (e.key === expectedKey) {
         setCompanyId(e.newValue);
       }
@@ -228,7 +238,7 @@ export const SessionContextProvider: React.FC<{
       listener.subscription.unsubscribe();
       window.removeEventListener("storage", onStorage);
     };
-  }, [user?.id]);
+  }, []);
 
   return (
     <SessionContext.Provider
