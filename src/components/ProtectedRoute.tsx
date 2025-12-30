@@ -4,46 +4,37 @@ import React from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { useSession } from "@/components/SessionContextProvider";
 
-const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { user, isLoading, companyId, profile } = useSession();
+interface ProtectedRouteProps {
+  children: React.ReactNode;
+}
+
+const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
+  const { session, isLoading } = useSession();
   const location = useLocation();
 
-  const path = location.pathname;
-  const isAuthPage = path === "/login" || path === "/signup";
-  const isSelectCompanyPage = path === "/select-company";
-
-  // 1️⃣ Enquanto o contexto não está pronto, NÃO decidir nada
+  // ⏳ Enquanto a sessão está a ser resolvida
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[50vh]">
-        <div className="animate-pulse text-sm text-muted-foreground">
-          A carregar...
-        </div>
+      <div className="min-h-screen flex items-center justify-center">
+        <span className="text-sm text-muted-foreground">
+          A verificar sessão…
+        </span>
       </div>
     );
   }
 
-  // 2️⃣ Autenticação: só depende do user
-  if (!user) {
-    return <Navigate to="/login" replace state={{ from: location }} />;
-  }
-
-  // 3️⃣ Se o profile ainda não carregou, aguarda
-  if (!profile) {
+  // 🔒 Não autenticado → Login
+  if (!session) {
     return (
-      <div className="flex items-center justify-center min-h-[50vh]">
-        <div className="animate-pulse text-sm text-muted-foreground">
-          A preparar o seu ambiente...
-        </div>
-      </div>
+      <Navigate
+        to="/login"
+        replace
+        state={{ from: location }}
+      />
     );
   }
 
-  // 4️⃣ Empresa ativa só é obrigatória DEPOIS do profile existir
-  if (!companyId && !isAuthPage && !isSelectCompanyPage) {
-    return <Navigate to="/select-company" replace state={{ from: location }} />;
-  }
-
+  // ✅ Autenticado
   return <>{children}</>;
 };
 
