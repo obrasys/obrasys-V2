@@ -1,105 +1,112 @@
-"use client";
+import { supabase } from '@/integrations/supabase/client';
 
-import React from "react";
-import { Navigate } from "react-router-dom";
-import { useSession } from "@/components/SessionContextProvider";
-import { useSubscriptionStatus } from "@/hooks/useSubscriptionStatus";
-import { Loader2, Lock } from "lucide-react";
-import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+/**
+ * Tipagem oficial do estado da assinatura da empresa
+ * Fonte única da verdade (Stripe + DB)
+ */
+export type CompanySubscriptionStatus = {
+  company_id: string;
 
-interface SubscriptionGuardProps {
-  children: React.ReactNode;
+  /** Estado da subscrição conforme Stripe */
+  status:
+    | 'trial'
+    | 'active'
+    | 'past_due'
+    | 'canceled'
+    | 'inactive';
 
-  /**
-   * Estados permitidos.
-   * Por default, só deixa entrar se estiver ACTIVE
-   */
-  allow?: Array<"active" | "attention">;
-}
+  /** Plano contratado */
+  plan: 'free' | 'pro' | 'enterprise';
 
-const SubscriptionGuard: React.FC<SubscriptionGuardProps> = ({
-  children,
-  allow = ["active"],
-}) => {
-  const { user, isLoading: isSessionLoading } = useSession();
+  /** Conveniência para regras de acesso */
+  is_active: boolean;
 
-  const companyId = (user as any)?.company_id ?? null;
+  /** Stripe */
+  stripe_customer_id?: string | null;
+  stripe_subscription_id?: string | null;
 
-  const {
-    data: subscription,
-    loading: isLoadingSubscription,
-  } = useSubscriptionStatus(companyId ?? undefined);
+  /** Datas */
+  current_period_end?: string | null;
 
-  /**
-   * ======================================================
-   * LOADING GLOBAL
-   * ======================================================
-   */
-  if (isSessionLoading || isLoadingSubscription) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <Loader2 className="h-6 w-6 animate-spin text-primary" />
-      </div>
-    );
-  }
-
-  /**
-   * ======================================================
-   * NÃO AUTENTICADO
-   * ======================================================
-   */
-  if (!user) {
-    return <Navigate to="/login" replace />;
-  }
-
-  /**
-   * ======================================================
-   * SEM SUBSCRIÇÃO (caso extremo)
-   * ======================================================
-   */
-  if (!subscription) {
-    return <Navigate to="/plans" replace />;
-  }
-
-  /**
-   * ======================================================
-   * ESTADO NÃO PERMITIDO
-   * ======================================================
-   */
-  if (!allow.includes(subscription.computed_status)) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh] px-4">
-        <Card className="max-w-md w-full p-6 text-center space-y-4">
-          <div className="flex justify-center">
-            <Lock className="h-8 w-8 text-muted-foreground" />
-          </div>
-
-          <h2 className="text-lg font-semibold">
-            Acesso restrito
-          </h2>
-
-          <p className="text-sm text-muted-foreground">
-            O seu plano atual não permite aceder a esta funcionalidade.
-          </p>
-
-          <Button
-            onClick={() => (window.location.href = "/plans")}
-            className="w-full"
-          >
-            Ver Planos
-          </Button>
-        </Card>
-      </div>
-    );
-  }
-
-  /**
-   * ======================================================
-   * ACESSO LIBERADO
-   * ======================================================
-   */
-  return <>{children}</>;
+  /** Fiscalidade (alinhado com Stripe) */
+  vat_rate?: number | null;           // ex: 23
+  vat_amount?: number | null;         // ex: 11.27
+  total_amount?: number | null;       // ex: 60.27
 };
 
-export default SubscriptionGuard;
+/**
+ * Valor default quando a empresa ainda não tem subscrição
+ * (onboarding seguro, sem crashes)
+ */
+const DEFAULT_SUBSCRIPTION: Omit<
+  CompanySubscriptionStatus,
+  'company_id'
+> = {
+  status: 'inactive',
+  plan: 'free',
+  is_active: false,
+  stripe_customer_id: null,
+  stripe_subscription_id: null,
+  current_period_end: null,
+  vat_rate: null,
+  vat_amount: null,
+  total_amount: null,
+};
+
+/**
+ * Fonte única da verdade sobre o estado da assinatura da empresa
+ * Seguro para produção (não explode se não houver subscrição)
+ */
+export async function getCompanySubscriptionStatus(
+  companyId: string
+): Promise<CompanySubscriptionStatus> {
+  const { data, error } = await supabase
+    .from('company_subscription_status')
+    .select('*')
+    .eq('company_id', companyId)
+    .maybeSingle();
+
+  if (error) {
+    console.error(
+      '[Subscription] Erro ao buscar status da assinatura:',
+      error
+    );
+    throw error;
+  }
+
+  if (!data) {
+    return {
+      company_id: companyId,
+      ...DEFAULT_SUBSCRIPTION,
+    };
+  }
+
+  return data as CompanySubscriptionStatus;
+}
+
+/**
+ * Helper para regras de acesso
+ * (UI, rotas protegidas, módulos pagos, etc.)
+ */
+export function hasActiveSubscription(
+  subscription: CompanySubscriptionStatus | null | undefined
+): boolean {
+  return (
+    !!subscription &&
+    subscription.is_active === true &&
+    subscription.status === 'active'
+  );
+}
+
+/**
+ * Helper para verificar se está em trial válido
+ */
+export function isInTrial(
+  subscription: CompanySubscriptionStatus | null | undefined
+): boolean {
+  return (
+    !!subscription &&
+    subscription.status === 'trial' &&
+    subscription.is_active === true
+  );
+}
