@@ -4,7 +4,6 @@ import React, {
   createContext,
   useContext,
   useEffect,
-  useRef,
   useState,
 } from "react";
 import { Session, User } from "@supabase/supabase-js";
@@ -16,42 +15,32 @@ interface SessionContextType {
   user: User | null;
   profile: Profile | null;
   isLoading: boolean;
-  companyId: string | null;
-  setActiveCompany: (companyId: string | null) => Promise<void>;
 }
 
-const SessionContext = createContext<SessionContextType | undefined>(undefined);
+const SessionContext = createContext<SessionContextType | undefined>(
+  undefined
+);
 
-export const SessionContextProvider: React.FC<{ children: React.ReactNode }> = ({
-  children,
-}) => {
+export const SessionContextProvider: React.FC<{
+  children: React.ReactNode;
+}> = ({ children }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
-  const [companyId, setCompanyId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const initializedRef = useRef(false);
-
-  /* ---------------------------------------------------- */
-  /* 🔥 BOOTSTRAP COM RESET DE SESSÃO CORROMPIDA          */
-  /* ---------------------------------------------------- */
+  /* -------------------------------------------------- */
+  /* 🔐 BOOTSTRAP ÚNICO                                 */
+  /* -------------------------------------------------- */
   useEffect(() => {
     let mounted = true;
 
     const bootstrap = async () => {
-      if (initializedRef.current) return;
-      initializedRef.current = true;
-
-      // ⚠️ LIMPA qualquer sessão antiga inconsistente
-      await supabase.auth.signOut({ scope: "local" });
-
       const { data } = await supabase.auth.getSession();
       if (!mounted) return;
 
       setSession(data.session);
       setUser(data.session?.user ?? null);
-
       setIsLoading(false);
     };
 
@@ -62,39 +51,44 @@ export const SessionContextProvider: React.FC<{ children: React.ReactNode }> = (
     };
   }, []);
 
-  /* ---------------------------------------------------- */
-  /* 🔐 AUTH STATE CHANGE (ÚNICA FONTE)                   */
-  /* ---------------------------------------------------- */
+  /* -------------------------------------------------- */
+  /* 🚀 AUTH STATE CHANGE (ÚNICA FONTE)                  */
+  /* -------------------------------------------------- */
   useEffect(() => {
     let mounted = true;
 
-    const { data: listener } = supabase.auth.onAuthStateChange(
-      async (_event, currentSession) => {
-        if (!mounted) return;
+    const { data: listener } =
+      supabase.auth.onAuthStateChange(
+        async (_event, currentSession) => {
+          if (!mounted) return;
 
-        setSession(currentSession);
-        setUser(currentSession?.user ?? null);
+          setSession(currentSession);
+          setUser(currentSession?.user ?? null);
 
-        if (!currentSession) {
-          setProfile(null);
-          setCompanyId(null);
+          if (!currentSession) {
+            setProfile(null);
+            setIsLoading(false);
+            return;
+          }
+
+          // 🔴 PERFIL É A ÚNICA VERDADE
+          const { data: profileData, error } =
+            await supabase
+              .from("profiles")
+              .select("*")
+              .eq("id", currentSession.user.id)
+              .single();
+
+          if (error) {
+            console.error("Erro ao carregar profile:", error);
+            setProfile(null);
+          } else {
+            setProfile(profileData as Profile);
+          }
+
           setIsLoading(false);
-          return;
         }
-
-        // 🔐 Carrega profile
-        const { data: profileData } = await supabase
-          .from("profiles")
-          .select("*")
-          .eq("id", currentSession.user.id)
-          .single();
-
-        setProfile(profileData ?? null);
-        setCompanyId(profileData?.company_id ?? null);
-
-        setIsLoading(false);
-      }
-    );
+      );
 
     return () => {
       mounted = false;
@@ -109,8 +103,6 @@ export const SessionContextProvider: React.FC<{ children: React.ReactNode }> = (
         user,
         profile,
         isLoading,
-        companyId,
-        setActiveCompany: async () => {},
       }}
     >
       {children}
@@ -121,7 +113,9 @@ export const SessionContextProvider: React.FC<{ children: React.ReactNode }> = (
 export const useSession = () => {
   const ctx = useContext(SessionContext);
   if (!ctx) {
-    throw new Error("useSession must be used within SessionContextProvider");
+    throw new Error(
+      "useSession must be used within SessionContextProvider"
+    );
   }
   return ctx;
 };
