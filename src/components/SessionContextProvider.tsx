@@ -22,117 +22,35 @@ interface SessionContextType {
 
 const SessionContext = createContext<SessionContextType | undefined>(undefined);
 
-export const SessionContextProvider: React.FC<{
-  children: React.ReactNode;
-}> = ({ children }) => {
+export const SessionContextProvider: React.FC<{ children: React.ReactNode }> = ({
+  children,
+}) => {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [companyId, setCompanyId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // 🔒 refs para evitar loops e re-subscribes
-  const lastLoadedUserIdRef = useRef<string | null>(null);
-  const userIdRef = useRef<string | null>(null);
+  const initializedRef = useRef(false);
 
-  /* ------------------------------------------------------------------ */
-  /* 🔐 Carrega profile (apenas SELECT, aguarda trigger server-side)     */
-  /* ------------------------------------------------------------------ */
-  const loadProfile = async (currentUser: User): Promise<Profile | null> => {
-    const { data, error } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("id", currentUser.id)
-      .maybeSingle();
-
-    if (error && error.code !== "PGRST116") {
-      console.error("[SessionContext] Erro ao carregar profile:", error);
-      return null;
-    }
-
-    if (data) return data as Profile;
-
-    // aguarda trigger server-side criar o profile
-    for (let attempt = 0; attempt < 10; attempt++) {
-      await new Promise((res) => setTimeout(res, 500));
-
-      const { data: retryData, error: retryErr } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", currentUser.id)
-        .maybeSingle();
-
-      if (retryErr && retryErr.code !== "PGRST116") {
-        console.error(
-          "[SessionContext] Erro ao aguardar profile:",
-          retryErr
-        );
-        return null;
-      }
-
-      if (retryData) return retryData as Profile;
-    }
-
-    return null;
-  };
-
-  /* ------------------------------------------------------------------ */
-  /* 🏢 Define empresa ativa (fonte única: profiles.active_company_id)   */
-  /* ------------------------------------------------------------------ */
-  const setActiveCompany = async (newCompanyId: string | null) => {
-    if (!user) return;
-
-    const { error } = await supabase
-      .from("profiles")
-      .update({ active_company_id: newCompanyId })
-      .eq("id", user.id);
-
-    if (error) {
-      console.error(
-        "[SessionContext] Falha ao definir active_company_id:",
-        error
-      );
-      throw error;
-    }
-
-    setCompanyId(newCompanyId);
-
-    const storageKey = `active_company_id:${user.id}`;
-    try {
-      if (newCompanyId) {
-        localStorage.setItem(storageKey, newCompanyId);
-      } else {
-        localStorage.removeItem(storageKey);
-      }
-    } catch {
-      /* ignore */
-    }
-  };
-
-  /* ------------------------------------------------------------------ */
-  /* 🟢 BOOTSTRAP INICIAL (nova aba / refresh)                           */
-  /* ------------------------------------------------------------------ */
+  /* ---------------------------------------------------- */
+  /* 🔥 BOOTSTRAP COM RESET DE SESSÃO CORROMPIDA          */
+  /* ---------------------------------------------------- */
   useEffect(() => {
     let mounted = true;
 
     const bootstrap = async () => {
-      setIsLoading(true);
+      if (initializedRef.current) return;
+      initializedRef.current = true;
 
-      const { data, error } = await supabase.auth.getSession();
+      // ⚠️ LIMPA qualquer sessão antiga inconsistente
+      await supabase.auth.signOut({ scope: "local" });
 
+      const { data } = await supabase.auth.getSession();
       if (!mounted) return;
 
-      if (error) {
-        console.error("[SessionContext] getSession falhou:", error);
-        setIsLoading(false);
-        return;
-      }
-
-      if (data.session) {
-        setSession(data.session);
-        setUser(data.session.user);
-        userIdRef.current = data.session.user.id;
-      }
+      setSession(data.session);
+      setUser(data.session?.user ?? null);
 
       setIsLoading(false);
     };
@@ -144,99 +62,43 @@ export const SessionContextProvider: React.FC<{
     };
   }, []);
 
-  /* ------------------------------------------------------------------ */
-  /* 🚀 onAuthStateChange — REGISTRADO UMA ÚNICA VEZ                     */
-  /* ------------------------------------------------------------------ */
+  /* ---------------------------------------------------- */
+  /* 🔐 AUTH STATE CHANGE (ÚNICA FONTE)                   */
+  /* ---------------------------------------------------- */
   useEffect(() => {
     let mounted = true;
 
     const { data: listener } = supabase.auth.onAuthStateChange(
-      async (event, currentSession) => {
+      async (_event, currentSession) => {
         if (!mounted) return;
 
-        // 🔴 SIGNED OUT
-        if (!currentSession || event === "SIGNED_OUT") {
-          const uid = userIdRef.current;
-          if (uid) {
-            try {
-              localStorage.removeItem(`active_company_id:${uid}`);
-            } catch {
-              /* ignore */
-            }
-          }
+        setSession(currentSession);
+        setUser(currentSession?.user ?? null);
 
-          setSession(null);
-          setUser(null);
+        if (!currentSession) {
           setProfile(null);
           setCompanyId(null);
-          userIdRef.current = null;
-          lastLoadedUserIdRef.current = null;
           setIsLoading(false);
           return;
         }
 
-        // 🟢 SIGNED IN / TOKEN REFRESH
-        setSession(currentSession);
-        setUser(currentSession.user);
-        userIdRef.current = currentSession.user.id;
+        // 🔐 Carrega profile
+        const { data: profileData } = await supabase
+          .from("profiles")
+          .select("*")
+          .eq("id", currentSession.user.id)
+          .single();
 
-        const currentUser = currentSession.user;
-
-        if (
-          currentUser &&
-          lastLoadedUserIdRef.current !== currentUser.id
-        ) {
-          const profileData = await loadProfile(currentUser);
-          if (!mounted) return;
-
-          setProfile(profileData);
-          lastLoadedUserIdRef.current = currentUser.id;
-
-          if (profileData) {
-            const storageKey = `active_company_id:${currentUser.id}`;
-            const activeFromProfile =
-              (profileData as any)?.active_company_id ?? null;
-
-            if (activeFromProfile) {
-              setCompanyId(activeFromProfile);
-              try {
-                localStorage.setItem(storageKey, activeFromProfile);
-              } catch {
-                /* ignore */
-              }
-            } else {
-              let stored: string | null = null;
-              try {
-                stored = localStorage.getItem(storageKey);
-              } catch {
-                /* ignore */
-              }
-              setCompanyId(stored);
-            }
-          }
-        }
+        setProfile(profileData ?? null);
+        setCompanyId(profileData?.company_id ?? null);
 
         setIsLoading(false);
       }
     );
 
-    // 🔁 sincronização entre abas (empresa ativa)
-    const onStorage = (e: StorageEvent) => {
-      const uid = userIdRef.current;
-      if (!uid) return;
-
-      const expectedKey = `active_company_id:${uid}`;
-      if (e.key === expectedKey) {
-        setCompanyId(e.newValue);
-      }
-    };
-
-    window.addEventListener("storage", onStorage);
-
     return () => {
       mounted = false;
       listener.subscription.unsubscribe();
-      window.removeEventListener("storage", onStorage);
     };
   }, []);
 
@@ -248,7 +110,7 @@ export const SessionContextProvider: React.FC<{
         profile,
         isLoading,
         companyId,
-        setActiveCompany,
+        setActiveCompany: async () => {},
       }}
     >
       {children}
@@ -257,11 +119,9 @@ export const SessionContextProvider: React.FC<{
 };
 
 export const useSession = () => {
-  const context = useContext(SessionContext);
-  if (!context) {
-    throw new Error(
-      "useSession must be used within SessionContextProvider"
-    );
+  const ctx = useContext(SessionContext);
+  if (!ctx) {
+    throw new Error("useSession must be used within SessionContextProvider");
   }
-  return context;
+  return ctx;
 };
