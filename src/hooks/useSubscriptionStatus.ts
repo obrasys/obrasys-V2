@@ -1,18 +1,25 @@
-import { useEffect, useState } from 'react';
-import { getCompanySubscriptionStatus } from '@/integrations/subscription/subscriptionService';
-import { CompanySubscriptionStatus } from '@/schemas/subscription-schema';
+import { useEffect, useState } from "react";
+import { getCompanySubscriptionStatus } from "@/integrations/subscription/subscriptionService";
 
 export function useSubscriptionStatus(companyId?: string) {
-  const [data, setData] = useState<CompanySubscriptionStatus | null>(null);
+  const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!companyId) return;
+    if (!companyId) {
+      setLoading(false);
+      return;
+    }
 
     getCompanySubscriptionStatus(companyId)
       .then(setData)
       .finally(() => setLoading(false));
   }, [companyId]);
 
-  return { data, loading };
+  return {
+    subscription: data,
+    loading,
+    isActive: data?.status === "active" || data?.status === "trialing",
+    plan: data?.plan_key ?? "free",
+  };
 }
