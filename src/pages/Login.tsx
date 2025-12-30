@@ -17,7 +17,14 @@ import {
 } from "@/components/ui/form";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { ArrowRight, Eye, EyeOff, Mail, Lock, ArrowLeft } from "lucide-react";
+import {
+  ArrowRight,
+  Eye,
+  EyeOff,
+  Mail,
+  Lock,
+  ArrowLeft,
+} from "lucide-react";
 import { useSession } from "@/components/SessionContextProvider";
 
 const loginSchema = z.object({
@@ -32,13 +39,17 @@ const Login: React.FC = () => {
   const location = useLocation();
   const { session, isLoading: isSessionLoading } = useSession();
 
-  const from = (location.state as any)?.from?.pathname || "/dashboard";
+  const from =
+    (location.state as any)?.from?.pathname || "/dashboard";
 
-  const [showPassword, setShowPassword] = React.useState(false);
-  const [isSubmitting, setIsSubmitting] = React.useState(false);
-  const [needsEmailConfirmation, setNeedsEmailConfirmation] = React.useState(false);
+  const [showPassword, setShowPassword] =
+    React.useState(false);
+  const [isSubmitting, setIsSubmitting] =
+    React.useState(false);
+  const [needsEmailConfirmation, setNeedsEmailConfirmation] =
+    React.useState(false);
 
-  // Se já existe sessão, redireciona
+  // 🔐 Redireciona APENAS quando a sessão existir
   React.useEffect(() => {
     if (!isSessionLoading && session) {
       navigate(from, { replace: true });
@@ -57,29 +68,36 @@ const Login: React.FC = () => {
     params: { email: string; password: string },
     ms = 12000
   ) {
-    const timeout = new Promise<{ data: any; error: any }>((resolve) =>
-      setTimeout(
-        () =>
-          resolve({
-            data: null,
-            error: new Error("Tempo excedido ao tentar entrar."),
-          }),
-        ms
-      )
+    const timeout = new Promise<{ data: any; error: any }>(
+      (resolve) =>
+        setTimeout(
+          () =>
+            resolve({
+              data: null,
+              error: new Error(
+                "Tempo excedido ao tentar entrar."
+              ),
+            }),
+          ms
+        )
     );
 
-    const request = supabase.auth.signInWithPassword(params);
+    const request =
+      supabase.auth.signInWithPassword(params);
+
     return Promise.race([request as any, timeout]);
   }
 
   const onSubmit = async (data: LoginFormValues) => {
     setIsSubmitting(true);
+    setNeedsEmailConfirmation(false);
 
     try {
-      const { data: signInData, error } = await signInWithTimeout({
-        email: data.email,
-        password: data.password,
-      });
+      const { data: signInData, error } =
+        await signInWithTimeout({
+          email: data.email,
+          password: data.password,
+        });
 
       if (error) {
         const msg = error.message.toLowerCase();
@@ -87,20 +105,23 @@ const Login: React.FC = () => {
 
         setNeedsEmailConfirmation(needsConfirm);
 
-        if (needsConfirm) {
-          toast.error("Email não confirmado.");
-        } else {
-          toast.error("Credenciais inválidas.");
-        }
+        toast.error(
+          needsConfirm
+            ? "Email não confirmado."
+            : "Credenciais inválidas."
+        );
         return;
       }
 
+      // ✅ NÃO navegar aqui
       if (signInData?.session) {
         toast.success("Sessão iniciada com sucesso!");
-        navigate(from, { replace: true });
+        // navegação acontece pelo useEffect
       }
     } catch (err: any) {
-      toast.error(err.message || "Erro inesperado.");
+      toast.error(
+        err?.message || "Erro inesperado."
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -121,7 +142,9 @@ const Login: React.FC = () => {
     if (error) {
       toast.error(error.message);
     } else {
-      toast.success("Email de confirmação reenviado.");
+      toast.success(
+        "Email de confirmação reenviado."
+      );
       setNeedsEmailConfirmation(false);
     }
   };
@@ -135,14 +158,19 @@ const Login: React.FC = () => {
             alt="Obra Sys"
             className="h-12 mx-auto mb-4"
           />
-          <h1 className="text-2xl font-bold">Entrar na sua conta</h1>
+          <h1 className="text-2xl font-bold">
+            Entrar na sua conta
+          </h1>
           <p className="text-sm text-muted-foreground">
             Aceda à sua conta para gerir as suas obras
           </p>
         </div>
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <form
+            onSubmit={form.handleSubmit(onSubmit)}
+            className="space-y-4"
+          >
             <FormField
               control={form.control}
               name="email"
@@ -152,7 +180,10 @@ const Login: React.FC = () => {
                   <FormControl>
                     <div className="relative">
                       <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input {...field} className="pl-10" />
+                      <Input
+                        {...field}
+                        className="pl-10"
+                      />
                     </div>
                   </FormControl>
                   <FormMessage />
@@ -171,15 +202,25 @@ const Login: React.FC = () => {
                       <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                       <Input
                         {...field}
-                        type={showPassword ? "text" : "password"}
+                        type={
+                          showPassword
+                            ? "text"
+                            : "password"
+                        }
                         className="pl-10 pr-10"
                       />
                       <button
                         type="button"
                         className="absolute right-3 top-1/2 -translate-y-1/2"
-                        onClick={() => setShowPassword((v) => !v)}
+                        onClick={() =>
+                          setShowPassword((v) => !v)
+                        }
                       >
-                        {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                        {showPassword ? (
+                          <EyeOff size={16} />
+                        ) : (
+                          <Eye size={16} />
+                        )}
                       </button>
                     </div>
                   </FormControl>
@@ -188,8 +229,14 @@ const Login: React.FC = () => {
               )}
             />
 
-            <Button className="w-full" type="submit" disabled={isSubmitting}>
-              {isSubmitting ? "Entrando..." : "Entrar"}
+            <Button
+              className="w-full"
+              type="submit"
+              disabled={isSubmitting}
+            >
+              {isSubmitting
+                ? "Entrando..."
+                : "Entrar"}
               <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
           </form>
@@ -206,11 +253,17 @@ const Login: React.FC = () => {
         )}
 
         <div className="mt-6 text-center text-sm">
-          <Link to="/signup" className="text-primary hover:underline">
+          <Link
+            to="/signup"
+            className="text-primary hover:underline"
+          >
             Criar conta
           </Link>
           <br />
-          <Link to="/modules" className="inline-flex items-center gap-1 mt-2">
+          <Link
+            to="/modules"
+            className="inline-flex items-center gap-1 mt-2"
+          >
             <ArrowLeft size={14} /> Voltar ao início
           </Link>
         </div>
