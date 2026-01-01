@@ -390,7 +390,6 @@ const ProfileCompanyTab: React.FC = () => {
         className="space-y-6"
       >
         {/* TODO: UI original */}
-      </form>
     </Form>
   </>
 );
