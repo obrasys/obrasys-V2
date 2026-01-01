@@ -1,5 +1,5 @@
-// src/pdfs/templates/invoices-report-template.ts
-// ✅ Auditada | Segura | Produção
+// reports/pdf-templates/invoices-report-template.ts
+// ✅ Seguro | ✅ Produção | ✅ Compatível com base-template.ts
 
 import { format, parseISO, isValid } from "date-fns";
 import { formatCurrency } from "@/utils/formatters";
@@ -85,16 +85,16 @@ export const generateInvoicesReportContent = (
 
   // Totais
   const totalInvoiced = invoices.reduce(
-    (sum, inv) => sum + safeNumber((inv as any)?.total_amount),
+    (sum, inv) => sum + safeNumber(inv.total_amount),
     0,
   );
 
-  const totalPaidInvoices = invoices.reduce(
-    (sum, inv) => sum + safeNumber((inv as any)?.paid_amount),
+  const totalPaid = invoices.reduce(
+    (sum, inv) => sum + safeNumber(inv.paid_amount),
     0,
   );
 
-  const totalPendingInvoices = totalInvoiced - totalPaidInvoices;
+  const totalPending = totalInvoiced - totalPaid;
 
   const renderInvoiceRows = () => {
     if (!invoices.length) {
@@ -106,14 +106,14 @@ export const generateInvoicesReportContent = (
     }
 
     return invoices
-      .slice(0, 500) // evita PDFs gigantes
+      .slice(0, 500) // proteção contra PDFs gigantes
       .map((inv) => {
-        const invoiceNumber = (inv as any)?.invoice_number ?? "—";
-        const clientName = (inv as any)?.clients?.nome ?? "N/A";
-        const totalAmount = safeNumber((inv as any)?.total_amount);
-        const paidAmount = safeNumber((inv as any)?.paid_amount);
-        const status = formatInvoiceStatus((inv as any)?.status);
-        const dueDate = formatISODate((inv as any)?.due_date);
+        const invoiceNumber = inv.invoice_number ?? "—";
+        const clientName = inv.clients?.nome ?? "N/A";
+        const totalAmount = safeNumber(inv.total_amount);
+        const paidAmount = safeNumber(inv.paid_amount);
+        const status = formatInvoiceStatus(inv.status);
+        const dueDate = formatISODate(inv.due_date);
 
         return `
           <tr>
@@ -164,8 +164,8 @@ export const generateInvoicesReportContent = (
 
     <div class="summary">
       <p><strong>Total Faturado:</strong> ${escapeHtml(formatCurrency(totalInvoiced))}</p>
-      <p><strong>Total Recebido:</strong> ${escapeHtml(formatCurrency(totalPaidInvoices))}</p>
-      <p><strong>Total Pendente:</strong> ${escapeHtml(formatCurrency(totalPendingInvoices))}</p>
+      <p><strong>Total Recebido:</strong> ${escapeHtml(formatCurrency(totalPaid))}</p>
+      <p><strong>Total Pendente:</strong> ${escapeHtml(formatCurrency(totalPending))}</p>
     </div>
   `;
 };
