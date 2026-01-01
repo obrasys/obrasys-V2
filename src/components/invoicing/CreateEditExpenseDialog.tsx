@@ -27,7 +27,11 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import {
   Select,
   SelectContent,
@@ -39,94 +43,140 @@ import { cn } from "@/lib/utils";
 import { CalendarDays, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
-import { Expense, expenseSchema } from "@/schemas/invoicing-schema";
+import {
+  Expense,
+  expenseSchema,
+} from "@/schemas/invoicing-schema";
 import { useSession } from "@/components/SessionContextProvider";
 import { supabase } from "@/integrations/supabase/client";
+
+/* =========================
+   PROPS
+========================= */
 
 interface CreateEditExpenseDialogProps {
   isOpen: boolean;
   onClose: () => void;
   onSave: (expense: Expense) => void;
   expenseToEdit?: Expense | null;
-  userCompanyId: string | null; // Adicionado userCompanyId prop
+  userCompanyId: string | null;
 }
 
-const CreateEditExpenseDialog: React.FC<CreateEditExpenseDialogProps> = ({
+/* =========================
+   COMPONENT
+========================= */
+
+const CreateEditExpenseDialog: React.FC<
+  CreateEditExpenseDialogProps
+> = ({
   isOpen,
   onClose,
   onSave,
   expenseToEdit,
-  userCompanyId, // Destructured prop
+  userCompanyId,
 }) => {
   const { user } = useSession();
-  const [isSaving, setIsSaving] = React.useState(false);
+  const [isSaving, setIsSaving] =
+    React.useState(false);
 
   const form = useForm<Expense>({
     resolver: zodResolver(expenseSchema),
-    defaultValues: expenseToEdit || {
-      supplier_name: "",
-      description: "",
-      amount: 0,
-      due_date: format(new Date(), "yyyy-MM-dd"),
-      status: "pending",
-      notes: "",
-    },
-  });
-
-  React.useEffect(() => {
-    if (isOpen) {
-      form.reset(expenseToEdit || {
+    defaultValues:
+      expenseToEdit || {
         supplier_name: "",
         description: "",
         amount: 0,
         due_date: format(new Date(), "yyyy-MM-dd"),
         status: "pending",
         notes: "",
-      });
+      },
+  });
+
+  React.useEffect(() => {
+    if (isOpen) {
+      form.reset(
+        expenseToEdit || {
+          supplier_name: "",
+          description: "",
+          amount: 0,
+          due_date: format(new Date(), "yyyy-MM-dd"),
+          status: "pending",
+          notes: "",
+        }
+      );
     }
   }, [isOpen, expenseToEdit, form]);
 
+  /* =========================
+     SUBMIT
+  ========================= */
+
   const onSubmit = async (data: Expense) => {
-    if (!user || !userCompanyId) { // Check for userCompanyId
-      toast.error("Utilizador não autenticado ou ID da empresa não encontrado.");
+    if (!user || !userCompanyId) {
+      toast.error(
+        "Utilizador não autenticado ou empresa inválida."
+      );
       return;
     }
+
     setIsSaving(true);
-    try {
-      const expenseDataToSave: Expense = {
-        ...data,
-        company_id: userCompanyId, // Use userCompanyId here
-        id: data.id || uuidv4(),
-      };
 
-      const { error } = await supabase
-        .from('expenses')
-        .upsert(expenseDataToSave);
+    const expenseDataToSave: Expense = {
+      ...data,
+      id: data.id || uuidv4(),
+      company_id: userCompanyId,
+    };
 
-      if (error) throw error;
+    const { error } = await supabase
+      .from("expenses")
+      .upsert(expenseDataToSave);
 
-      toast.success(`Despesa ${expenseToEdit ? "atualizada" : "criada"} com sucesso!`);
-      onSave(expenseDataToSave);
-      onClose();
-    } catch (error: any) {
-      toast.error(`Erro ao guardar despesa: ${error.message}`);
-      console.error("Erro ao guardar despesa:", error);
-    } finally {
+    if (error) {
+      console.error(
+        "[CreateEditExpenseDialog] upsert",
+        error
+      );
+      toast.error(
+        "Erro ao guardar despesa. Tente novamente."
+      );
       setIsSaving(false);
+      return;
     }
+
+    toast.success(
+      `Despesa ${
+        expenseToEdit ? "atualizada" : "criada"
+      } com sucesso!`
+    );
+
+    onSave(expenseDataToSave);
+    onClose();
+    setIsSaving(false);
   };
+
+  /* =========================
+     RENDER
+  ========================= */
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
-          <DialogTitle>{expenseToEdit ? "Editar Despesa" : "Criar Nova Despesa"}</DialogTitle>
+          <DialogTitle>
+            {expenseToEdit
+              ? "Editar Despesa"
+              : "Criar Nova Despesa"}
+          </DialogTitle>
           <DialogDescription>
             Preencha os detalhes da despesa.
           </DialogDescription>
         </DialogHeader>
+
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-4 py-4">
+          <form
+            onSubmit={form.handleSubmit(onSubmit)}
+            className="grid gap-4 py-4"
+          >
             <FormField
               control={form.control}
               name="supplier_name"
@@ -134,25 +184,35 @@ const CreateEditExpenseDialog: React.FC<CreateEditExpenseDialogProps> = ({
                 <FormItem>
                   <FormLabel>Fornecedor *</FormLabel>
                   <FormControl>
-                    <Input {...field} placeholder="Nome do fornecedor" />
+                    <Input
+                      {...field}
+                      placeholder="Nome do fornecedor"
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
+
             <FormField
               control={form.control}
               name="description"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Descrição da Despesa *</FormLabel>
+                  <FormLabel>
+                    Descrição da Despesa *
+                  </FormLabel>
                   <FormControl>
-                    <Textarea {...field} placeholder="Ex: Compra de materiais de construção" />
+                    <Textarea
+                      {...field}
+                      placeholder="Ex: Compra de materiais"
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FormField
                 control={form.control}
@@ -161,99 +221,168 @@ const CreateEditExpenseDialog: React.FC<CreateEditExpenseDialogProps> = ({
                   <FormItem>
                     <FormLabel>Valor *</FormLabel>
                     <FormControl>
-                      <Input type="number" step="0.01" {...field} onChange={e => field.onChange(parseFloat(e.target.value))} />
+                      <Input
+                        type="number"
+                        step="0.01"
+                        {...field}
+                        onChange={(e) =>
+                          field.onChange(
+                            Number(e.target.value)
+                          )
+                        }
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
+
               <FormField
                 control={form.control}
                 name="due_date"
                 render={({ field }) => (
                   <FormItem className="flex flex-col">
-                    <FormLabel>Data de Vencimento *</FormLabel>
+                    <FormLabel>
+                      Data de Vencimento *
+                    </FormLabel>
+
                     <Popover>
                       <PopoverTrigger asChild>
                         <FormControl>
                           <Button
-                            variant={"outline"}
+                            variant="outline"
                             className={cn(
                               "w-full pl-3 text-left font-normal",
-                              !field.value && "text-muted-foreground"
+                              !field.value &&
+                                "text-muted-foreground"
                             )}
                           >
-                            {field.value ? (
-                              format(parseISO(field.value), "PPP", { locale: pt })
-                            ) : (
-                              <span>Selecione uma data</span>
-                            )}
+                            {field.value
+                              ? format(
+                                  parseISO(
+                                    field.value
+                                  ),
+                                  "PPP",
+                                  { locale: pt }
+                                )
+                              : "Selecione uma data"}
                             <CalendarDays className="ml-auto h-4 w-4 opacity-50" />
                           </Button>
                         </FormControl>
                       </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
+
+                      <PopoverContent
+                        className="w-auto p-0"
+                        align="start"
+                      >
                         <Calendar
                           mode="single"
-                          selected={field.value ? parseISO(field.value) : undefined}
-                          onSelect={(date) => field.onChange(date ? format(date, "yyyy-MM-dd") : "")}
-                          initialFocus
+                          selected={
+                            field.value
+                              ? parseISO(
+                                  field.value
+                                )
+                              : undefined
+                          }
+                          onSelect={(date) =>
+                            field.onChange(
+                              date
+                                ? format(
+                                    date,
+                                    "yyyy-MM-dd"
+                                  )
+                                : ""
+                            )
+                          }
                           locale={pt}
+                          initialFocus
                         />
                       </PopoverContent>
                     </Popover>
+
                     <FormMessage />
                   </FormItem>
                 )}
               />
             </div>
+
             <FormField
               control={form.control}
               name="status"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Estado *</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <Select
+                    onValueChange={field.onChange}
+                    defaultValue={field.value}
+                  >
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Selecione o estado" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="pending">Pendente</SelectItem>
-                      <SelectItem value="paid">Paga</SelectItem>
-                      <SelectItem value="overdue">Atrasada</SelectItem>
-                      <SelectItem value="cancelled">Cancelada</SelectItem>
+                      <SelectItem value="pending">
+                        Pendente
+                      </SelectItem>
+                      <SelectItem value="paid">
+                        Paga
+                      </SelectItem>
+                      <SelectItem value="overdue">
+                        Atrasada
+                      </SelectItem>
+                      <SelectItem value="cancelled">
+                        Cancelada
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />
                 </FormItem>
               )}
             />
+
             <FormField
               control={form.control}
               name="notes"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Notas (opcional)</FormLabel>
+                  <FormLabel>
+                    Notas (opcional)
+                  </FormLabel>
                   <FormControl>
-                    <Textarea {...field} placeholder="Notas adicionais sobre a despesa" />
+                    <Textarea
+                      {...field}
+                      placeholder="Notas adicionais"
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
+
             <DialogFooter className="pt-4">
-              <Button variant="outline" onClick={onClose} type="button" disabled={isSaving}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={onClose}
+                disabled={isSaving}
+              >
                 Cancelar
               </Button>
-              <Button type="submit" disabled={isSaving}>
+
+              <Button
+                type="submit"
+                disabled={isSaving}
+              >
                 {isSaving ? (
                   <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" /> A Guardar...
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    A Guardar...
                   </>
+                ) : expenseToEdit ? (
+                  "Guardar Alterações"
                 ) : (
-                  expenseToEdit ? "Guardar Alterações" : "Criar Despesa"
+                  "Criar Despesa"
                 )}
               </Button>
             </DialogFooter>
