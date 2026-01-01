@@ -2,8 +2,7 @@
 
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { v4 as uuidv4 } from "uuid";
-import { NewBudgetFormValues, BudgetWithRelations } from "@/schemas/budget-schema";
+import { NewBudgetFormValues } from "@/schemas/budget-schema";
 import { User } from "@supabase/supabase-js";
 
 interface UseBudgetPersistenceProps {
@@ -12,25 +11,53 @@ interface UseBudgetPersistenceProps {
 }
 
 interface UseBudgetPersistenceResult {
-  saveBudget: (data: NewBudgetFormValues, totalPlanned: number, totalExecuted: number) => Promise<string | null>;
+  saveBudget: (
+    data: NewBudgetFormValues,
+    totalPlanned: number,
+    totalExecuted: number
+  ) => Promise<string | null>;
   approveBudget: (budgetId: string, totalExecuted: number) => Promise<boolean>;
 }
 
-export function useBudgetPersistence({ userCompanyId, user }: UseBudgetPersistenceProps): UseBudgetPersistenceResult {
+function getErrorMessage(err: unknown): string {
+  if (!err) return "Erro desconhecido";
+  if (typeof err === "string") return err;
+  if (err instanceof Error) return err.message;
+  // supabase pode devolver objetos com message
+  const anyErr = err as any;
+  return anyErr?.message ?? "Erro desconhecido";
+}
 
-  const saveBudget = async (data: NewBudgetFormValues, totalPlanned: number, totalExecuted: number): Promise<string | null> => {
+export function useBudgetPersistence({
+  userCompanyId,
+  user,
+}: UseBudgetPersistenceProps): UseBudgetPersistenceResult {
+  const saveBudget = async (
+    data: NewBudgetFormValues,
+    totalPlanned: number,
+    totalExecuted: number
+  ): Promise<string | null> => {
     if (!user || !userCompanyId) {
-      toast.error("Utilizador não autenticado ou ID da empresa não encontrado. Por favor, faça login novamente.");
-      console.error("saveBudget: Aborting save - user or userCompanyId is missing.");
+      toast.error(
+        "Utilizador não autenticado ou empresa não encontrada. Faça login novamente."
+      );
+      console.error("[useBudgetPersistence.saveBudget] missing user/company", {
+        user: !!user,
+        userCompanyId,
+      });
       return null;
     }
 
-    try {
-      const companyId = userCompanyId;
-      let currentBudgetId = data.id;
+    const companyId = userCompanyId;
 
+    try {
+      let currentBudgetId = data.id ?? null;
+
+      // =========================
+      // 1) CREATE or UPDATE BUDGET
+      // =========================
       if (currentBudgetId) {
-        // EDITING EXISTING BUDGET
+        // UPDATE EXISTING
         const budgetPayload = {
           nome: data.nome,
           client_id: data.client_id,
@@ -45,23 +72,57 @@ export function useBudgetPersistence({ userCompanyId, user }: UseBudgetPersisten
         };
 
         const { error: budgetUpdateError } = await supabase
-          .from('budgets')
+          .from("budgets")
           .update(budgetPayload)
-          .eq('id', currentBudgetId);
+          .eq("id", currentBudgetId);
 
         if (budgetUpdateError) {
-          throw new Error(`Erro ao atualizar orçamento principal: ${budgetUpdateError.message}`);
+          console.error(
+            "[useBudgetPersistence.saveBudget] budgets.update error",
+            budgetUpdateError
+          );
+          toast.error(
+            `Erro ao atualizar orçamento: ${budgetUpdateError.message}`
+          );
+          return null;
         }
 
-        // Delete existing chapters and items for this budget
-        await supabase.from('budget_items').delete().eq('budget_id', currentBudgetId);
-        const { error: deleteChaptersError } = await supabase.from('budget_chapters').delete().eq('budget_id', currentBudgetId);
+        // =========================
+        // 2) DELETE OLD CHAPTERS + ITEMS
+        // =========================
+        const { error: deleteItemsError } = await supabase
+          .from("budget_items")
+          .delete()
+          .eq("budget_id", currentBudgetId);
+
+        if (deleteItemsError) {
+          console.error(
+            "[useBudgetPersistence.saveBudget] budget_items.delete error",
+            deleteItemsError
+          );
+          toast.error(
+            `Erro ao eliminar itens antigos: ${deleteItemsError.message}`
+          );
+          return null;
+        }
+
+        const { error: deleteChaptersError } = await supabase
+          .from("budget_chapters")
+          .delete()
+          .eq("budget_id", currentBudgetId);
+
         if (deleteChaptersError) {
-          throw new Error(`Erro ao eliminar capítulos antigos: ${deleteChaptersError.message}`);
+          console.error(
+            "[useBudgetPersistence.saveBudget] budget_chapters.delete error",
+            deleteChaptersError
+          );
+          toast.error(
+            `Erro ao eliminar capítulos antigos: ${deleteChaptersError.message}`
+          );
+          return null;
         }
-
       } else {
-        // CREATING NEW BUDGET
+        // CREATE NEW
         const budgetPayload = {
           company_id: companyId,
           nome: data.nome,
@@ -79,44 +140,87 @@ export function useBudgetPersistence({ userCompanyId, user }: UseBudgetPersisten
         };
 
         const { data: newBudgetData, error: budgetError } = await supabase
-          .from('budgets')
+          .from("budgets")
           .insert(budgetPayload)
-          .select()
+          .select("id")
           .single();
 
         if (budgetError) {
-          throw new Error(`Erro ao criar orçamento principal: ${budgetError.message}`);
+          console.error(
+            "[useBudgetPersistence.saveBudget] budgets.insert error",
+            budgetError
+          );
+          toast.error(`Erro ao criar orçamento: ${budgetError.message}`);
+          return null;
         }
+
+        if (!newBudgetData?.id) {
+          console.error(
+            "[useBudgetPersistence.saveBudget] budgets.insert returned no id",
+            newBudgetData
+          );
+          toast.error("Erro ao criar orçamento: ID não retornado.");
+          return null;
+        }
+
         currentBudgetId = newBudgetData.id;
       }
 
-      // Insert all chapters and their items (for both new and updated budgets)
+      // Segurança extra
+      if (!currentBudgetId) {
+        console.error(
+          "[useBudgetPersistence.saveBudget] currentBudgetId missing after create/update"
+        );
+        toast.error("Erro ao guardar orçamento: ID inválido.");
+        return null;
+      }
+
+      // =========================
+      // 3) INSERT CHAPTERS + ITEMS
+      // =========================
       for (const chapter of data.chapters) {
         const chapterPayload = {
           budget_id: currentBudgetId,
           company_id: companyId,
           title: chapter.nome,
           code: chapter.codigo,
-          sort_order: 0, // Placeholder, could be chapterIndex
+          sort_order: 0, // podes trocar por index se quiseres (chapterIndex)
           notes: chapter.observacoes,
-          subtotal: 0, // Will be updated by trigger
+          subtotal: 0, // trigger pode recalcular
           created_at: new Date().toISOString(),
         };
 
         const { data: chapterData, error: chapterError } = await supabase
-          .from('budget_chapters')
+          .from("budget_chapters")
           .insert(chapterPayload)
-          .select()
+          .select("id")
           .single();
 
         if (chapterError) {
-          throw new Error(`Erro ao criar capítulo '${chapter.nome}': ${chapterError.message}`);
+          console.error(
+            "[useBudgetPersistence.saveBudget] budget_chapters.insert error",
+            { chapter: chapter.nome, error: chapterError }
+          );
+          toast.error(
+            `Erro ao criar capítulo "${chapter.nome}": ${chapterError.message}`
+          );
+          return null;
+        }
+
+        const chapterId = chapterData?.id;
+        if (!chapterId) {
+          console.error(
+            "[useBudgetPersistence.saveBudget] budget_chapters.insert returned no id",
+            { chapter: chapter.nome, chapterData }
+          );
+          toast.error(`Erro ao criar capítulo "${chapter.nome}": ID não retornado.`);
+          return null;
         }
 
         const budgetItemsToInsert = chapter.items.map((item) => ({
           company_id: companyId,
           budget_id: currentBudgetId,
-          chapter_id: chapterData.id, // Link to the newly created chapter
+          chapter_id: chapterId,
           capitulo: item.capitulo,
           servico: item.servico,
           quantidade: item.quantidade,
@@ -127,47 +231,74 @@ export function useBudgetPersistence({ userCompanyId, user }: UseBudgetPersisten
           custo_real_material: item.custo_real_material,
           custo_real_mao_obra: item.custo_real_mao_obra,
           estado: item.estado,
-          observacoes: "", // Add observacoes if needed in schema
+          observacoes: "", // se o schema suportar, podes mapear
           article_id: item.article_id,
         }));
 
-        const { error: itemsError } = await supabase
-          .from('budget_items')
-          .insert(budgetItemsToInsert);
+        // Se não houver itens, segue (não falhar)
+        if (budgetItemsToInsert.length > 0) {
+          const { error: itemsError } = await supabase
+            .from("budget_items")
+            .insert(budgetItemsToInsert);
 
-        if (itemsError) {
-          throw new Error(`Erro ao inserir itens para o capítulo '${chapter.nome}': ${itemsError.message}`);
+          if (itemsError) {
+            console.error(
+              "[useBudgetPersistence.saveBudget] budget_items.insert error",
+              { chapter: chapter.nome, error: itemsError }
+            );
+            toast.error(
+              `Erro ao inserir itens do capítulo "${chapter.nome}": ${itemsError.message}`
+            );
+            return null;
+          }
         }
       }
+
       toast.success(`Orçamento ${data.id ? "atualizado" : "criado"} com sucesso!`);
       return currentBudgetId;
-    } catch (error: any) {
-      toast.error(`Erro ao guardar orçamento: ${error.message}`);
-      console.error("saveBudget: Caught error during budget operation:", error);
+    } catch (err) {
+      const msg = getErrorMessage(err);
+      toast.error(`Erro ao guardar orçamento: ${msg}`);
+      console.error("[useBudgetPersistence.saveBudget] unexpected error", err);
       return null;
     }
   };
 
-  const approveBudget = async (budgetId: string, totalExecuted: number): Promise<boolean> => {
+  const approveBudget = async (
+    budgetId: string,
+    totalExecuted: number
+  ): Promise<boolean> => {
+    if (!budgetId) {
+      toast.error("ID do orçamento inválido.");
+      console.error("[useBudgetPersistence.approveBudget] missing budgetId");
+      return false;
+    }
+
     try {
-      const { data: updatedBudget, error: updateError } = await supabase
-        .from('budgets')
+      const { error: updateError } = await supabase
+        .from("budgets")
         .update({
           estado: "Aprovado",
           total_executado: totalExecuted,
           updated_at: new Date().toISOString(),
         })
-        .eq('id', budgetId)
-        .select()
-        .single();
+        .eq("id", budgetId);
 
-      if (updateError) throw updateError;
+      if (updateError) {
+        console.error(
+          "[useBudgetPersistence.approveBudget] budgets.update error",
+          updateError
+        );
+        toast.error(`Erro ao aprovar orçamento: ${updateError.message}`);
+        return false;
+      }
 
       toast.success("Orçamento aprovado com sucesso!");
       return true;
-    } catch (error: any) {
-      toast.error(`Erro ao aprovar orçamento: ${error.message}`);
-      console.error("approveBudget: Caught error during budget approval:", error);
+    } catch (err) {
+      const msg = getErrorMessage(err);
+      toast.error(`Erro ao aprovar orçamento: ${msg}`);
+      console.error("[useBudgetPersistence.approveBudget] unexpected error", err);
       return false;
     }
   };
