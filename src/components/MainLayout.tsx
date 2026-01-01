@@ -7,14 +7,25 @@ import {
   Navigate,
   useLocation,
 } from "react-router-dom";
-import { Bell, Settings, Menu, LogOut, User, Building2 } from "lucide-react";
+import {
+  Bell,
+  Settings,
+  Menu,
+  LogOut,
+  User,
+  Building2,
+} from "lucide-react";
 
 import Sidebar from "@/components/Sidebar";
 import MobileSidebar from "@/components/MobileSidebar";
 import EditProfileModal from "@/components/profile/EditProfileModal";
 
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+  Avatar,
+  AvatarFallback,
+  AvatarImage,
+} from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -31,6 +42,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { useNotification } from "@/contexts/NotificationContext";
 import { toast } from "sonner";
 
+/* =========================
+   CONFIG
+========================= */
+
 const PAID_ROUTES = [
   "/dashboard",
   "/projects",
@@ -46,6 +61,10 @@ const PAID_ROUTES = [
   "/automation-intelligence",
 ];
 
+/* =========================
+   COMPONENT
+========================= */
+
 const MainLayout = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -53,20 +72,8 @@ const MainLayout = () => {
 
   const { user, profile, isLoading } = useSession();
 
-  const companyId = profile?.company_id ?? null;
-
-  const {
-    data: subscriptionStatus,
-    loading: isLoadingSubscription,
-  } = useSubscriptionStatus(companyId || null);
-
-  // ✅ REGRA FINAL: trial NÃO bloqueia, apenas expirado
-  const isSubscriptionBlocked =
-    subscriptionStatus?.computed_status === "expired";
-
   const [isSidebarCollapsed, setIsSidebarCollapsed] =
     React.useState(isMobile);
-
   const [isEditProfileModalOpen, setIsEditProfileModalOpen] =
     React.useState(false);
 
@@ -75,28 +82,10 @@ const MainLayout = () => {
   }, [isMobile]);
 
   /* -------------------------------------------------- */
-  /* 🚨 REDIRECIONAMENTO AUTOMÁTICO SE TRIAL EXPIRAR     */
-  /* -------------------------------------------------- */
-  React.useEffect(() => {
-    if (
-      subscriptionStatus?.computed_status === "expired" &&
-      PAID_ROUTES.some((route) =>
-        location.pathname.startsWith(route)
-      )
-    ) {
-      navigate("/plans", { replace: true });
-    }
-  }, [
-    subscriptionStatus?.computed_status,
-    location.pathname,
-    navigate,
-  ]);
-
-  /* -------------------------------------------------- */
-  /* 🔐 PROTEÇÃO DE RENDER                              */
+  /* 🔒 PROTEÇÃO BASE                                   */
   /* -------------------------------------------------- */
 
-  if (isLoading || isLoadingSubscription) {
+  if (isLoading || !profile) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         A carregar sessão…
@@ -109,6 +98,50 @@ const MainLayout = () => {
   }
 
   /* -------------------------------------------------- */
+  /* 🏢 EMPRESA / SUBSCRIÇÃO (SÓ DEPOIS DO PROFILE)     */
+  /* -------------------------------------------------- */
+
+  const companyId = profile.company_id ?? null;
+
+  const {
+    data: subscriptionStatus,
+    loading: isLoadingSubscription,
+  } = useSubscriptionStatus(companyId);
+
+  if (isLoadingSubscription) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        A verificar subscrição…
+      </div>
+    );
+  }
+
+  // ⚠️ REGRA FINAL: só bloqueia se estiver EXPIRADO
+  const isSubscriptionBlocked =
+    subscriptionStatus?.computed_status === "expired";
+
+  /* -------------------------------------------------- */
+  /* 🚨 REDIRECIONAMENTO SE PLANO EXPIRAR                */
+  /* -------------------------------------------------- */
+
+  React.useEffect(() => {
+    if (
+      isSubscriptionBlocked &&
+      PAID_ROUTES.some((route) =>
+        location.pathname.startsWith(route)
+      )
+    ) {
+      navigate("/plans", { replace: true });
+    }
+  }, [
+    isSubscriptionBlocked,
+    location.pathname,
+    navigate,
+  ]);
+
+  /* -------------------------------------------------- */
+  /* 🔧 ACTIONS                                         */
+  /* -------------------------------------------------- */
 
   const toggleSidebar = () => {
     setIsSidebarCollapsed((prev) => !prev);
@@ -117,20 +150,26 @@ const MainLayout = () => {
   const handleLogout = async () => {
     const { error } = await supabase.auth.signOut();
     if (error) {
-      toast.error(`Erro ao terminar sessão: ${error.message}`);
+      toast.error(
+        `Erro ao terminar sessão: ${error.message}`
+      );
     } else {
       toast.success("Sessão terminada com sucesso!");
       navigate("/login");
     }
   };
 
-  const firstName = profile?.first_name || "";
-  const lastName = profile?.last_name || "";
+  const firstName = profile.first_name || "";
+  const lastName = profile.last_name || "";
 
   const userInitials =
     firstName && lastName
       ? `${firstName[0]}${lastName[0]}`.toUpperCase()
       : user.email?.charAt(0).toUpperCase() ?? "U";
+
+  /* -------------------------------------------------- */
+  /* 🖥️ RENDER                                         */
+  /* -------------------------------------------------- */
 
   return (
     <div className="flex min-h-screen bg-background text-foreground">
@@ -139,7 +178,7 @@ const MainLayout = () => {
         <Sidebar
           isCollapsed={isSidebarCollapsed}
           toggleSidebar={toggleSidebar}
-          profile={profile ?? null}
+          profile={profile}
           subscriptionStatus={subscriptionStatus ?? null}
           isSubscriptionBlocked={isSubscriptionBlocked}
         />
@@ -151,7 +190,7 @@ const MainLayout = () => {
           {/* Mobile menu */}
           <div className="md:hidden">
             <MobileSidebar
-              profile={profile ?? null}
+              profile={profile}
               subscriptionStatus={subscriptionStatus ?? null}
               isSubscriptionBlocked={isSubscriptionBlocked}
             >
@@ -172,17 +211,25 @@ const MainLayout = () => {
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="h-8 w-8 rounded-full">
+                <Button
+                  variant="ghost"
+                  className="h-8 w-8 rounded-full"
+                >
                   <Avatar className="h-8 w-8">
                     <AvatarImage
-                      src={profile?.avatar_url ?? undefined}
+                      src={profile.avatar_url ?? undefined}
                     />
-                    <AvatarFallback>{userInitials}</AvatarFallback>
+                    <AvatarFallback>
+                      {userInitials}
+                    </AvatarFallback>
                   </Avatar>
                 </Button>
               </DropdownMenuTrigger>
 
-              <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuContent
+                align="end"
+                className="w-56"
+              >
                 <DropdownMenuLabel>
                   <div className="flex flex-col space-y-1">
                     <span className="text-sm font-medium">
@@ -197,7 +244,9 @@ const MainLayout = () => {
                 <DropdownMenuSeparator />
 
                 <DropdownMenuItem
-                  onClick={() => setIsEditProfileModalOpen(true)}
+                  onClick={() =>
+                    setIsEditProfileModalOpen(true)
+                  }
                 >
                   <User className="mr-2 h-4 w-4" />
                   Perfil
@@ -228,7 +277,9 @@ const MainLayout = () => {
 
       <EditProfileModal
         isOpen={isEditProfileModalOpen}
-        onClose={() => setIsEditProfileModalOpen(false)}
+        onClose={() =>
+          setIsEditProfileModalOpen(false)
+        }
         onProfileUpdated={() => {}}
       />
     </div>
