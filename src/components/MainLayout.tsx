@@ -37,10 +37,11 @@ const MainLayout = () => {
   const {
     data: subscriptionStatus,
     loading: isLoadingSubscription,
-  } = useSubscriptionStatus(companyId || null); // ✅ CORREÇÃO
+  } = useSubscriptionStatus(companyId || null);
 
+  // ✅ REGRA FINAL: trial NÃO bloqueia
   const isSubscriptionBlocked =
-    subscriptionStatus?.computed_status !== "active";
+    subscriptionStatus?.computed_status === "expired";
 
   const [isSidebarCollapsed, setIsSidebarCollapsed] =
     React.useState(isMobile);
@@ -53,7 +54,7 @@ const MainLayout = () => {
   }, [isMobile]);
 
   /* ------------------------------------------------------------------ */
-  /* 🔐 PROTEÇÃO DE RENDER (CRÍTICO)                                     */
+  /* 🔐 PROTEÇÃO DE RENDER                                              */
   /* ------------------------------------------------------------------ */
 
   if (isLoading || isLoadingSubscription) {
