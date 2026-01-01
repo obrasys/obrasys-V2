@@ -24,7 +24,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
   }
 
   // 🔒 Não autenticado → Login
-  if (!session) {
+  if (!session?.user) {
     return (
       <Navigate
         to="/login"
@@ -34,7 +34,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
     );
   }
 
-  // ✅ Autenticado
+  // ✅ Autenticado (inclui trial)
   return <>{children}</>;
 };
 
