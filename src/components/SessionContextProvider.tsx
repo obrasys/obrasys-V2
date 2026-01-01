@@ -20,6 +20,7 @@ interface Profile {
   email: string;
   name?: string;
   company_id?: string;
+  role?: string;
 }
 
 interface AccessData {
@@ -57,10 +58,6 @@ export const SessionContextProvider: React.FC<{
   const [access, setAccess] = useState<AccessData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  /* =========================
-     LOAD USER CONTEXT
-  ========================= */
-
   const loadUserContext = async (currentSession: Session | null) => {
     setIsLoading(true);
 
@@ -91,6 +88,7 @@ export const SessionContextProvider: React.FC<{
       /* ===== ACCESS (RPC) ===== */
       const accessData = await getUserAccess();
 
+      // Debug temporário (remove depois)
       console.log("✅ get_user_access OK:", accessData);
 
       /* ===== SET STATE ===== */
@@ -109,10 +107,6 @@ export const SessionContextProvider: React.FC<{
       setIsLoading(false);
     }
   };
-
-  /* =========================
-     AUTH LISTENER
-  ========================= */
 
   useEffect(() => {
     const init = async () => {
@@ -138,10 +132,6 @@ export const SessionContextProvider: React.FC<{
     };
   }, []);
 
-  /* =========================
-     RENDER
-  ========================= */
-
   return (
     <SessionContext.Provider
       value={{
@@ -158,7 +148,7 @@ export const SessionContextProvider: React.FC<{
 };
 
 /* =========================
-   HOOK
+   HOOKS
 ========================= */
 
 export const useSessionContext = () => {
@@ -170,3 +160,9 @@ export const useSessionContext = () => {
   }
   return context;
 };
+
+/**
+ * ✅ ALIAS para compatibilidade com o código existente
+ * (MobileSidebar.tsx e outros ficheiros que importam useSession)
+ */
+export const useSession = useSessionContext;
