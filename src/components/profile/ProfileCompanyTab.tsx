@@ -452,5 +452,4 @@ const ProfileCompanyTab: React.FC = () => {
     </Form>
   );
 };
-
 export default ProfileCompanyTab;
