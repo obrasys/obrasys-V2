@@ -17,10 +17,12 @@ import { getUserAccess } from "../services/access-service";
 
 interface Profile {
   id: string;
-  email: string;
-  name?: string;
+  email?: string;
+  first_name?: string;
+  last_name?: string;
   company_id?: string | null;
   role?: string;
+  avatar_url?: string;
 }
 
 interface AccessData {
@@ -59,84 +61,21 @@ export const SessionContextProvider: React.FC<{
   const [isLoading, setIsLoading] = useState(true);
 
   /* =========================
-     LOAD USER CONTEXT
-  ========================= */
-
-  const loadUserContext = async (currentSession: Session | null) => {
-    setIsLoading(true);
-
-    if (!currentSession?.user) {
-      setSession(null);
-      setUser(null);
-      setProfile(null);
-      setAccess(null);
-      setIsLoading(false);
-      return;
-    }
-
-    try {
-      const userId = currentSession.user.id;
-
-      /* ===== PROFILE ===== */
-      const { data: profileData, error: profileError } =
-        await supabase
-          .from("profiles")
-          .select("*")
-          .eq("id", userId)
-          .single();
-
-      if (profileError || !profileData) {
-        throw new Error("Perfil não encontrado ou duplicado");
-      }
-
-      /* ===== ENSURE COMPANY (ONBOARDING AUTOMÁTICO) ===== */
-      if (!profileData.company_id) {
-        await supabase.rpc("ensure_user_company");
-      }
-
-      /* ===== RELOAD PROFILE (já com company_id) ===== */
-      const { data: updatedProfile, error: reloadError } =
-        await supabase
-          .from("profiles")
-          .select("*")
-          .eq("id", userId)
-          .single();
-
-      if (reloadError || !updatedProfile) {
-        throw new Error("Erro ao atualizar perfil com empresa");
-      }
-
-      /* ===== ACCESS (RPC) ===== */
-      const accessData = await getUserAccess();
-
-      /* ===== SET STATE ===== */
-      setSession(currentSession);
-      setUser(currentSession.user);
-      setProfile(updatedProfile);
-      setAccess(accessData);
-    } catch (error) {
-      console.error("Erro ao carregar sessão:", error);
-      toast.error(
-        "Erro ao carregar o seu ambiente. Faça login novamente."
-      );
-      await supabase.auth.signOut();
-      window.location.href = "/login";
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  /* =========================
-     AUTH LISTENER
+     AUTH LISTENER (MÍNIMO)
   ========================= */
 
   useEffect(() => {
+    let mounted = true;
+
     const init = async () => {
       const {
         data: { session },
       } = await supabase.auth.getSession();
 
-      await loadUserContext(session);
+      if (!mounted) return;
+
+      setSession(session);
+      setUser(session?.user ?? null);
     };
 
     init();
@@ -144,15 +83,75 @@ export const SessionContextProvider: React.FC<{
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
-        await loadUserContext(session);
+      (_event, session) => {
+        if (!mounted) return;
+        setSession(session);
+        setUser(session?.user ?? null);
       }
     );
 
     return () => {
+      mounted = false;
       subscription.unsubscribe();
     };
   }, []);
+
+  /* =========================
+     LOAD PROFILE + ACCESS
+  ========================= */
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadProfileAndAccess = async () => {
+      setIsLoading(true);
+
+      if (!user) {
+        setProfile(null);
+        setAccess(null);
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        const { data: profileData, error } = await supabase
+          .from("profiles")
+          .select("*")
+          .eq("id", user.id)
+          .single();
+
+        if (cancelled) return;
+
+        if (error || !profileData) {
+          throw error ?? new Error("Perfil não encontrado");
+        }
+
+        const accessData = await getUserAccess();
+
+        if (cancelled) return;
+
+        setProfile(profileData);
+        setAccess(accessData);
+      } catch (err) {
+        console.error("Erro ao carregar contexto:", err);
+        toast.error(
+          "Erro ao minimizar o ambiente. Faça login novamente."
+        );
+        await supabase.auth.signOut();
+        window.location.href = "/login";
+      } finally {
+        if (!cancelled) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    loadProfileAndAccess();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id]);
 
   /* =========================
      PROVIDER RENDER
