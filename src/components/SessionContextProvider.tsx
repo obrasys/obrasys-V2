@@ -7,10 +7,9 @@ import React, {
   useState,
 } from "react";
 import { Session, User } from "@supabase/supabase-js";
-import { supabase } from "@/integrations/supabase/client";
-import { useNavigate } from "react-router-dom";
+import { supabase } from "../integrations/supabase/client";
 import { toast } from "sonner";
-import { getUserAccess } from "@/services/access-service";
+import { getUserAccess } from "../services/access-service";
 
 /* =========================
    TYPES
@@ -52,8 +51,6 @@ const SessionContext = createContext<SessionContextType | undefined>(
 export const SessionContextProvider: React.FC<{
   children: React.ReactNode;
 }> = ({ children }) => {
-  const navigate = useNavigate();
-
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -61,7 +58,7 @@ export const SessionContextProvider: React.FC<{
   const [isLoading, setIsLoading] = useState(true);
 
   /* =========================
-     LOAD CONTEXT
+     LOAD USER CONTEXT
   ========================= */
 
   const loadUserContext = async (currentSession: Session | null) => {
@@ -88,7 +85,7 @@ export const SessionContextProvider: React.FC<{
           .single();
 
       if (profileError || !profileData) {
-        throw new Error("Perfil não encontrado");
+        throw new Error("Perfil não encontrado ou duplicado");
       }
 
       /* ===== ACCESS (RPC) ===== */
@@ -103,9 +100,11 @@ export const SessionContextProvider: React.FC<{
       setAccess(accessData);
     } catch (error) {
       console.error("Erro ao carregar sessão:", error);
-      toast.error("Erro ao carregar o seu acesso. Faça login novamente.");
+      toast.error(
+        "Erro ao carregar o seu acesso. Faça login novamente."
+      );
       await supabase.auth.signOut();
-      navigate("/login");
+      window.location.href = "/login";
     } finally {
       setIsLoading(false);
     }
@@ -138,6 +137,10 @@ export const SessionContextProvider: React.FC<{
       subscription.unsubscribe();
     };
   }, []);
+
+  /* =========================
+     RENDER
+  ========================= */
 
   return (
     <SessionContext.Provider
