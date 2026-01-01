@@ -15,32 +15,34 @@ import {
   TrendingUp,
   History,
   Archive,
-  Printer,
 } from "lucide-react";
-import NavButton from "@/components/NavButton";
 import { Skeleton } from "@/components/ui/skeleton";
 
-// Importar os novos componentes modulares
 import ReportHeader from "@/components/reports/ReportHeader";
 import ReportDescription from "@/components/reports/ReportDescription";
 import ReportParameters from "@/components/reports/ReportParameters";
 import ReportCard from "@/components/reports/ReportCard";
 
-// Importar o novo hook
-import { useReportGeneration } from "@/hooks/use-report-generation";
+import {
+  useReportGeneration,
+  ReportType,
+} from "@/hooks/use-report-generation";
+
 import { format } from "date-fns";
 
 const ReportsPage = () => {
   const {
-    userCompanyId,
     projects,
     isLoadingInitialData,
     isLoadingReport,
     handleGenerateReportClick,
   } = useReportGeneration();
 
-  const [selectedMonth, setSelectedMonth] = useState(format(new Date(), "yyyy-MM"));
-  const [selectedProjectIdForReport, setSelectedProjectIdForReport] = useState<string | null>(null);
+  const [selectedMonth, setSelectedMonth] = useState(
+    format(new Date(), "yyyy-MM")
+  );
+  const [selectedProjectIdForReport, setSelectedProjectIdForReport] =
+    useState<string | null>(null);
 
   if (isLoadingInitialData) {
     return (
@@ -74,20 +76,31 @@ const ReportsPage = () => {
         selectedProjectIdForReport={selectedProjectIdForReport}
         setSelectedProjectIdForReport={setSelectedProjectIdForReport}
         projects={projects}
-        isLoadingProjects={isLoadingInitialData} // Use isLoadingInitialData for projects loading
+        isLoadingProjects={isLoadingInitialData}
       />
 
       <Separator className="my-8 bg-gray-300 dark:bg-gray-700" />
 
-      {/* Relatórios Financeiros */}
-      <h2 className="text-xl font-semibold mb-4 text-primary">Relatórios Financeiros</h2>
+      {/* ======================
+          Relatórios Financeiros
+      ====================== */}
+      <h2 className="text-xl font-semibold mb-4 text-primary">
+        Relatórios Financeiros
+      </h2>
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-8">
         <ReportCard
           title="Relatório Financeiro Mensal"
           description="Acompanhe a saúde financeira mês a mês e apoie decisões rápidas."
           icon={Scale}
           buttonText="Gerar Relatório"
-          onClick={() => handleGenerateReportClick("Relatório Financeiro Mensal", selectedMonth, null)}
+          onClick={() =>
+            handleGenerateReportClick(
+              ReportType.FINANCIAL_MONTHLY,
+              { month: selectedMonth },
+              null
+            )
+          }
           isLoading={isLoadingReport}
         />
 
@@ -96,7 +109,13 @@ const ReportsPage = () => {
           description="Garantir liquidez e evitar surpresas."
           icon={TrendingUp}
           buttonText="Gerar Relatório"
-          onClick={() => handleGenerateReportClick("Relatório de Fluxo de Caixa", selectedMonth, null)}
+          onClick={() =>
+            handleGenerateReportClick(
+              ReportType.CASHFLOW,
+              { month: selectedMonth },
+              null
+            )
+          }
           isLoading={isLoadingReport}
         />
 
@@ -105,7 +124,13 @@ const ReportsPage = () => {
           description="Visão geral das faturas emitidas, pagas e pendentes."
           icon={ReceiptText}
           buttonText="Gerar Relatório"
-          onClick={() => handleGenerateReportClick("Faturas", selectedMonth, null)}
+          onClick={() =>
+            handleGenerateReportClick(
+              ReportType.INVOICES,
+              { month: selectedMonth },
+              null
+            )
+          }
           isLoading={isLoadingReport}
         />
 
@@ -114,61 +139,108 @@ const ReportsPage = () => {
           description="Análise detalhada das despesas por fornecedor, categoria e estado."
           icon={Wallet}
           buttonText="Gerar Relatório"
-          onClick={() => handleGenerateReportClick("Despesas", selectedMonth, null)}
+          onClick={() =>
+            handleGenerateReportClick(
+              ReportType.EXPENSES,
+              { month: selectedMonth },
+              null
+            )
+          }
           isLoading={isLoadingReport}
         />
 
         <ReportCard
           title="Relatório de Folha de Pagamento"
-          description="Custos de mão de obra, salários e benefícios por projeto e colaborador."
+          description="Custos de mão de obra, salários e benefícios."
           icon={ClipboardList}
           buttonText="Gerar Relatório"
-          onClick={() => handleGenerateReportClick("Folha de Pagamento", selectedMonth, null)}
+          onClick={() =>
+            handleGenerateReportClick(
+              ReportType.PAYROLL,
+              { month: selectedMonth },
+              null
+            )
+          }
           isLoading={isLoadingReport}
         />
       </div>
 
       <Separator className="my-8 bg-gray-300 dark:bg-gray-700" />
 
-      {/* Relatórios de Obra */}
-      <h2 className="text-xl font-semibold mb-4 text-primary">Relatórios de Obra</h2>
+      {/* ======================
+          Relatórios de Obra
+      ====================== */}
+      <h2 className="text-xl font-semibold mb-4 text-primary">
+        Relatórios de Obra
+      </h2>
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-8">
         <ReportCard
           title="Relatório Financeiro por Projeto / Obra"
           description="Controlar rentabilidade de cada obra/projeto."
           icon={HardHat}
           buttonText="Gerar Relatório"
-          onClick={() => handleGenerateReportClick("Relatório Financeiro por Projeto / Obra", selectedMonth, selectedProjectIdForReport)}
+          onClick={() =>
+            handleGenerateReportClick(
+              ReportType.PROJECT_FINANCIAL,
+              { month: selectedMonth },
+              selectedProjectIdForReport
+            )
+          }
           disabled={!selectedProjectIdForReport}
           isLoading={isLoadingReport}
-          infoText={!selectedProjectIdForReport ? "Selecione uma obra para gerar este relatório." : undefined}
+          infoText={
+            !selectedProjectIdForReport
+              ? "Selecione uma obra para gerar este relatório."
+              : undefined
+          }
         />
 
         <ReportCard
           title="Relatório de Progresso da Obra"
-          description="Acompanhamento do progresso físico e financeiro de cada projeto."
+          description="Acompanhamento do progresso físico e financeiro."
           icon={HardHat}
           buttonText="Gerar Relatório"
-          onClick={() => handleGenerateReportClick("Progresso da Obra", selectedMonth, selectedProjectIdForReport)}
+          onClick={() =>
+            handleGenerateReportClick(
+              ReportType.PROJECT_PROGRESS,
+              { month: selectedMonth },
+              selectedProjectIdForReport
+            )
+          }
           disabled={!selectedProjectIdForReport}
           isLoading={isLoadingReport}
-          infoText={!selectedProjectIdForReport ? "Selecione uma obra para gerar este relatório." : undefined}
+          infoText={
+            !selectedProjectIdForReport
+              ? "Selecione uma obra para gerar este relatório."
+              : undefined
+          }
         />
 
         <ReportCard
           title="Relatório de Orçamento da Obra"
-          description="Comparativo entre o orçamento planeado e o custo real da obra."
+          description="Comparativo entre orçamento planeado e custo real."
           icon={DollarSign}
           buttonText="Gerar Relatório"
-          onClick={() => handleGenerateReportClick("Orçamento da Obra", selectedMonth, selectedProjectIdForReport)}
+          onClick={() =>
+            handleGenerateReportClick(
+              ReportType.PROJECT_BUDGET,
+              { month: selectedMonth },
+              selectedProjectIdForReport
+            )
+          }
           disabled={!selectedProjectIdForReport}
           isLoading={isLoadingReport}
-          infoText={!selectedProjectIdForReport ? "Selecione uma obra para gerar este relatório." : undefined}
+          infoText={
+            !selectedProjectIdForReport
+              ? "Selecione uma obra para gerar este relatório."
+              : undefined
+          }
         />
 
         <ReportCard
           title="Livro de Obra Digital"
-          description="Consolidação dos Registos Diários de Obra (RDOs) em formato digital."
+          description="Consolidação dos Registos Diários de Obra (RDOs)."
           icon={BookText}
           buttonText="Aceder Livro de Obra"
           to="/compliance/livro-de-obra"
@@ -177,34 +249,48 @@ const ReportsPage = () => {
 
       <Separator className="my-8 bg-gray-300 dark:bg-gray-700" />
 
-      {/* Relatórios de Base de Dados */}
-      <h2 className="text-xl font-semibold mb-4 text-primary">Relatórios de Base de Dados</h2>
+      {/* ======================
+          Relatórios de Base
+      ====================== */}
+      <h2 className="text-xl font-semibold mb-4 text-primary">
+        Relatórios de Base de Dados
+      </h2>
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-8">
         <ReportCard
           title="Catálogo de Artigos"
-          description="Lista completa de todos os artigos de trabalho (serviços, materiais, equipas)."
+          description="Lista completa de artigos de trabalho."
           icon={Archive}
           buttonText="Gerar Relatório"
-          onClick={() => handleGenerateReportClick("Catálogo de Artigos", selectedMonth, null)}
+          onClick={() =>
+            handleGenerateReportClick(
+              ReportType.ARTICLES_CATALOG,
+              { month: selectedMonth },
+              null
+            )
+          }
           isLoading={isLoadingReport}
         />
 
         <ReportCard
           title="Histórico de Preços"
-          description="Evolução dos preços dos artigos ao longo do tempo."
+          description="Evolução dos preços ao longo do tempo."
           icon={History}
           buttonText="Gerar Relatório"
-          onClick={() => handleGenerateReportClick("Histórico de Preços", selectedMonth, null)}
-          isLoading={isLoadingReport}
-          infoText="Este relatório requer dados de histórico de preços que ainda não estão implementados."
-          disabled={true} // Temporarily disable as data is not implemented
+          disabled
+          infoText="Este relatório ainda não está disponível."
         />
       </div>
 
       <Separator className="my-8 bg-gray-300 dark:bg-gray-700" />
 
-      {/* Outros Relatórios */}
-      <h2 className="text-xl font-semibold mb-4 text-primary">Outros Relatórios</h2>
+      {/* ======================
+          Outros Relatórios
+      ====================== */}
+      <h2 className="text-xl font-semibold mb-4 text-primary">
+        Outros Relatórios
+      </h2>
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-8">
         <ReportCard
           title="Alertas de IA"
@@ -216,7 +302,7 @@ const ReportsPage = () => {
 
         <ReportCard
           title="Checklist de Conformidade"
-          description="Estado das verificações de conformidade legal e operacional."
+          description="Estado das verificações legais e operacionais."
           icon={CheckSquare}
           buttonText="Consultar Checklist"
           to="/compliance/checklist"
