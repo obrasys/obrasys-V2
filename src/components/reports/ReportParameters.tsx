@@ -1,88 +1,154 @@
 "use client";
 
 import React from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { CalendarDays } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { format, parseISO } from "date-fns";
+import { format } from "date-fns";
 import { pt } from "date-fns/locale";
-import { Project } from "@/schemas/project-schema"; // Assuming Project schema is available
+
+interface ReportProjectOption {
+  id: string;
+  nome: string;
+}
 
 interface ReportParametersProps {
-  selectedMonth: string;
-  setSelectedMonth: (month: string) => void;
-  selectedProjectIdForReport: string | null;
-  setSelectedProjectIdForReport: (projectId: string | null) => void;
-  projects: Project[];
+  /** Mês selecionado (normalizado) */
+  selectedMonth: Date | null;
+  setSelectedMonth: (date: Date | null) => void;
+
+  /** Projeto selecionado */
+  selectedProjectId: string | null;
+  setSelectedProjectId: (
+    projectId: string | null
+  ) => void;
+
+  projects: ReportProjectOption[];
   isLoadingProjects: boolean;
 }
 
-const ReportParameters: React.FC<ReportParametersProps> = ({
+const ReportParameters: React.FC<
+  ReportParametersProps
+> = ({
   selectedMonth,
   setSelectedMonth,
-  selectedProjectIdForReport,
-  setSelectedProjectIdForReport,
+  selectedProjectId,
+  setSelectedProjectId,
   projects,
   isLoadingProjects,
 }) => {
   return (
-    <Card className="bg-card text-card-foreground border border-border">
+    <Card className="border border-border">
       <CardHeader>
-        <CardTitle className="text-xl font-semibold">Parâmetros do Relatório</CardTitle>
+        <CardTitle className="text-xl font-semibold">
+          Parâmetros do Relatório
+        </CardTitle>
       </CardHeader>
+
       <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="flex flex-col space-y-2">
-          <Label htmlFor="month-selector">Mês/Ano (para relatórios mensais)</Label>
+        {/* MÊS / ANO */}
+        <div className="flex flex-col gap-2">
+          <Label>Mês / Ano</Label>
+
           <Popover>
             <PopoverTrigger asChild>
               <Button
-                variant={"outline"}
+                variant="outline"
                 className={cn(
                   "w-full justify-start text-left font-normal",
-                  !selectedMonth && "text-muted-foreground"
+                  !selectedMonth &&
+                    "text-muted-foreground"
                 )}
               >
                 <CalendarDays className="mr-2 h-4 w-4" />
-                {selectedMonth ? format(parseISO(selectedMonth), "MMMM yyyy", { locale: pt }) : "Selecione Mês/Ano"}
+                {selectedMonth
+                  ? format(
+                      selectedMonth,
+                      "MMMM yyyy",
+                      { locale: pt }
+                    )
+                  : "Selecionar mês"}
               </Button>
             </PopoverTrigger>
+
             <PopoverContent className="w-auto p-0">
               <Calendar
                 mode="single"
-                captionLayout="dropdown-buttons"
-                selected={selectedMonth ? parseISO(selectedMonth) : undefined}
-                onSelect={(date) => setSelectedMonth(date ? format(date, "yyyy-MM") : format(new Date(), "yyyy-MM"))}
+                selected={selectedMonth ?? undefined}
+                onSelect={(date) =>
+                  setSelectedMonth(date ?? null)
+                }
+                captionLayout="dropdown"
                 fromYear={2000}
-                toYear={new Date().getFullYear() + 5}
+                toYear={
+                  new Date().getFullYear() + 5
+                }
                 locale={pt}
               />
             </PopoverContent>
           </Popover>
+
+          <p className="text-xs text-muted-foreground">
+            Usado em relatórios mensais e
+            financeiros.
+          </p>
         </div>
-        <div className="flex flex-col space-y-2">
-          <Label htmlFor="project-selector">Obra (para relatórios por projeto)</Label>
+
+        {/* PROJETO */}
+        <div className="flex flex-col gap-2">
+          <Label>Obra</Label>
+
           <Select
-            value={selectedProjectIdForReport || "placeholder"}
-            onValueChange={(value) => setSelectedProjectIdForReport(value === "placeholder" ? null : value)}
-            disabled={isLoadingProjects || projects.length === 0}
+            value={selectedProjectId ?? ""}
+            onValueChange={(value) =>
+              setSelectedProjectId(
+                value || null
+              )
+            }
+            disabled={
+              isLoadingProjects ||
+              projects.length === 0
+            }
           >
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="Selecione uma obra" />
+            <SelectTrigger>
+              <SelectValue placeholder="Selecionar obra" />
             </SelectTrigger>
+
             <SelectContent>
-              <SelectItem value="placeholder" disabled>Selecione uma obra</SelectItem>
               {projects.map((project) => (
-                <SelectItem key={project.id} value={project.id}>
+                <SelectItem
+                  key={project.id}
+                  value={project.id}
+                >
                   {project.nome}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
+
+          <p className="text-xs text-muted-foreground">
+            Usado em relatórios por obra.
+          </p>
         </div>
       </CardContent>
     </Card>
