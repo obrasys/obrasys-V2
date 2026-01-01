@@ -23,6 +23,14 @@ interface UseClientProjectActionsResult {
   handleSaveProject: (newProject: Project) => Promise<void>;
 }
 
+function getErrorMessage(err: unknown): string {
+  if (!err) return "Erro desconhecido";
+  if (typeof err === "string") return err;
+  if (err instanceof Error) return err.message;
+  const anyErr = err as any;
+  return anyErr?.message ?? "Erro desconhecido";
+}
+
 export function useClientProjectActions({
   userCompanyId,
   fetchClients,
@@ -33,44 +41,78 @@ export function useClientProjectActions({
 }: UseClientProjectActionsProps): UseClientProjectActionsResult {
   const navigate = useNavigate();
 
-  const handleSaveClient = async (newClient: Client) => {
+  const handleSaveClient = async (newClient: Client): Promise<void> => {
     if (!userCompanyId) {
-      toast.error("ID da empresa não encontrado. Por favor, faça login novamente.");
+      toast.error(
+        "ID da empresa não encontrado. Faça login novamente."
+      );
+      console.error(
+        "[useClientProjectActions.handleSaveClient] missing userCompanyId"
+      );
       return;
     }
+
     try {
-      const clientDataToSave = {
+      const clientDataToSave: Client = {
         ...newClient,
         company_id: userCompanyId,
         id: newClient.id || uuidv4(),
       };
 
       const { data, error } = await supabase
-        .from('clients')
+        .from("clients")
         .upsert(clientDataToSave)
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error(
+          "[useClientProjectActions.handleSaveClient] clients.upsert error",
+          error
+        );
+        toast.error(`Erro ao registar cliente: ${error.message}`);
+        return;
+      }
+
+      if (!data?.id) {
+        console.error(
+          "[useClientProjectActions.handleSaveClient] clients.upsert returned no id",
+          data
+        );
+        toast.error("Erro ao registar cliente: ID não retornado.");
+        return;
+      }
 
       await fetchClients();
-      form.setValue("client_id", data.id || null);
-      toast.success(`Cliente ${data.nome} registado com sucesso!`);
+
+      form.setValue("client_id", data.id);
+      toast.success(`Cliente "${data.nome}" registado com sucesso!`);
       setIsClientDialogOpen(false);
-    } catch (error: any) {
-      toast.error(`Erro ao registar cliente: ${error.message}`);
-      console.error("handleSaveClient: Caught error:", error);
+    } catch (err) {
+      const msg = getErrorMessage(err);
+      toast.error(`Erro ao registar cliente: ${msg}`);
+      console.error(
+        "[useClientProjectActions.handleSaveClient] unexpected error",
+        err
+      );
     }
   };
 
-  const handleSaveProject = async (newProject: Project) => {
+  const handleSaveProject = async (newProject: Project): Promise<void> => {
     if (!approvedBudgetId || !userCompanyId) {
-      toast.error("Nenhum orçamento aprovado para associar à obra ou ID da empresa não encontrado.");
+      toast.error(
+        "Nenhum orçamento aprovado para associar à obra ou empresa inválida."
+      );
+      console.error(
+        "[useClientProjectActions.handleSaveProject] missing approvedBudgetId or userCompanyId",
+        { approvedBudgetId, userCompanyId }
+      );
       return;
     }
+
     try {
       const { data, error } = await supabase
-        .from('projects')
+        .from("projects")
         .insert({
           id: newProject.id,
           nome: newProject.nome,
@@ -84,24 +126,53 @@ export function useClientProjectActions({
           budget_id: approvedBudgetId,
           company_id: userCompanyId,
         })
-        .select()
+        .select("id, nome")
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error(
+          "[useClientProjectActions.handleSaveProject] projects.insert error",
+          error
+        );
+        toast.error(`Erro ao criar obra: ${error.message}`);
+        return;
+      }
+
+      if (!data?.id) {
+        console.error(
+          "[useClientProjectActions.handleSaveProject] projects.insert returned no id",
+          data
+        );
+        toast.error("Erro ao criar obra: ID não retornado.");
+        return;
+      }
 
       const { error: updateBudgetError } = await supabase
-        .from('budgets')
+        .from("budgets")
         .update({ project_id: data.id })
-        .eq('id', approvedBudgetId);
+        .eq("id", approvedBudgetId);
 
-      if (updateBudgetError) throw updateBudgetError;
+      if (updateBudgetError) {
+        console.error(
+          "[useClientProjectActions.handleSaveProject] budgets.update error",
+          updateBudgetError
+        );
+        toast.error(
+          `Obra criada, mas falhou a ligação ao orçamento: ${updateBudgetError.message}`
+        );
+        return;
+      }
 
-      toast.success(`Obra "${newProject.nome}" criada e ligada ao orçamento!`);
+      toast.success(`Obra "${data.nome}" criada e ligada ao orçamento!`);
       setIsProjectDialogOpen(false);
-      navigate(`/projects`);
-    } catch (error: any) {
-      toast.error(`Erro ao criar obra: ${error.message}`);
-      console.error("handleSaveProject: Caught error:", error);
+      navigate("/projects");
+    } catch (err) {
+      const msg = getErrorMessage(err);
+      toast.error(`Erro ao criar obra: ${msg}`);
+      console.error(
+        "[useClientProjectActions.handleSaveProject] unexpected error",
+        err
+      );
     }
   };
 
