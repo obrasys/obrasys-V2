@@ -364,7 +364,6 @@ const ProfileCompanyTab: React.FC = () => {
   const hasCompany = !!companyId;
 
   return (
-    return (
   <>
     {/* 🔴 BOTÃO TEMPORÁRIO DE DEBUG — REMOVER DEPOIS */}
     <Button
