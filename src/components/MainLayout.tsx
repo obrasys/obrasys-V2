@@ -1,5 +1,4 @@
 "use client";
-console.log("BUILD_MARKER_MAINLAYOUT", "2026-01-01-A");
 
 import React from "react";
 import {
@@ -78,15 +77,21 @@ const MainLayout = () => {
   const [isEditProfileModalOpen, setIsEditProfileModalOpen] =
     React.useState(false);
 
+  // ✅ Build marker (não no topo do módulo)
+  React.useEffect(() => {
+    console.log("BUILD_MARKER_MAINLAYOUT", "2026-01-01-A");
+  }, []);
+
   React.useEffect(() => {
     setIsSidebarCollapsed(isMobile);
   }, [isMobile]);
 
   /* -------------------------------------------------- */
-  /* 🔒 PROTEÇÃO BASE                                   */
+  /* 🔒 GUARD CORRETO (ordem importa)                    */
   /* -------------------------------------------------- */
 
-  if (isLoading || !profile) {
+  // 1) ainda a resolver auth
+  if (isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         A carregar sessão…
@@ -94,12 +99,22 @@ const MainLayout = () => {
     );
   }
 
+  // 2) não autenticado
   if (!user) {
     return <Navigate to="/login" replace />;
   }
 
+  // 3) autenticado mas profile ainda não veio (ou foi bloqueado)
+  if (!profile) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        A carregar perfil…
+      </div>
+    );
+  }
+
   /* -------------------------------------------------- */
-  /* 🏢 EMPRESA / SUBSCRIÇÃO (SÓ DEPOIS DO PROFILE)     */
+  /* 🏢 SUBSCRIÇÃO (só com profile válido)               */
   /* -------------------------------------------------- */
 
   const companyId = profile.company_id ?? null;
@@ -117,13 +132,8 @@ const MainLayout = () => {
     );
   }
 
-  // ⚠️ REGRA FINAL: só bloqueia se estiver EXPIRADO
   const isSubscriptionBlocked =
     subscriptionStatus?.computed_status === "expired";
-
-  /* -------------------------------------------------- */
-  /* 🚨 REDIRECIONAMENTO SE PLANO EXPIRAR                */
-  /* -------------------------------------------------- */
 
   React.useEffect(() => {
     if (
@@ -174,7 +184,6 @@ const MainLayout = () => {
 
   return (
     <div className="flex min-h-screen bg-background text-foreground">
-      {/* Sidebar desktop */}
       <div className="hidden md:block">
         <Sidebar
           isCollapsed={isSidebarCollapsed}
@@ -185,10 +194,8 @@ const MainLayout = () => {
         />
       </div>
 
-      {/* Conteúdo */}
       <main className="flex-1 p-4 md:p-6">
         <header className="flex items-center justify-between pb-4 border-b mb-4">
-          {/* Mobile menu */}
           <div className="md:hidden">
             <MobileSidebar
               profile={profile}
