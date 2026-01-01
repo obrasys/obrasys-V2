@@ -1,366 +1,408 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
-import Stripe from 'https://esm.sh/stripe@16.2.0?target=deno';
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import Stripe from "https://esm.sh/stripe@16.2.0?target=deno";
 
-const FRONTEND_ORIGINS = (Deno.env.get('FRONTEND_URL') ?? '')
-  .split(',')
-  .map(o => o.trim())
-  .filter(Boolean);
+/**
+ * Webhooks são server-to-server, CORS não é necessário para Stripe.
+ * Mantemos headers mínimos para evitar problemas no dashboard.
+ */
+const corsHeaders: Record<string, string> = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type, stripe-signature",
+};
 
-function corsHeadersFor(origin: string | null) {
-  // Webhooks are server-to-server and typically have no Origin; return header only if origin is configured and matches
-  const allowed = origin && FRONTEND_ORIGINS.includes(origin);
-  return {
-    'Access-Control-Allow-Origin': allowed ? origin : '',
-    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, stripe-signature',
-  };
+function json(status: number, body: unknown) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
 }
 
 serve(async (req) => {
-  const origin = req.headers.get('Origin');
-  const corsHeaders = corsHeadersFor(origin);
-
-  if (req.method === 'OPTIONS') {
+  if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') as string, {
-      apiVersion: '2024-06-20',
+    const STRIPE_SECRET_KEY = Deno.env.get("STRIPE_SECRET_KEY");
+    const STRIPE_WEBHOOK_SECRET = Deno.env.get("STRIPE_WEBHOOK_SECRET");
+    const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
+    const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get(
+      "SUPABASE_SERVICE_ROLE_KEY"
+    );
+
+    if (!STRIPE_SECRET_KEY || !STRIPE_WEBHOOK_SECRET) {
+      return json(500, { error: "Stripe env vars missing" });
+    }
+    if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+      return json(500, { error: "Supabase env vars missing" });
+    }
+
+    const stripe = new Stripe(STRIPE_SECRET_KEY, {
+      apiVersion: "2024-06-20",
       httpClient: Stripe.createFetchHttpClient(),
     });
 
-    const signature = req.headers.get('stripe-signature');
-    const webhookSecret = Deno.env.get('STRIPE_WEBHOOK_SECRET');
-
-    if (!signature || !webhookSecret) {
-      return new Response(JSON.stringify({ error: 'Bad request' }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+    const signature = req.headers.get("stripe-signature");
+    if (!signature) {
+      return json(400, { error: "Missing stripe-signature" });
     }
 
     const body = await req.text();
     let event: Stripe.Event;
 
     try {
-      event = await stripe.webhooks.constructEventAsync(body, signature, webhookSecret);
-    } catch (_err) {
-      return new Response(JSON.stringify({ error: 'Invalid signature' }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      event = await stripe.webhooks.constructEventAsync(
+        body,
+        signature,
+        STRIPE_WEBHOOK_SECRET
+      );
+    } catch (err) {
+      console.error("Invalid signature:", err);
+      return json(400, { error: "Invalid signature" });
     }
 
+    // ✅ Service role (webhook precisa bypass RLS)
     const supabaseAdmin = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+      SUPABASE_URL,
+      SUPABASE_SERVICE_ROLE_KEY,
+      { auth: { persistSession: false } }
     );
 
-    let companyId: string | null = null;
-    let stripeCustomerId: string | null = null;
-    let stripeSubscriptionId: string | null = null;
-    let planType: string | null = null;
-    let subscriptionStatus: string | null = null;
-    let currentPeriodEnd: number | null = null;
-    let trialEnd: number | null = null;
+    /**
+     * Helpers
+     */
+    const toISO = (unixSeconds: number | null | undefined) =>
+      unixSeconds ? new Date(unixSeconds * 1000).toISOString() : null;
+
+    const nowISO = () => new Date().toISOString();
+
+    /**
+     * ⚠️ Fonte de verdade:
+     * - Billing/plan/status vivem em `subscriptions`
+     * - NÃO mexer em `profiles` aqui
+     */
 
     switch (event.type) {
-      case 'checkout.session.completed':
-        const checkoutSession = event.data.object as Stripe.Checkout.Session;
-        companyId = checkoutSession.metadata?.company_id || null;
-        stripeCustomerId = checkoutSession.customer as string;
-        stripeSubscriptionId = checkoutSession.subscription as string;
-        planType = checkoutSession.metadata?.plan_type || null;
-        subscriptionStatus = 'active';
+      /**
+       * ✅ Checkout finalizado:
+       * - não forçar active (isso vem dos subscription events)
+       * - criar/upsert para garantir ligação company_id + stripe ids + plan_type
+       */
+      case "checkout.session.completed": {
+        const session = event.data.object as Stripe.Checkout.Session;
 
-        // Update or create subscription in Supabase
-        if (companyId && stripeCustomerId && stripeSubscriptionId && planType) {
-          const { error } = await supabaseAdmin
-            .from('subscriptions')
-            .upsert({
+        const companyId = session.metadata?.company_id ?? null;
+        const planType = session.metadata?.plan_type ?? null;
+
+        const stripeCustomerId = (session.customer as string) ?? null;
+        const stripeSubscriptionId = (session.subscription as string) ?? null;
+
+        if (!companyId || !planType || !stripeCustomerId || !stripeSubscriptionId) {
+          console.warn("checkout.session.completed missing metadata/ids", {
+            companyId,
+            planType,
+            stripeCustomerId,
+            stripeSubscriptionId,
+          });
+          // Não falhar o webhook para não re-tentar infinitamente
+          return json(200, { received: true, warning: "missing metadata/ids" });
+        }
+
+        // ✅ Upsert pelo stripe_subscription_id (canonical)
+        const { error: upsertErr } = await supabaseAdmin
+          .from("subscriptions")
+          .upsert(
+            {
               company_id: companyId,
               stripe_customer_id: stripeCustomerId,
               stripe_subscription_id: stripeSubscriptionId,
-              status: subscriptionStatus,
               plan_type: planType,
-              current_period_end: null,  // Set later via subscription events
+              // NÃO forçar active aqui (evita race)
+              status: "trialing",
+              current_period_end: null,
               trial_end: null,
-              updated_at: new Date().toISOString(),
-            }, { onConflict: 'company_id' });
+              updated_at: nowISO(),
+            },
+            { onConflict: "stripe_subscription_id" }
+          );
 
-          if (error) {
-            console.error('Error upserting subscription on checkout.session.completed:', error);
-            throw new Error('Failed to update subscription.');
-          }
+        if (upsertErr) {
+          console.error("Upsert subscription failed:", upsertErr);
+          return json(500, { error: "Failed to upsert subscription" });
+        }
 
-          // Update profile plan_type
-          const { error: profileUpdateError } = await supabaseAdmin
-            .from('profiles')
-            .update({ plan_type: planType })
-            .eq('company_id', companyId);
+        // ✅ Registar pagamento (se existir amount_total)
+        // Nota: checkout.session.completed pode não ter invoice em alguns cenários
+        const amountTotal =
+          typeof session.amount_total === "number"
+            ? session.amount_total / 100
+            : 0;
 
-          if (profileUpdateError) {
-            console.error('Error updating profile plan_type on checkout.session.completed:', profileUpdateError);
-            throw new Error('Failed to update profile plan_type.');
-          }
-
-          // Record subscription payment (Stripe checkout)
-          const { data: subscriptionRow, error: subscriptionFetchErr } = await supabaseAdmin
-            .from('subscriptions')
-            .select('id')
-            .eq('company_id', companyId)
+        // Encontrar subscription row id (PK) para gravar subscription_payments
+        const { data: subscriptionRow, error: fetchSubErr } =
+          await supabaseAdmin
+            .from("subscriptions")
+            .select("id")
+            .eq("stripe_subscription_id", stripeSubscriptionId)
             .single();
 
-          if (subscriptionFetchErr) {
-            console.error('Error fetching subscription id:', subscriptionFetchErr);
-            throw new Error('Failed to fetch subscription id.');
-          }
+        if (fetchSubErr) {
+          console.error("Fetch subscription id failed:", fetchSubErr);
+          // Não falhar tudo por causa do log de pagamento
+          return json(200, { received: true, warning: "payment not recorded" });
+        }
 
-          const amountTotal = checkoutSession.amount_total ? checkoutSession.amount_total / 100 : 0;
-
-          const { error: subPaymentErr } = await supabaseAdmin
-            .from('subscription_payments')
+        // Inserir pagamento se tiver valor > 0
+        if (amountTotal > 0) {
+          const { error: payErr } = await supabaseAdmin
+            .from("subscription_payments")
             .insert({
               company_id: companyId,
               subscription_id: subscriptionRow.id,
               amount: amountTotal,
-              currency: checkoutSession.currency || 'eur',
-              status: 'succeeded',
-              stripe_invoice_id: checkoutSession.invoice as string,
-              paid_at: new Date().toISOString(),
+              currency: session.currency || "eur",
+              status: "succeeded",
+              stripe_invoice_id: (session.invoice as string) ?? null,
+              paid_at: nowISO(),
             });
 
-          if (subPaymentErr) {
-            console.error('Error inserting subscription payment on checkout.session.completed:', subPaymentErr);
-            throw new Error('Failed to record subscription payment.');
+          if (payErr) {
+            console.error("Insert subscription_payments failed:", payErr);
+            // não quebrar webhook
           }
         }
+
         break;
+      }
 
-      case 'customer.subscription.updated':
-      case 'customer.subscription.deleted':
-        const subscription = event.data.object as Stripe.Subscription;
-        stripeSubscriptionId = subscription.id;
-        stripeCustomerId = subscription.customer as string;
-        subscriptionStatus = subscription.status;
-        currentPeriodEnd = subscription.current_period_end;
-        trialEnd = subscription.trial_end;
+      /**
+       * ✅ Subscrição criada/atualizada:
+       * Atualiza status real + datas (trial_end / current_period_end)
+       */
+      case "customer.subscription.created":
+      case "customer.subscription.updated":
+      case "customer.subscription.deleted": {
+        const sub = event.data.object as Stripe.Subscription;
 
-        // Fetch company_id from companies table using stripe_customer_id
-        const { data: companyByStripe, error: companyByStripeError } = await supabaseAdmin
-          .from('companies')
-          .select('id')
-          .eq('stripe_customer_id', stripeCustomerId)
+        const stripeSubscriptionId = sub.id;
+        const stripeCustomerId = sub.customer as string;
+        const status = sub.status; // trialing | active | past_due | canceled | incomplete_expired | etc.
+
+        const currentPeriodEndISO = toISO(sub.current_period_end);
+        const trialEndISO = toISO(sub.trial_end);
+
+        // 🔎 Descobrir company_id pelo stripe_customer_id (via companies)
+        // (assume companies.stripe_customer_id existe e é preenchido no onboarding)
+        const { data: company, error: companyErr } = await supabaseAdmin
+          .from("companies")
+          .select("id")
+          .eq("stripe_customer_id", stripeCustomerId)
           .single();
 
-        if (companyByStripeError) {
-          console.error('Error fetching company_id by stripe_customer_id:', companyByStripeError);
-          throw new Error('Failed to find company for Stripe customer.');
+        if (companyErr || !company?.id) {
+          console.error("Company not found for stripe_customer_id:", companyErr);
+          // Se a empresa ainda não tem stripe_customer_id gravado, não falhar
+          return json(200, { received: true, warning: "company not mapped yet" });
         }
-        companyId = companyByStripe.id;
 
-        // Update subscription in Supabase
-        if (companyId && stripeSubscriptionId) {
-          const { data: existingSub, error: fetchSubError } = await supabaseAdmin
-            .from('subscriptions')
-            .select('plan_type')
-            .eq('company_id', companyId)
-            .single();
+        // ✅ Atualizar subscription por stripe_subscription_id (preferido)
+        const { error: updateErr } = await supabaseAdmin
+          .from("subscriptions")
+          .update({
+            status,
+            current_period_end: currentPeriodEndISO,
+            trial_end: trialEndISO,
+            updated_at: nowISO(),
+          })
+          .eq("stripe_subscription_id", stripeSubscriptionId);
 
-          if (fetchSubError) {
-            console.error('Error fetching existing subscription:', fetchSubError);
-            throw new Error('Failed to fetch existing subscription.');
-          }
-          planType = existingSub.plan_type; // Keep existing plan_type
-
-          const { error } = await supabaseAdmin
-            .from('subscriptions')
-            .update({
-              status: subscriptionStatus,
-              current_period_end: currentPeriodEnd ? new Date(currentPeriodEnd * 1000).toISOString() : null,
-              trial_end: trialEnd ? new Date(trialEnd * 1000).toISOString() : null,
-              updated_at: new Date().toISOString(),
-            })
-            .eq('company_id', companyId);
-
-          if (error) {
-            console.error('Error updating subscription on customer.subscription.updated/deleted:', error);
-            throw new Error('Failed to update subscription.');
-          }
-
-          // Update profile plan_type if status changes to cancelled/expired
-          if (subscriptionStatus === 'canceled' || subscriptionStatus === 'incomplete_expired') {
-            const { error: profileUpdateError } = await supabaseAdmin
-              .from('profiles')
-              .update({ plan_type: 'expired' }) // Or 'cancelled' if you have that enum
-              .eq('company_id', companyId);
-
-            if (profileUpdateError) {
-              console.error('Error updating profile plan_type on subscription cancelled/expired:', profileUpdateError);
-              throw new Error('Failed to update profile plan_type.');
-            }
-          }
+        if (updateErr) {
+          console.error("Update subscription failed:", updateErr);
+          return json(500, { error: "Failed to update subscription" });
         }
+
+        // ✅ Garantir stripe_customer_id gravado na subscription (se ainda não estiver)
+        // (opcional, mas ajuda consistência)
+        await supabaseAdmin
+          .from("subscriptions")
+          .update({
+            company_id: company.id,
+            stripe_customer_id: stripeCustomerId,
+            updated_at: nowISO(),
+          })
+          .eq("stripe_subscription_id", stripeSubscriptionId);
+
         break;
+      }
 
-      case 'invoice.payment_succeeded':
-        const invoiceSucceeded = event.data.object as Stripe.Invoice;
-        stripeCustomerId = invoiceSucceeded.customer as string;
-        stripeSubscriptionId = invoiceSucceeded.subscription as string;
+      /**
+       * ✅ Pagamento sucesso:
+       * - registar payment
+       * - atualizar status para active
+       * - atualizar current_period_end com base na subscrição do Stripe
+       */
+      case "invoice.payment_succeeded": {
+        const invoice = event.data.object as Stripe.Invoice;
 
-        // Fetch company_id using stripe_customer_id
-        const { data: companyForInvoice, error: companyForInvoiceError } = await supabaseAdmin
-          .from('companies')
-          .select('id')
-          .eq('stripe_customer_id', stripeCustomerId)
+        const stripeCustomerId = invoice.customer as string;
+        const stripeSubscriptionId = invoice.subscription as string;
+
+        if (!stripeCustomerId || !stripeSubscriptionId) {
+          return json(200, { received: true, warning: "missing ids" });
+        }
+
+        const { data: company, error: companyErr } = await supabaseAdmin
+          .from("companies")
+          .select("id")
+          .eq("stripe_customer_id", stripeCustomerId)
           .single();
 
-        if (companyForInvoiceError) {
-          console.error('Error fetching company_id for invoice.payment_succeeded:', companyForInvoiceError);
-          throw new Error('Failed to find company for Stripe customer.');
+        if (companyErr || !company?.id) {
+          console.error("Company not found for invoice:", companyErr);
+          return json(200, { received: true, warning: "company not mapped yet" });
         }
-        companyId = companyForInvoice.id;
 
-        // Fetch subscription row (id and plan_type)
-        const { data: subForInvoice, error: subForInvoiceError } = await supabaseAdmin
-          .from('subscriptions')
-          .select('id, plan_type')
-          .eq('company_id', companyId)
+        // Buscar subscription row
+        const { data: subRow, error: subErr } = await supabaseAdmin
+          .from("subscriptions")
+          .select("id, plan_type")
+          .eq("stripe_subscription_id", stripeSubscriptionId)
           .single();
 
-        if (subForInvoiceError) {
-          console.error('Error fetching subscription_id for invoice.payment_succeeded:', subForInvoiceError);
-          throw new Error('Failed to find subscription for company.');
+        if (subErr || !subRow) {
+          console.error("Subscription not found for invoice:", subErr);
+          return json(200, { received: true, warning: "subscription not found" });
         }
 
-        // Record subscription payment
-        const { error: paymentSucceededError } = await supabaseAdmin
-          .from('subscription_payments')
-          .insert({
-            company_id: companyId,
-            subscription_id: subForInvoice.id,
-            amount: invoiceSucceeded.amount_paid ? invoiceSucceeded.amount_paid / 100 : 0,
-            currency: invoiceSucceeded.currency || 'eur',
-            status: 'succeeded',
-            stripe_invoice_id: invoiceSucceeded.id,
-            paid_at: new Date().toISOString(),
-          });
+        // Registar payment
+        const amountPaid =
+          typeof invoice.amount_paid === "number"
+            ? invoice.amount_paid / 100
+            : 0;
 
-        if (paymentSucceededError) {
-          console.error('Error inserting payment on invoice.payment_succeeded:', paymentSucceededError);
-          throw new Error('Failed to record payment.');
-        }
+        await supabaseAdmin.from("subscription_payments").insert({
+          company_id: company.id,
+          subscription_id: subRow.id,
+          amount: amountPaid,
+          currency: invoice.currency || "eur",
+          status: "succeeded",
+          stripe_invoice_id: invoice.id,
+          paid_at: nowISO(),
+        });
 
-        // Retrieve Stripe subscription to get current_period_end
+        // Buscar subscrição no Stripe para period_end
         let stripeSub: Stripe.Subscription | null = null;
-        if (stripeSubscriptionId) {
+        try {
           stripeSub = await stripe.subscriptions.retrieve(stripeSubscriptionId);
+        } catch (e) {
+          console.error("Failed to retrieve stripe subscription:", e);
         }
 
-        const newPeriodEndISO = stripeSub?.current_period_end
+        const periodEndISO = stripeSub?.current_period_end
           ? new Date(stripeSub.current_period_end * 1000).toISOString()
           : null;
 
-        // Update subscription status and keep plan_type
-        const { error: updateSubError } = await supabaseAdmin
-          .from('subscriptions')
+        // Atualizar subscription
+        const { error: updateErr } = await supabaseAdmin
+          .from("subscriptions")
           .update({
-            status: 'active',
-            plan_type: subForInvoice.plan_type,
-            current_period_end: newPeriodEndISO,
-            updated_at: new Date().toISOString(),
+            status: "active",
+            plan_type: subRow.plan_type,
+            current_period_end: periodEndISO,
+            updated_at: nowISO(),
           })
-          .eq('company_id', companyId);
+          .eq("stripe_subscription_id", stripeSubscriptionId);
 
-        if (updateSubError) {
-          console.error('Error updating subscription status and period end:', updateSubError);
-          throw new Error('Failed to update subscription.');
+        if (updateErr) {
+          console.error("Update subscription after payment_succeeded failed:", updateErr);
+          return json(500, { error: "Failed to update subscription after payment" });
         }
+
         break;
+      }
 
-      case 'invoice.payment_failed':
-        const invoiceFailed = event.data.object as Stripe.Invoice;
-        stripeCustomerId = invoiceFailed.customer as string;
+      /**
+       * ✅ Pagamento falhou:
+       * - registar failed payment
+       * - marcar status past_due (não suspended)
+       */
+      case "invoice.payment_failed": {
+        const invoice = event.data.object as Stripe.Invoice;
 
-        // Fetch company_id using stripe_customer_id
-        const { data: companyForFailedInvoice, error: companyForFailedInvoiceError } = await supabaseAdmin
-          .from('companies')
-          .select('id')
-          .eq('stripe_customer_id', stripeCustomerId)
-          .single();
+        const stripeCustomerId = invoice.customer as string;
+        const stripeSubscriptionId = invoice.subscription as string;
 
-        if (companyForFailedInvoiceError) {
-          console.error('Error fetching company_id for invoice.payment_failed:', companyForFailedInvoiceError);
-          throw new Error('Failed to find company for Stripe customer.');
-        }
-        companyId = companyForFailedInvoice.id;
-
-        // Fetch subscription row
-        const { data: subForFailedInvoice, error: subForFailedInvoiceError } = await supabaseAdmin
-          .from('subscriptions')
-          .select('id')
-          .eq('company_id', companyId)
-          .single();
-
-        if (subForFailedInvoiceError) {
-          console.error('Error fetching subscription_id for invoice.payment_failed:', subForFailedInvoiceError);
-          throw new Error('Failed to find subscription for company.');
+        if (!stripeCustomerId) {
+          return json(200, { received: true, warning: "missing customer id" });
         }
 
-        // Record failed payment
-        const { error: paymentFailedError } = await supabaseAdmin
-          .from('subscription_payments')
-          .insert({
-            company_id: companyId,
-            subscription_id: subForFailedInvoice.id,
-            amount: invoiceFailed.amount_due ? invoiceFailed.amount_due / 100 : 0,
-            currency: invoiceFailed.currency || 'eur',
-            status: 'failed',
-            stripe_invoice_id: invoiceFailed.id,
+        const { data: company, error: companyErr } = await supabaseAdmin
+          .from("companies")
+          .select("id")
+          .eq("stripe_customer_id", stripeCustomerId)
+          .single();
+
+        if (companyErr || !company?.id) {
+          console.error("Company not found for payment_failed:", companyErr);
+          return json(200, { received: true, warning: "company not mapped yet" });
+        }
+
+        // Buscar subscription row
+        let subRow: { id: string } | null = null;
+        if (stripeSubscriptionId) {
+          const { data, error } = await supabaseAdmin
+            .from("subscriptions")
+            .select("id")
+            .eq("stripe_subscription_id", stripeSubscriptionId)
+            .single();
+          if (!error && data) subRow = data as any;
+        }
+
+        // Registar falha (se tiver subscription)
+        const amountDue =
+          typeof invoice.amount_due === "number" ? invoice.amount_due / 100 : 0;
+
+        if (subRow?.id) {
+          await supabaseAdmin.from("subscription_payments").insert({
+            company_id: company.id,
+            subscription_id: subRow.id,
+            amount: amountDue,
+            currency: invoice.currency || "eur",
+            status: "failed",
+            stripe_invoice_id: invoice.id,
             paid_at: null,
           });
-
-        if (paymentFailedError) {
-          console.error('Error inserting payment on invoice.payment_failed:', paymentFailedError);
-          throw new Error('Failed to record failed payment.');
         }
 
-        // Update subscription status to suspended/past_due
-        const { error: updateSubStatusError } = await supabaseAdmin
-          .from('subscriptions')
-          .update({ status: 'suspended', updated_at: new Date().toISOString() })
-          .eq('company_id', companyId);
+        // Atualizar status para past_due (não suspended)
+        if (stripeSubscriptionId) {
+          const { error: updateErr } = await supabaseAdmin
+            .from("subscriptions")
+            .update({
+              status: "past_due",
+              updated_at: nowISO(),
+            })
+            .eq("stripe_subscription_id", stripeSubscriptionId);
 
-        if (updateSubStatusError) {
-          console.error('Error updating subscription status to suspended:', updateSubStatusError);
-          throw new Error('Failed to update subscription status.');
+          if (updateErr) {
+            console.error("Update subscription to past_due failed:", updateErr);
+            // não quebrar webhook
+          }
         }
 
-        // Update profile plan_type to expired
-        const { error: profileUpdateError2 } = await supabaseAdmin
-          .from('profiles')
-          .update({ plan_type: 'expired' })
-          .eq('company_id', companyId);
-
-        if (profileUpdateError2) {
-          console.error('Error updating profile plan_type on invoice.payment_failed:', profileUpdateError2);
-          throw new Error('Failed to update profile plan_type.');
-        }
         break;
+      }
 
-      default:
-        console.warn(`Unhandled event type: ${event.type}`);
+      default: {
+        console.warn(`Unhandled Stripe event type: ${event.type}`);
+      }
     }
 
-    return new Response(JSON.stringify({ received: true }), {
-      status: 200,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
-  } catch (_error) {
-    return new Response(JSON.stringify({ error: 'Internal error' }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    return json(200, { received: true });
+  } catch (err) {
+    console.error("Webhook internal error:", err);
+    return json(500, { error: "Internal error" });
   }
 });
