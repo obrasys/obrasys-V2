@@ -19,7 +19,7 @@ interface Profile {
   id: string;
   email: string;
   name?: string;
-  company_id?: string;
+  company_id?: string | null;
   role?: string;
 }
 
@@ -58,6 +58,10 @@ export const SessionContextProvider: React.FC<{
   const [access, setAccess] = useState<AccessData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  /* =========================
+     LOAD USER CONTEXT
+  ========================= */
+
   const loadUserContext = async (currentSession: Session | null) => {
     setIsLoading(true);
 
@@ -85,21 +89,35 @@ export const SessionContextProvider: React.FC<{
         throw new Error("Perfil não encontrado ou duplicado");
       }
 
+      /* ===== ENSURE COMPANY (ONBOARDING AUTOMÁTICO) ===== */
+      if (!profileData.company_id) {
+        await supabase.rpc("ensure_user_company");
+      }
+
+      /* ===== RELOAD PROFILE (já com company_id) ===== */
+      const { data: updatedProfile, error: reloadError } =
+        await supabase
+          .from("profiles")
+          .select("*")
+          .eq("id", userId)
+          .single();
+
+      if (reloadError || !updatedProfile) {
+        throw new Error("Erro ao atualizar perfil com empresa");
+      }
+
       /* ===== ACCESS (RPC) ===== */
       const accessData = await getUserAccess();
-
-      // Debug temporário (remove depois)
-      console.log("✅ get_user_access OK:", accessData);
 
       /* ===== SET STATE ===== */
       setSession(currentSession);
       setUser(currentSession.user);
-      setProfile(profileData);
+      setProfile(updatedProfile);
       setAccess(accessData);
     } catch (error) {
       console.error("Erro ao carregar sessão:", error);
       toast.error(
-        "Erro ao carregar o seu acesso. Faça login novamente."
+        "Erro ao carregar o seu ambiente. Faça login novamente."
       );
       await supabase.auth.signOut();
       window.location.href = "/login";
@@ -107,6 +125,10 @@ export const SessionContextProvider: React.FC<{
       setIsLoading(false);
     }
   };
+
+  /* =========================
+     AUTH LISTENER
+  ========================= */
 
   useEffect(() => {
     const init = async () => {
@@ -131,6 +153,10 @@ export const SessionContextProvider: React.FC<{
       subscription.unsubscribe();
     };
   }, []);
+
+  /* =========================
+     PROVIDER RENDER
+  ========================= */
 
   return (
     <SessionContext.Provider
@@ -162,7 +188,6 @@ export const useSessionContext = () => {
 };
 
 /**
- * ✅ ALIAS para compatibilidade com o código existente
- * (MobileSidebar.tsx e outros ficheiros que importam useSession)
+ * ✅ Alias para compatibilidade
  */
 export const useSession = useSessionContext;
