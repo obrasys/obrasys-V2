@@ -37,7 +37,7 @@ const MainLayout = () => {
   const {
     data: subscriptionStatus,
     loading: isLoadingSubscription,
-  } = useSubscriptionStatus(companyId ?? undefined);
+  } = useSubscriptionStatus(companyId || null); // ✅ CORREÇÃO
 
   const isSubscriptionBlocked =
     subscriptionStatus?.computed_status !== "active";
