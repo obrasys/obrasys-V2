@@ -10,8 +10,15 @@ import {
 } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import PlanCard from "@/components/plans/PlanCard";
+import {
+  Tabs,
+  TabsList,
+  TabsTrigger,
+  TabsContent,
+} from "@/components/ui/tabs";
+import PlanCard, {
+  PlanId,
+} from "@/components/plans/PlanCard";
 import { useSession } from "@/components/SessionContextProvider";
 import { toast } from "sonner";
 import { Loader2, CalendarDays } from "lucide-react";
@@ -19,14 +26,21 @@ import { Badge } from "@/components/ui/badge";
 import { useSubscriptionStatus } from "@/hooks/useSubscriptionStatus";
 import { supabase } from "@/integrations/supabase/client";
 
-type PlanKey = "free" | "starter" | "pro" | "enterprise";
+/* =========================
+   TYPES
+========================= */
 
-const planMap: Record<PlanKey, string> = {
-  free: "Trial",
-  starter: "Iniciante",
-  pro: "Profissional",
-  enterprise: "Empresa",
+type PlanType = PlanId; // "iniciante" | "profissional" | "empresa"
+
+const planLabelMap: Record<PlanType, string> = {
+  iniciante: "Iniciante",
+  profissional: "Profissional",
+  empresa: "Empresa",
 };
+
+/* =========================
+   COMPONENT
+========================= */
 
 const PlansPage: React.FC = () => {
   const navigate = useNavigate();
@@ -35,7 +49,6 @@ const PlansPage: React.FC = () => {
   const {
     subscription,
     plan,
-    isActive,
     loading: loadingSub,
   } = useSubscriptionStatus(profile?.company_id);
 
@@ -47,19 +60,14 @@ const PlansPage: React.FC = () => {
       <div className="flex justify-center items-center h-screen">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
         <p className="ml-2 text-muted-foreground">
-          A carregar planos...
+          A carregar planos…
         </p>
       </div>
     );
   }
 
-  async function handleSelectPlan(planKey: PlanKey) {
-    if (!profile?.company_id) {
-      toast.error("Empresa não encontrada.");
-      return;
-    }
-
-    if (planKey === "enterprise") {
+  async function handleSelectPlan(planType: PlanType) {
+    if (planType === "empresa") {
       toast.info(
         "Plano Empresa disponível apenas via contacto comercial."
       );
@@ -69,33 +77,42 @@ const PlansPage: React.FC = () => {
     setIsProcessingCheckout(true);
 
     try {
-      const { data, error } = await supabase.functions.invoke(
-        "create-stripe-checkout",
-        {
-          body: {
-            company_id: profile.company_id,
-            plan_key: planKey,
-          },
-        }
-      );
+      const { data, error } =
+        await supabase.functions.invoke(
+          "create-checkout-session",
+          {
+            body: {
+              plan_type: planType,
+            },
+          }
+        );
 
-      if (error) throw error;
+      if (error || !data?.url) {
+        throw error;
+      }
 
       window.location.href = data.url;
-    } catch (err: any) {
+    } catch (err) {
       console.error(err);
-      toast.error("Erro ao iniciar pagamento.");
+      toast.error("Erro ao iniciar checkout.");
     } finally {
       setIsProcessingCheckout(false);
     }
   }
 
-  const plans = [
+  const plans: {
+    planId: PlanType;
+    planName: string;
+    description: string;
+    priceLabel: string;
+    features: string[];
+    isPopular?: boolean;
+  }[] = [
     {
-      planKey: "starter" as PlanKey,
+      planId: "iniciante",
       planName: "Iniciante",
       description: "Perfeito para pequenos projetos",
-      price: "49€ / mês + IVA",
+      priceLabel: "49€ / mês + IVA",
       features: [
         "Até 5 obras ativas",
         "2 utilizadores",
@@ -105,10 +122,10 @@ const PlansPage: React.FC = () => {
       ],
     },
     {
-      planKey: "pro" as PlanKey,
+      planId: "profissional",
       planName: "Profissional",
       description: "Para equipas em crescimento",
-      price: "99€ / mês + IVA",
+      priceLabel: "99€ / mês + IVA",
       features: [
         "Obras ilimitadas",
         "10 utilizadores",
@@ -119,10 +136,10 @@ const PlansPage: React.FC = () => {
       isPopular: true,
     },
     {
-      planKey: "enterprise" as PlanKey,
+      planId: "empresa",
       planName: "Empresa",
       description: "Para grandes organizações",
-      price: "Personalizado",
+      priceLabel: "Personalizado",
       features: [
         "Tudo do Profissional",
         "Utilizadores ilimitados",
@@ -152,14 +169,19 @@ const PlansPage: React.FC = () => {
         <TabsContent value="current" className="mt-4">
           <Card>
             <CardHeader>
-              <CardTitle>Estado da Assinatura</CardTitle>
+              <CardTitle>
+                Estado da Assinatura
+              </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <Badge variant="outline">
-                {planMap[plan]}
-              </Badge>
+              {plan && (
+                <Badge variant="outline">
+                  {planLabelMap[plan]}
+                </Badge>
+              )}
 
-              {subscription?.status === "trialing" && (
+              {subscription?.status ===
+                "trialing" && (
                 <div className="flex gap-2 items-center text-sm text-muted-foreground">
                   <CalendarDays className="h-4 w-4" />
                   Trial ativo
@@ -168,7 +190,11 @@ const PlansPage: React.FC = () => {
 
               <Separator />
 
-              <Button onClick={() => navigate("#available")}>
+              <Button
+                onClick={() =>
+                  navigate("#available")
+                }
+              >
                 Alterar Plano
               </Button>
             </CardContent>
@@ -180,23 +206,24 @@ const PlansPage: React.FC = () => {
           <div className="grid md:grid-cols-3 gap-6">
             {plans.map((p) => (
               <PlanCard
-                key={p.planKey}
+                key={p.planId}
+                planId={p.planId}
                 planName={p.planName}
                 description={p.description}
-                price={p.price}
+                priceLabel={p.priceLabel}
                 features={p.features}
                 isPopular={p.isPopular}
                 disabled={
-                  plan === p.planKey || isProcessingCheckout
+                  plan === p.planId ||
+                  isProcessingCheckout
                 }
+                isLoading={isProcessingCheckout}
                 buttonText={
-                  plan === p.planKey
+                  plan === p.planId
                     ? "Plano Atual"
                     : "Selecionar"
                 }
-                onSelectPlan={() =>
-                  handleSelectPlan(p.planKey)
-                }
+                onSelectPlan={handleSelectPlan}
               />
             ))}
           </div>
