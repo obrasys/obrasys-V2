@@ -450,7 +450,6 @@ const ProfileCompanyTab: React.FC = () => {
           )}
           {hasCompany ? "Guardar alterações" : "Criar empresa"}
         </Button>
-      </form>
     </Form>
   );
 };
