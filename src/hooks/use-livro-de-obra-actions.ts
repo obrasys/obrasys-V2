@@ -263,4 +263,126 @@ export function useLivroDeObraActions({
               <td>${escapeHTML(eventTypeText)}</td>
               <td>${escapeHTML(rdo.description || "")}</td>
               <td>${escapeHTML(userName)}</td>
-              <td style="text-align:right;">${escapeHT
+              <td style="text-align:right;">${escapeHTML(
+                formatCurrency(costImpact)
+              )}</td>
+            </tr>
+          `;
+        })
+        .join("");
+
+      const safeLogo = safeImageUrl(company?.logo_url);
+
+      return `
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8" />
+<title>Livro de Obra Digital</title>
+<style>
+body { font-family: Arial, sans-serif; margin: 40px; }
+table { width: 100%; border-collapse: collapse; }
+th, td { border: 1px solid #ccc; padding: 8px; }
+th { background: #f2f2f2; }
+</style>
+</head>
+<body>
+<h1>LIVRO DE OBRA DIGITAL</h1>
+
+${safeLogo ? `<img src="${escapeHTML(safeLogo)}" style="max-height:60px;" />` : ""}
+
+<p><strong>Empresa:</strong> ${escapeHTML(company?.name || "N/A")}</p>
+<p><strong>Obra:</strong> ${escapeHTML(project?.nome || "N/A")}</p>
+<p><strong>Período:</strong> ${escapeHTML(
+        formatDate(livro.periodo_inicio)
+      )} a ${escapeHTML(formatDate(livro.periodo_fim))}</p>
+
+<h2>Registos Diários</h2>
+
+${
+  rdos.length > 0
+    ? `<table>
+<thead>
+<tr>
+<th>Data</th>
+<th>Evento</th>
+<th>Descrição</th>
+<th>Responsável</th>
+<th>Impacto (€)</th>
+</tr>
+</thead>
+<tbody>
+${rdoRows}
+</tbody>
+</table>`
+    : `<p>Nenhum RDO disponível.</p>`
+}
+
+<p><strong>Total de registos:</strong> ${escapeHTML(String(totalDias))}</p>
+<p><strong>Custo total:</strong> ${escapeHTML(
+        formatCurrency(custoTotal)
+      )}</p>
+
+<p style="margin-top:40px; font-size:12px; text-align:center;">
+Documento gerado automaticamente pelo Obra Sys.
+</p>
+</body>
+</html>
+      `;
+    },
+    []
+  );
+
+  const handleGeneratePdf = useCallback(() => {
+    if (!selectedLivroObra) {
+      toast.error("Selecione um Livro de Obra para gerar o PDF.");
+      return;
+    }
+
+    const project = projects.find(
+      (p) => p.id === selectedLivroObra.project_id
+    );
+
+    const content = generatePdfContent(
+      selectedLivroObra,
+      project,
+      rdoEntries,
+      projectUsers,
+      companyData
+    );
+
+    const printWindow = window.open("", "_blank", "noopener,noreferrer");
+
+    if (!printWindow) {
+      toast.error(
+        "Não foi possível abrir a janela de impressão. Verifique o bloqueador de pop-ups."
+      );
+      return;
+    }
+
+    try {
+      // defesa extra
+      // @ts-ignore
+      printWindow.opener = null;
+    } catch {
+      /* ignore */
+    }
+
+    printWindow.document.write(content);
+    printWindow.document.close();
+    printWindow.focus();
+  }, [
+    selectedLivroObra,
+    projects,
+    rdoEntries,
+    projectUsers,
+    companyData,
+    generatePdfContent,
+  ]);
+
+  return {
+    handleCreateLivroObra,
+    handleSaveManualRdoEntry,
+    handleGeneratePdf,
+  };
+}
