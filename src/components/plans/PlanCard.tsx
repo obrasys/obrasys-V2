@@ -1,31 +1,43 @@
 "use client";
 
 import React from "react";
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+export type PlanId = "iniciante" | "profissional" | "empresa";
+
 interface PlanCardProps {
-  planName: string;
+  planId: PlanId;              // 🔑 identificador lógico
+  planName: string;            // 🧾 label visual
   description: string;
-  price: string;
+  priceLabel: string;          // 🧾 apenas visual
   features: string[];
   isPopular?: boolean;
   buttonText: string;
-  onSelectPlan: (planName: string) => void;
+  onSelectPlan: (planId: PlanId) => void;
   disabled?: boolean;
+  isLoading?: boolean;
 }
 
 const PlanCard: React.FC<PlanCardProps> = ({
+  planId,
   planName,
   description,
-  price,
+  priceLabel,
   features,
   isPopular = false,
   buttonText,
   onSelectPlan,
   disabled = false,
+  isLoading = false,
 }) => {
   return (
     <Card
@@ -39,13 +51,19 @@ const PlanCard: React.FC<PlanCardProps> = ({
           Mais Popular
         </div>
       )}
+
       <CardHeader className="text-center pb-4">
-        <CardTitle className="text-2xl font-bold">{planName}</CardTitle>
-        <p className="text-muted-foreground text-sm">{description}</p>
+        <CardTitle className="text-2xl font-bold">
+          {planName}
+        </CardTitle>
+        <p className="text-muted-foreground text-sm">
+          {description}
+        </p>
         <p className="text-4xl font-extrabold mt-4">
-          {price}
+          {priceLabel}
         </p>
       </CardHeader>
+
       <CardContent className="flex-grow">
         <ul className="space-y-2 text-sm">
           {features.map((feature, index) => (
@@ -56,14 +74,15 @@ const PlanCard: React.FC<PlanCardProps> = ({
           ))}
         </ul>
       </CardContent>
+
       <CardFooter className="pt-6">
         <Button
           className="w-full"
-          onClick={() => onSelectPlan(planName)}
-          disabled={disabled}
+          onClick={() => onSelectPlan(planId)}
+          disabled={disabled || isLoading}
           variant={isPopular ? "default" : "outline"}
         >
-          {buttonText}
+          {isLoading ? "A processar…" : buttonText}
         </Button>
       </CardFooter>
     </Card>
