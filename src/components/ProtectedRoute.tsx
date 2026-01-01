@@ -9,10 +9,10 @@ interface ProtectedRouteProps {
 }
 
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
-  const { session, isLoading } = useSession();
+  const { session, profile, isLoading } = useSession();
   const location = useLocation();
 
-  // ⏳ Enquanto a sessão está a ser resolvida
+  // ⏳ Enquanto sessão + profile estão a ser resolvidos
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -34,7 +34,18 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
     );
   }
 
-  // ✅ Autenticado (inclui trial)
+  // ⛔ Sessão existe mas profile não (estado inválido)
+  if (!profile) {
+    return (
+      <Navigate
+        to="/login"
+        replace
+        state={{ from: location }}
+      />
+    );
+  }
+
+  // ✅ Autenticado + profile válido (trial incluído)
   return <>{children}</>;
 };
 
