@@ -1,7 +1,12 @@
 "use client";
 
 import React from "react";
-import { Outlet, useNavigate, Navigate } from "react-router-dom";
+import {
+  Outlet,
+  useNavigate,
+  Navigate,
+  useLocation,
+} from "react-router-dom";
 import { Bell, Settings, Menu, LogOut, User, Building2 } from "lucide-react";
 
 import Sidebar from "@/components/Sidebar";
@@ -26,8 +31,24 @@ import { supabase } from "@/integrations/supabase/client";
 import { useNotification } from "@/contexts/NotificationContext";
 import { toast } from "sonner";
 
+const PAID_ROUTES = [
+  "/dashboard",
+  "/projects",
+  "/budgeting",
+  "/schedule",
+  "/collaborators",
+  "/approvals",
+  "/finance-management",
+  "/reports",
+  "/compliance",
+  "/price-database",
+  "/work-items",
+  "/automation-intelligence",
+];
+
 const MainLayout = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const isMobile = useIsMobile();
 
   const { user, profile, isLoading } = useSession();
@@ -39,7 +60,7 @@ const MainLayout = () => {
     loading: isLoadingSubscription,
   } = useSubscriptionStatus(companyId || null);
 
-  // ✅ REGRA FINAL: trial NÃO bloqueia
+  // ✅ REGRA FINAL: trial NÃO bloqueia, apenas expirado
   const isSubscriptionBlocked =
     subscriptionStatus?.computed_status === "expired";
 
@@ -53,9 +74,27 @@ const MainLayout = () => {
     setIsSidebarCollapsed(isMobile);
   }, [isMobile]);
 
-  /* ------------------------------------------------------------------ */
-  /* 🔐 PROTEÇÃO DE RENDER                                              */
-  /* ------------------------------------------------------------------ */
+  /* -------------------------------------------------- */
+  /* 🚨 REDIRECIONAMENTO AUTOMÁTICO SE TRIAL EXPIRAR     */
+  /* -------------------------------------------------- */
+  React.useEffect(() => {
+    if (
+      subscriptionStatus?.computed_status === "expired" &&
+      PAID_ROUTES.some((route) =>
+        location.pathname.startsWith(route)
+      )
+    ) {
+      navigate("/plans", { replace: true });
+    }
+  }, [
+    subscriptionStatus?.computed_status,
+    location.pathname,
+    navigate,
+  ]);
+
+  /* -------------------------------------------------- */
+  /* 🔐 PROTEÇÃO DE RENDER                              */
+  /* -------------------------------------------------- */
 
   if (isLoading || isLoadingSubscription) {
     return (
@@ -69,7 +108,7 @@ const MainLayout = () => {
     return <Navigate to="/login" replace />;
   }
 
-  /* ------------------------------------------------------------------ */
+  /* -------------------------------------------------- */
 
   const toggleSidebar = () => {
     setIsSidebarCollapsed((prev) => !prev);
@@ -196,9 +235,9 @@ const MainLayout = () => {
   );
 };
 
-/* ------------------------------------------------------------------ */
-/* 🔔 Notification Bell                                                */
-/* ------------------------------------------------------------------ */
+/* -------------------------------------------------- */
+/* 🔔 Notification Bell                                */
+/* -------------------------------------------------- */
 
 const NotificationBell: React.FC = () => {
   const { hasNotifications } = useNotification();
