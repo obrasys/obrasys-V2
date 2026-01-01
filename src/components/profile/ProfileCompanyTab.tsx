@@ -364,6 +364,38 @@ const ProfileCompanyTab: React.FC = () => {
   const hasCompany = !!companyId;
 
   return (
+    return (
+  <>
+    {/* 🔴 BOTÃO TEMPORÁRIO DE DEBUG — REMOVER DEPOIS */}
+    <Button
+      type="button"
+      variant="outline"
+      onClick={async () => {
+        const { data, error } = await supabase.rpc(
+          "create_company_and_assign_user",
+          {
+            p_name: "Empresa Teste Frontend",
+          }
+        );
+
+        console.log("RPC RESULT:", data, error);
+      }}
+      className="mb-4"
+    >
+      TESTAR RPC (DEBUG)
+    </Button>
+
+    <Form {...form}>
+      <form
+        onSubmit={form.handleSubmit(onSubmit)}
+        className="space-y-6"
+      >
+        {/* TODO: UI original */}
+      </form>
+    </Form>
+  </>
+);
+
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
         {/* ✅ Estado sem empresa: onboarding explícito */}
