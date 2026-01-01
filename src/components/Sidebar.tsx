@@ -35,7 +35,7 @@ interface SidebarProps {
   toggleSidebar: () => void;
   profile: Profile | null;
   subscriptionStatus: CompanySubscriptionStatus | null;
-  isSubscriptionBlocked: boolean;
+  isSubscriptionBlocked: boolean; // mantém, mas não usamos
 }
 
 const Sidebar: React.FC<SidebarProps> = ({
@@ -43,12 +43,15 @@ const Sidebar: React.FC<SidebarProps> = ({
   toggleSidebar,
   profile,
   subscriptionStatus,
-  isSubscriptionBlocked,
 }) => {
   const location = useLocation();
   const navigate = useNavigate();
 
   const plan = subscriptionStatus?.subscription_plan ?? "trialing";
+  const computedStatus = subscriptionStatus?.computed_status ?? "trialing";
+
+  // ✅ REGRA FINAL: trial NÃO bloqueia
+  const isReallyBlocked = computedStatus === "expired";
 
   const navItems = [
     { name: "Painel de Controlo", icon: LayoutDashboard, href: "/dashboard", paid: false },
@@ -125,7 +128,7 @@ const Sidebar: React.FC<SidebarProps> = ({
       {/* Navegação */}
       <nav className="flex-1 p-2 space-y-1 overflow-y-auto">
         {navItems.map((item) => {
-          const blocked = item.paid && isSubscriptionBlocked;
+          const blocked = item.paid && isReallyBlocked;
 
           return (
             <NavButton
