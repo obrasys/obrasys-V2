@@ -438,7 +438,6 @@ const ProfileCompanyTab: React.FC = () => {
             </FormItem>
           )}
         />
-
         {/* ... mantém os restantes campos/Select/Avatar etc do teu UI original ... */}
 
         <Button
