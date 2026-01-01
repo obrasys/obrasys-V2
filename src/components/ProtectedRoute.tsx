@@ -12,7 +12,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
   const { session, profile, isLoading } = useSession();
   const location = useLocation();
 
-  // ⏳ Enquanto sessão + profile estão a ser resolvidos
+  // ⏳ Enquanto auth OU profile estão a carregar
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -34,18 +34,16 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
     );
   }
 
-  // ⛔ Sessão existe mas profile não (estado inválido)
+  // ⚠️ Autenticado mas sem profile
+  // → NÃO é erro, é onboarding ou atraso de carregamento
+  // → Deixa passar (ou redireciona para onboarding específico se quiseres)
   if (!profile) {
-    return (
-      <Navigate
-        to="/login"
-        replace
-        state={{ from: location }}
-      />
-    );
+    return <>{children}</>;
+    // alternativa futura:
+    // return <Navigate to="/profile" replace />;
   }
 
-  // ✅ Autenticado + profile válido (trial incluído)
+  // ✅ Autenticado + profile ok
   return <>{children}</>;
 };
 
