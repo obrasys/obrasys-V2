@@ -6,7 +6,6 @@ import {
   parseISO,
   startOfMonth,
   endOfMonth,
-  subMonths,
 } from "date-fns";
 import { pt } from "date-fns/locale";
 import { toast } from "sonner";
@@ -15,42 +14,19 @@ import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/components/SessionContextProvider";
 import { Project } from "@/schemas/project-schema";
 import { BudgetDB, BudgetItemDB } from "@/schemas/budget-schema";
-import { AiAlert } from "@/schemas/ai-alert-schema";
 
 // PDF templates
 import { generateBasePdfTemplate } from "@/components/reports/pdf-templates/base-template";
-import { generateMonthlyFinancialReportContent } from "@/components/reports/pdf-templates/monthly-financial-report-template";
-import { generateCashFlowReportContent } from "@/components/reports/pdf-templates/cash-flow-report-template";
-import { generateProjectFinancialReportContent } from "@/components/reports/pdf-templates/project-financial-report-template";
 import { generateInvoicesReportContent } from "@/components/reports/pdf-templates/invoices-report-template";
-import { generateExpensesReportContent } from "@/components/reports/pdf-templates/expenses-report-template";
-import { generatePayrollReportContent } from "@/components/reports/pdf-templates/payroll-report-template";
-import { generateProjectProgressReportContent } from "@/components/reports/pdf-templates/project-progress-report-template";
-import { generateProjectBudgetReportContent } from "@/components/reports/pdf-templates/project-budget-report-template";
-import { generateArticlesCatalogReportContent } from "@/components/reports/pdf-templates/articles-catalog-report-template";
-import { generateAiAlertsReportContent } from "@/components/reports/pdf-templates/ai-alerts-report-template";
-import { generateComplianceChecklistReportContent } from "@/components/reports/pdf-templates/compliance-checklist-report-template";
-import { generateLivroDeObraReportContent } from "@/components/reports/pdf-templates/livro-de-obra-report-template";
+import { generateProjectFinancialReportContent } from "@/components/reports/pdf-templates/project-financial-report-template";
 
 /* =========================
    TYPES
 ========================= */
 
 export enum ReportType {
-  FINANCIAL_MONTHLY = "financial_monthly",
-  CASHFLOW = "cashflow",
   INVOICES = "invoices",
-  EXPENSES = "expenses",
-  PAYROLL = "payroll",
-
   PROJECT_FINANCIAL = "project_financial",
-  PROJECT_PROGRESS = "project_progress",
-  PROJECT_BUDGET = "project_budget",
-
-  ARTICLES_CATALOG = "articles_catalog",
-  AI_ALERTS = "ai_alerts",
-  COMPLIANCE_CHECKLIST = "compliance_checklist",
-  LIVRO_OBRA = "livro_obra",
 }
 
 interface UseReportGenerationResult {
@@ -77,7 +53,7 @@ export function useReportGeneration(): UseReportGenerationResult {
   const [isLoadingInitialData, setIsLoadingInitialData] = useState(true);
   const [isLoadingReport, setIsLoadingReport] = useState(false);
 
-  /* ---------- Company ---------- */
+  /* ---------- COMPANY ---------- */
 
   const fetchUserCompanyId = useCallback(async () => {
     if (!user) return;
@@ -97,7 +73,7 @@ export function useReportGeneration(): UseReportGenerationResult {
     setUserCompanyId(data.company_id);
   }, [user]);
 
-  /* ---------- Projects ---------- */
+  /* ---------- PROJECTS ---------- */
 
   const fetchProjects = useCallback(async () => {
     if (!userCompanyId) return;
@@ -121,14 +97,20 @@ export function useReportGeneration(): UseReportGenerationResult {
     );
   }, [userCompanyId]);
 
+  /* ---------- INIT ---------- */
+
   useEffect(() => {
-    if (!isSessionLoading) fetchUserCompanyId();
+    if (!isSessionLoading) {
+      fetchUserCompanyId();
+    }
   }, [isSessionLoading, fetchUserCompanyId]);
 
   useEffect(() => {
     if (userCompanyId) {
       setIsLoadingInitialData(true);
-      fetchProjects().finally(() => setIsLoadingInitialData(false));
+      fetchProjects().finally(() =>
+        setIsLoadingInitialData(false)
+      );
     }
   }, [userCompanyId, fetchProjects]);
 
@@ -137,7 +119,11 @@ export function useReportGeneration(): UseReportGenerationResult {
   ========================= */
 
   const handleGenerateReportClick = useCallback(
-    async (reportType: ReportType, period: { month: string }, projectId: string | null) => {
+    async (
+      reportType: ReportType,
+      period: { month: string },
+      projectId: string | null
+    ) => {
       if (!userCompanyId) {
         toast.error("Empresa não identificada.");
         return;
@@ -146,6 +132,7 @@ export function useReportGeneration(): UseReportGenerationResult {
       setIsLoadingReport(true);
 
       try {
+        /* ---------- COMPANY ---------- */
         const { data: company } = await supabase
           .from("companies")
           .select("name")
@@ -153,35 +140,77 @@ export function useReportGeneration(): UseReportGenerationResult {
           .single();
 
         const companyName = company?.name ?? "Obra Sys";
-        const now = format(new Date(), "dd/MM/yyyy HH:mm", { locale: pt });
+        const now = format(
+          new Date(),
+          "dd/MM/yyyy HH:mm",
+          { locale: pt }
+        );
 
-        const start = startOfMonth(parseISO(period.month));
-        const end = endOfMonth(parseISO(period.month));
+        const start = startOfMonth(
+          parseISO(period.month)
+        );
+        const end = endOfMonth(
+          parseISO(period.month)
+        );
 
-        let content = "";
+        let contentHtml = "";
+        let title = "Relatório";
 
+        /* ---------- SWITCH ---------- */
         switch (reportType) {
+          /* ===== INVOICES ===== */
           case ReportType.INVOICES: {
-            const { data } = await supabase
+            const { data, error } = await supabase
               .from("invoices")
               .select("*, clients(nome)")
               .eq("company_id", userCompanyId)
-              .gte("issue_date", format(start, "yyyy-MM-dd"))
-              .lte("issue_date", format(end, "yyyy-MM-dd"));
+              .gte(
+                "issue_date",
+                format(start, "yyyy-MM-dd")
+              )
+              .lte(
+                "issue_date",
+                format(end, "yyyy-MM-dd")
+              )
+              .order("issue_date", {
+                ascending: false,
+              });
 
-            content = generateInvoicesReportContent(
-              { invoices: data ?? [], period: { from: start.toISOString(), to: end.toISOString() } },
-              companyName,
-              now
-            );
+            if (error) throw error;
+
+            contentHtml =
+              generateInvoicesReportContent(
+                {
+                  invoices: data ?? [],
+                  period: {
+                    from: start.toISOString(),
+                    to: end.toISOString(),
+                  },
+                },
+                companyName,
+                now
+              );
+
+            title = "Relatório de Faturas";
             break;
           }
 
+          /* ===== PROJECT FINANCIAL ===== */
           case ReportType.PROJECT_FINANCIAL: {
-            if (!projectId) throw new Error("Projeto obrigatório.");
+            if (!projectId) {
+              throw new Error(
+                "Projeto obrigatório para este relatório."
+              );
+            }
 
-            const project = projects.find(p => p.id === projectId);
-            if (!project) throw new Error("Projeto não encontrado.");
+            const project = projects.find(
+              (p) => p.id === projectId
+            );
+            if (!project) {
+              throw new Error(
+                "Projeto não encontrado."
+              );
+            }
 
             let budget: BudgetDB | null = null;
             let items: BudgetItemDB[] = [];
@@ -189,62 +218,92 @@ export function useReportGeneration(): UseReportGenerationResult {
             if (project.budget_id) {
               const { data } = await supabase
                 .from("budgets")
-                .select("*, budget_chapters(budget_items(*))")
+                .select(
+                  "*, budget_chapters(budget_items(*))"
+                )
                 .eq("id", project.budget_id)
                 .single();
 
               if (data) {
                 budget = data;
-                items = data.budget_chapters.flatMap((c: any) => c.budget_items);
+                items =
+                  data.budget_chapters.flatMap(
+                    (c: any) => c.budget_items
+                  );
               }
             }
 
-            const { data: invoices } = await supabase
-              .from("invoices")
-              .select("*, clients(nome)")
-              .eq("project_id", projectId);
+            const { data: invoices } =
+              await supabase
+                .from("invoices")
+                .select("*, clients(nome)")
+                .eq("project_id", projectId);
 
-            const { data: alerts } = await supabase
-              .from("ai_alerts")
-              .select("*")
-              .eq("project_id", projectId)
-              .in("severity", ["critical", "warning"])
-              .eq("resolved", false);
+            const { data: alerts } =
+              await supabase
+                .from("ai_alerts")
+                .select("*")
+                .eq("project_id", projectId)
+                .in("severity", [
+                  "critical",
+                  "warning",
+                ])
+                .eq("resolved", false);
 
-            content = generateProjectFinancialReportContent(
-              {
-                project,
-                budget,
-                budgetItems: items,
-                projectInvoices: invoices ?? [],
-                projectAlerts: alerts ?? [],
-              },
-              companyName,
-              now
-            );
+            contentHtml =
+              generateProjectFinancialReportContent(
+                {
+                  project,
+                  budget,
+                  budgetItems: items,
+                  projectInvoices: invoices ?? [],
+                  projectAlerts: alerts ?? [],
+                },
+                companyName,
+                now
+              );
+
+            title =
+              "Relatório Financeiro por Projeto / Obra";
             break;
           }
 
-          // Outros casos seguem o mesmo padrão
           default:
-            toast.info("Relatório ainda não implementado.");
+            toast.info(
+              "Relatório ainda não implementado."
+            );
             return;
         }
 
-        const html = generateBasePdfTemplate({
-          title: "Relatório",
-          companyName,
-          content,
-          currentDate: now,
-          includeWebControls: true,
-        });
+        /* ---------- BASE TEMPLATE ---------- */
+        const finalHtml = generateBasePdfTemplate(
+          {
+            title,
+            companyName,
+            content: contentHtml,
+            currentDate: now,
+            includeWebControls: true, // preview
+          }
+        );
 
+        /* ---------- PREVIEW ---------- */
         const win = window.open("", "_blank");
-        win?.document.write(html);
-        win?.document.close();
+        if (!win) {
+          toast.error(
+            "Popup bloqueado. Autorize popups."
+          );
+          return;
+        }
+
+        win.document.write(finalHtml);
+        win.document.close();
+        win.focus();
       } catch (err: any) {
         console.error(err);
-        toast.error(err.message || "Erro ao gerar relatório.");
+        toast.error(
+          err.message ||
+            "Erro ao gerar relatório."
+        );
       } finally {
         setIsLoadingReport(false);
       }
