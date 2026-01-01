@@ -1,24 +1,37 @@
 "use client";
 
 import React from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Loader2 } from "lucide-react";
+import { Loader2, AlertTriangle } from "lucide-react";
 import { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
-import NavButton from "@/components/NavButton"; // Assuming NavButton is used for navigation reports
+import NavButton from "@/components/NavButton";
 
 interface ReportCardProps {
   title: string;
   description: string;
   icon: LucideIcon;
   iconColorClass?: string;
+
   buttonText: string;
-  onClick?: () => void; // For generating PDF reports
-  to?: string; // For navigating to other pages (e.g., Livro de Obra)
+
+  /** Ação direta (ex: gerar PDF) */
+  onClick?: () => void;
+
+  /** Navegação (ex: ir para Livro de Obra) */
+  to?: string;
+
   disabled?: boolean;
   isLoading?: boolean;
-  infoText?: string; // Optional text for additional info/warnings
+
+  /** Texto informativo (avisos, pré-requisitos, etc.) */
+  infoText?: string;
 }
 
 const ReportCard: React.FC<ReportCardProps> = ({
@@ -33,33 +46,64 @@ const ReportCard: React.FC<ReportCardProps> = ({
   isLoading = false,
   infoText,
 }) => {
-  const ButtonComponent = to ? NavButton : Button;
+  // Proteção contra uso incorreto
+  if (
+    process.env.NODE_ENV !== "production" &&
+    ((onClick && to) || (!onClick && !to))
+  ) {
+    console.warn(
+      `[ReportCard] Uso inválido: informe apenas 'onClick' OU 'to'.`,
+      { title }
+    );
+  }
 
   return (
-    <Card className="hover:shadow-xl transition-shadow duration-300 ease-in-out bg-card text-card-foreground border border-border">
-      <CardHeader className="flex flex-row items-center space-x-4 pb-2">
+    <Card className="bg-card border border-border transition-shadow hover:shadow-lg">
+      <CardHeader className="flex flex-row items-center gap-4 pb-2">
         <Icon className={cn("h-8 w-8", iconColorClass)} />
-        <CardTitle className="text-xl font-semibold">{title}</CardTitle>
+        <CardTitle className="text-xl font-semibold">
+          {title}
+        </CardTitle>
       </CardHeader>
+
       <CardContent>
-        <p className="text-sm text-muted-foreground mt-2">{description}</p>
+        <p className="text-sm text-muted-foreground">
+          {description}
+        </p>
+
         {infoText && (
-          <p className="text-xs text-yellow-600 dark:text-yellow-400 mt-2">{infoText}</p>
+          <div className="mt-3 flex items-start gap-2 text-xs text-yellow-600 dark:text-yellow-400">
+            <AlertTriangle className="h-4 w-4 mt-0.5" />
+            <span>{infoText}</span>
+          </div>
         )}
-        <ButtonComponent
-          className="mt-6 w-full"
-          onClick={onClick}
-          to={to || "#"} // Provide a default empty string for 'to' if not present
-          disabled={disabled || isLoading}
-        >
-          {isLoading ? (
-            <>
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" /> A Gerar...
-            </>
+
+        <div className="mt-6">
+          {to ? (
+            <NavButton
+              to={to}
+              className="w-full"
+              disabled={disabled || isLoading}
+            >
+              {buttonText}
+            </NavButton>
           ) : (
-            buttonText
+            <Button
+              className="w-full"
+              onClick={onClick}
+              disabled={disabled || isLoading}
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  A gerar…
+                </>
+              ) : (
+                buttonText
+              )}
+            </Button>
           )}
-        </ButtonComponent>
+        </div>
       </CardContent>
     </Card>
   );
