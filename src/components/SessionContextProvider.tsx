@@ -5,6 +5,7 @@ import React, {
   useContext,
   useEffect,
   useState,
+  useCallback,
 } from "react";
 import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
@@ -30,72 +31,63 @@ export const SessionContextProvider: React.FC<{
   const [isLoading, setIsLoading] = useState(true);
 
   /* -------------------------------------------------- */
-  /* 🔐 BOOTSTRAP ÚNICO + PROFILE                        */
+  /* 🔐 LOAD PROFILE (ÚNICA FONTE)                       */
+  /* -------------------------------------------------- */
+  const loadProfile = useCallback(async (userId: string) => {
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("user_id", userId)
+      .single();
+
+    if (error) {
+      console.error("Failed to load profile:", error);
+      setProfile(null);
+      return;
+    }
+
+    setProfile(data as Profile);
+  }, []);
+
+  /* -------------------------------------------------- */
+  /* 🚀 AUTH STATE CHANGE (FONTE DE VERDADE)             */
   /* -------------------------------------------------- */
   useEffect(() => {
     let mounted = true;
 
-    const bootstrap = async () => {
+    const init = async () => {
       const { data } = await supabase.auth.getSession();
       if (!mounted) return;
 
       const currentSession = data.session;
-
       setSession(currentSession);
       setUser(currentSession?.user ?? null);
 
       if (currentSession?.user) {
-        const { data: profileData, error } =
-          await supabase
-            .from("profiles")
-            .select("*")
-            .eq("user_id", currentSession.user.id) // ✅ CORRETO
-            .single();
-
-        if (!error && mounted) {
-          setProfile(profileData as Profile);
-        }
+        await loadProfile(currentSession.user.id);
+      } else {
+        setProfile(null);
       }
 
       setIsLoading(false);
     };
 
-    bootstrap();
-
-    return () => {
-      mounted = false;
-    };
-  }, []);
-
-  /* -------------------------------------------------- */
-  /* 🚀 AUTH STATE CHANGE (ÚNICA FONTE)                  */
-  /* -------------------------------------------------- */
-  useEffect(() => {
-    let mounted = true;
+    init();
 
     const { data: listener } =
       supabase.auth.onAuthStateChange(
         async (_event, currentSession) => {
           if (!mounted) return;
 
+          setIsLoading(true);
+
           setSession(currentSession);
           setUser(currentSession?.user ?? null);
 
-          if (!currentSession?.user) {
+          if (currentSession?.user) {
+            await loadProfile(currentSession.user.id);
+          } else {
             setProfile(null);
-            setIsLoading(false);
-            return;
-          }
-
-          const { data: profileData, error } =
-            await supabase
-              .from("profiles")
-              .select("*")
-              .eq("user_id", currentSession.user.id) // ✅ CORRETO
-              .single();
-
-          if (!error && mounted) {
-            setProfile(profileData as Profile);
           }
 
           setIsLoading(false);
@@ -106,7 +98,7 @@ export const SessionContextProvider: React.FC<{
       mounted = false;
       listener.subscription.unsubscribe();
     };
-  }, []);
+  }, [loadProfile]);
 
   return (
     <SessionContext.Provider
