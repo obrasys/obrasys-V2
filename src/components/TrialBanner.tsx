@@ -30,12 +30,8 @@ const TrialBanner: React.FC<TrialBannerProps> = ({ subscription }) => {
     ? Math.max(0, differenceInDays(trialEndDate, now))
     : null;
 
-  const renewalDate = current_period_end
-    ? parseISO(current_period_end)
-    : null;
-  const renewDays = renewalDate
-    ? Math.max(0, differenceInDays(renewalDate, now))
-    : null;
+  const renewalDate = current_period_end ? parseISO(current_period_end) : null;
+  const renewDays = renewalDate ? Math.max(0, differenceInDays(renewalDate, now)) : null;
 
   const prettyPlan = (subscription_plan || "trialing").replace("_", " ");
 
@@ -49,6 +45,12 @@ const TrialBanner: React.FC<TrialBannerProps> = ({ subscription }) => {
   let buttonLink = "/plans";
   let badgeText: string | null = null;
   let badgeClass = "";
+
+  // ✅ Correção: detetar TRIAL de forma robusta
+  const isTrial =
+    computed_status === "trialing" ||
+    subscription_status === "trialing" ||
+    subscription_plan === "trialing";
 
   /**
    * ======================================================
@@ -70,7 +72,7 @@ const TrialBanner: React.FC<TrialBannerProps> = ({ subscription }) => {
    * TRIAL
    * ======================================================
    */
-  else if (subscription_plan === "trialing") {
+  else if (isTrial) {
     if (trialDaysRemaining !== null && trialDaysRemaining > 0) {
       icon = <Clock className="h-5 w-5" />;
       bgColorClass = "bg-blue-50 dark:bg-blue-950";
@@ -104,10 +106,7 @@ const TrialBanner: React.FC<TrialBannerProps> = ({ subscription }) => {
     bannerContent = `Plano ${prettyPlan} ativo.`;
 
     if (renewDays !== null && renewalDate) {
-      subText = `Renova em ${renewDays} dia(s) • ${format(
-        renewalDate,
-        "dd/MM/yyyy"
-      )}`;
+      subText = `Renova em ${renewDays} dia(s) • ${format(renewalDate, "dd/MM/yyyy")}`;
       badgeText = `${renewDays}d`;
       badgeClass = "bg-emerald-600 text-white";
     } else {
@@ -133,9 +132,7 @@ const TrialBanner: React.FC<TrialBannerProps> = ({ subscription }) => {
     buttonText = "Gerir Assinatura";
     buttonVariant = "outline";
     buttonLink = "/profile?tab=company";
-  }
-
-  else {
+  } else {
     return null;
   }
 
@@ -150,12 +147,8 @@ const TrialBanner: React.FC<TrialBannerProps> = ({ subscription }) => {
       <div className="flex items-center gap-3">
         {icon}
         <div className="flex flex-col">
-          <p className="font-medium text-sm md:text-base">
-            {bannerContent}
-          </p>
-          {subText && (
-            <p className="text-xs md:text-sm opacity-80">{subText}</p>
-          )}
+          <p className="font-medium text-sm md:text-base">{bannerContent}</p>
+          {subText && <p className="text-xs md:text-sm opacity-80">{subText}</p>}
         </div>
       </div>
 
