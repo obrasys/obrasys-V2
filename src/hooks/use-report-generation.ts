@@ -1,12 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import {
-  format,
-  parseISO,
-  startOfMonth,
-  endOfMonth,
-} from "date-fns";
+import { format, parseISO, startOfMonth, endOfMonth } from "date-fns";
 import { pt } from "date-fns/locale";
 import { toast } from "sonner";
 
@@ -15,7 +10,6 @@ import { useSession } from "@/components/SessionContextProvider";
 import { Project } from "@/schemas/project-schema";
 import { BudgetDB, BudgetItemDB } from "@/schemas/budget-schema";
 
-// PDF templates
 import { generateBasePdfTemplate } from "@/components/reports/pdf-templates/base-template";
 import { generateInvoicesReportContent } from "@/components/reports/pdf-templates/invoices-report-template";
 import { generateProjectFinancialReportContent } from "@/components/reports/pdf-templates/project-financial-report-template";
@@ -41,6 +35,10 @@ interface UseReportGenerationResult {
   ) => Promise<void>;
 }
 
+type PdfApiResponse =
+  | { ok: true; signedUrl?: string; path?: string; reportId?: string; size?: number }
+  | { ok?: false; error: string };
+
 /* =========================
    HOOK
 ========================= */
@@ -52,8 +50,6 @@ export function useReportGeneration(): UseReportGenerationResult {
   const [projects, setProjects] = useState<Project[]>([]);
   const [isLoadingInitialData, setIsLoadingInitialData] = useState(true);
   const [isLoadingReport, setIsLoadingReport] = useState(false);
-
-  /* ---------- COMPANY ---------- */
 
   const fetchUserCompanyId = useCallback(async () => {
     if (!user) return;
@@ -72,8 +68,6 @@ export function useReportGeneration(): UseReportGenerationResult {
 
     setUserCompanyId(data.company_id);
   }, [user]);
-
-  /* ---------- PROJECTS ---------- */
 
   const fetchProjects = useCallback(async () => {
     if (!userCompanyId) return;
@@ -97,33 +91,19 @@ export function useReportGeneration(): UseReportGenerationResult {
     );
   }, [userCompanyId]);
 
-  /* ---------- INIT ---------- */
-
   useEffect(() => {
-    if (!isSessionLoading) {
-      fetchUserCompanyId();
-    }
+    if (!isSessionLoading) fetchUserCompanyId();
   }, [isSessionLoading, fetchUserCompanyId]);
 
   useEffect(() => {
     if (userCompanyId) {
       setIsLoadingInitialData(true);
-      fetchProjects().finally(() =>
-        setIsLoadingInitialData(false)
-      );
+      fetchProjects().finally(() => setIsLoadingInitialData(false));
     }
   }, [userCompanyId, fetchProjects]);
 
-  /* =========================
-     REPORT GENERATION
-  ========================= */
-
   const handleGenerateReportClick = useCallback(
-    async (
-      reportType: ReportType,
-      period: { month: string },
-      projectId: string | null
-    ) => {
+    async (reportType: ReportType, period: { month: string }, projectId: string | null) => {
       if (!userCompanyId) {
         toast.error("Empresa não identificada.");
         return;
@@ -132,7 +112,7 @@ export function useReportGeneration(): UseReportGenerationResult {
       setIsLoadingReport(true);
 
       try {
-        /* ---------- COMPANY ---------- */
+        // 1) Empresa
         const { data: company } = await supabase
           .from("companies")
           .select("name")
@@ -140,77 +120,51 @@ export function useReportGeneration(): UseReportGenerationResult {
           .single();
 
         const companyName = company?.name ?? "Obra Sys";
-        const now = format(
-          new Date(),
-          "dd/MM/yyyy HH:mm",
-          { locale: pt }
-        );
+        const now = format(new Date(), "dd/MM/yyyy HH:mm", { locale: pt });
 
-        const start = startOfMonth(
-          parseISO(period.month)
-        );
-        const end = endOfMonth(
-          parseISO(period.month)
-        );
+        // 2) Período
+        const start = startOfMonth(parseISO(period.month));
+        const end = endOfMonth(parseISO(period.month));
 
+        // 3) Gerar conteúdo + título (HTML interno)
         let contentHtml = "";
         let title = "Relatório";
+        let reportTitle = "Relatório";
+        let selectedProject: Project | null = null;
 
-        /* ---------- SWITCH ---------- */
         switch (reportType) {
-          /* ===== INVOICES ===== */
           case ReportType.INVOICES: {
             const { data, error } = await supabase
               .from("invoices")
               .select("*, clients(nome)")
               .eq("company_id", userCompanyId)
-              .gte(
-                "issue_date",
-                format(start, "yyyy-MM-dd")
-              )
-              .lte(
-                "issue_date",
-                format(end, "yyyy-MM-dd")
-              )
-              .order("issue_date", {
-                ascending: false,
-              });
+              .gte("issue_date", format(start, "yyyy-MM-dd"))
+              .lte("issue_date", format(end, "yyyy-MM-dd"))
+              .order("issue_date", { ascending: false });
 
             if (error) throw error;
 
-            contentHtml =
-              generateInvoicesReportContent(
-                {
-                  invoices: data ?? [],
-                  period: {
-                    from: start.toISOString(),
-                    to: end.toISOString(),
-                  },
-                },
-                companyName,
-                now
-              );
+            contentHtml = generateInvoicesReportContent(
+              {
+                invoices: data ?? [],
+                period: { from: start.toISOString(), to: end.toISOString() },
+              },
+              companyName,
+              now
+            );
 
             title = "Relatório de Faturas";
+            reportTitle = "Relatório de Faturas";
             break;
           }
 
-          /* ===== PROJECT FINANCIAL ===== */
           case ReportType.PROJECT_FINANCIAL: {
-            if (!projectId) {
-              throw new Error(
-                "Projeto obrigatório para este relatório."
-              );
-            }
+            if (!projectId) throw new Error("Projeto obrigatório para este relatório.");
 
-            const project = projects.find(
-              (p) => p.id === projectId
-            );
-            if (!project) {
-              throw new Error(
-                "Projeto não encontrado."
-              );
-            }
+            const project = projects.find((p) => p.id === projectId);
+            if (!project) throw new Error("Projeto não encontrado.");
+
+            selectedProject = project;
 
             let budget: BudgetDB | null = null;
             let items: BudgetItemDB[] = [];
@@ -218,92 +172,101 @@ export function useReportGeneration(): UseReportGenerationResult {
             if (project.budget_id) {
               const { data } = await supabase
                 .from("budgets")
-                .select(
-                  "*, budget_chapters(budget_items(*))"
-                )
+                .select("*, budget_chapters(budget_items(*))")
                 .eq("id", project.budget_id)
                 .single();
 
               if (data) {
                 budget = data;
-                items =
-                  data.budget_chapters.flatMap(
-                    (c: any) => c.budget_items
-                  );
+                items = data.budget_chapters.flatMap((c: any) => c.budget_items);
               }
             }
 
-            const { data: invoices } =
-              await supabase
-                .from("invoices")
-                .select("*, clients(nome)")
-                .eq("project_id", projectId);
+            const { data: invoices } = await supabase
+              .from("invoices")
+              .select("*, clients(nome)")
+              .eq("project_id", projectId);
 
-            const { data: alerts } =
-              await supabase
-                .from("ai_alerts")
-                .select("*")
-                .eq("project_id", projectId)
-                .in("severity", [
-                  "critical",
-                  "warning",
-                ])
-                .eq("resolved", false);
+            const { data: alerts } = await supabase
+              .from("ai_alerts")
+              .select("*")
+              .eq("project_id", projectId)
+              .in("severity", ["critical", "warning"])
+              .eq("resolved", false);
 
-            contentHtml =
-              generateProjectFinancialReportContent(
-                {
-                  project,
-                  budget,
-                  budgetItems: items,
-                  projectInvoices: invoices ?? [],
-                  projectAlerts: alerts ?? [],
-                },
-                companyName,
-                now
-              );
+            contentHtml = generateProjectFinancialReportContent(
+              {
+                project,
+                budget,
+                budgetItems: items,
+                projectInvoices: invoices ?? [],
+                projectAlerts: alerts ?? [],
+              },
+              companyName,
+              now
+            );
 
-            title =
-              "Relatório Financeiro por Projeto / Obra";
+            title = "Relatório Financeiro por Projeto / Obra";
+            reportTitle = `Relatório Financeiro — ${project.nome ?? "Obra"}`;
             break;
           }
 
           default:
-            toast.info(
-              "Relatório ainda não implementado."
-            );
+            toast.info("Relatório ainda não implementado.");
             return;
         }
 
-        /* ---------- BASE TEMPLATE ---------- */
-        const finalHtml = generateBasePdfTemplate(
-          {
-            title,
-            companyName,
-            content: contentHtml,
-            currentDate: now,
-            includeWebControls: true, // preview
-          }
-        );
+        // 4) HTML FINAL (base template)
+        const finalHtml = generateBasePdfTemplate({
+          title,
+          companyName,
+          content: contentHtml,
+          currentDate: now,
+          includeWebControls: true, // preview
+        });
 
-        /* ---------- PREVIEW ---------- */
-        const win = window.open("", "_blank");
-        if (!win) {
-          toast.error(
-            "Popup bloqueado. Autorize popups."
-          );
-          return;
+        // 5) Preview HTML (opcional)
+        const previewWindow = window.open("", "_blank");
+        if (previewWindow) {
+          previewWindow.document.write(finalHtml);
+          previewWindow.document.close();
+          previewWindow.focus();
+        } else {
+          toast.error("Popup bloqueado. Autorize popups para preview.");
         }
 
-        win.document.write(finalHtml);
-        win.document.close();
-        win.focus();
+        // 6) Gerar PDF REAL via API Playwright + guardar no Storage + histórico
+        const resp = await fetch("/api/reports/render-pdf", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            html: finalHtml,
+            companyId: userCompanyId,
+            projectId: selectedProject?.id ?? null,
+            reportType: reportType,
+            reportTitle: reportTitle,
+            period: {
+              month: period.month,
+              from: start.toISOString(),
+              to: end.toISOString(),
+            },
+          }),
+        });
+
+        const json = (await resp.json()) as PdfApiResponse;
+
+        if (!resp.ok || "error" in json) {
+          throw new Error(("error" in json ? json.error : "Erro ao gerar PDF") || "Erro ao gerar PDF");
+        }
+
+        toast.success("PDF gerado e guardado com sucesso.");
+
+        if (json.signedUrl) {
+          window.open(json.signedUrl, "_blank");
+        }
       } catch (err: any) {
         console.error(err);
-        toast.error(
-          err.message ||
-            "Erro ao gerar relatório."
-        );
+        toast.error(err?.message ?? "Erro ao gerar relatório.");
       } finally {
         setIsLoadingReport(false);
       }
