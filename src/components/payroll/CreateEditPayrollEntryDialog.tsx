@@ -27,7 +27,11 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import {
   Select,
   SelectContent,
@@ -39,11 +43,18 @@ import { cn } from "@/lib/utils";
 import { CalendarDays, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
-import { PayrollEntry, payrollEntrySchema } from "@/schemas/payroll-schema";
+import {
+  PayrollEntry,
+  payrollEntrySchema,
+} from "@/schemas/payroll-schema";
 import { Project } from "@/schemas/project-schema";
 import { Profile } from "@/schemas/profile-schema";
 import { useSession } from "@/components/SessionContextProvider";
 import { supabase } from "@/integrations/supabase/client";
+
+/* =========================
+   PROPS
+========================= */
 
 interface CreateEditPayrollEntryDialogProps {
   isOpen: boolean;
@@ -52,123 +63,190 @@ interface CreateEditPayrollEntryDialogProps {
   entryToEdit?: PayrollEntry | null;
   projects: Project[];
   companyMembers: Profile[];
-  userCompanyId: string | null; // Added userCompanyId prop
+  userCompanyId: string | null;
 }
 
-const CreateEditPayrollEntryDialog: React.FC<CreateEditPayrollEntryDialogProps> = ({
+/* =========================
+   COMPONENT
+========================= */
+
+const CreateEditPayrollEntryDialog: React.FC<
+  CreateEditPayrollEntryDialogProps
+> = ({
   isOpen,
   onClose,
   onSave,
   entryToEdit,
   projects,
   companyMembers,
-  userCompanyId, // Destructured prop
+  userCompanyId,
 }) => {
   const { user } = useSession();
-  const [isSaving, setIsSaving] = React.useState(false);
+  const [isSaving, setIsSaving] =
+    React.useState(false);
 
   const form = useForm<PayrollEntry>({
     resolver: zodResolver(payrollEntrySchema),
-    defaultValues: entryToEdit || {
-      entry_date: format(new Date(), "yyyy-MM-dd"),
-      description: "",
-      amount: 0,
-      type: "salary",
-      status: "pending",
-      notes: "",
-      project_id: null, // Alterado para null
-      user_id: null, // Alterado para null
-    },
-  });
-
-  React.useEffect(() => {
-    if (isOpen) {
-      form.reset(entryToEdit || {
+    defaultValues:
+      entryToEdit || {
         entry_date: format(new Date(), "yyyy-MM-dd"),
         description: "",
         amount: 0,
         type: "salary",
         status: "pending",
         notes: "",
-        project_id: null, // Alterado para null
-        user_id: null, // Alterado para null
-      });
+        project_id: null,
+        user_id: null,
+      },
+  });
+
+  React.useEffect(() => {
+    if (isOpen) {
+      form.reset(
+        entryToEdit || {
+          entry_date: format(
+            new Date(),
+            "yyyy-MM-dd"
+          ),
+          description: "",
+          amount: 0,
+          type: "salary",
+          status: "pending",
+          notes: "",
+          project_id: null,
+          user_id: null,
+        }
+      );
     }
   }, [isOpen, entryToEdit, form]);
 
+  /* =========================
+     SUBMIT
+  ========================= */
+
   const onSubmit = async (data: PayrollEntry) => {
-    if (!user || !userCompanyId) { // Check for userCompanyId
-      toast.error("Utilizador não autenticado ou ID da empresa não encontrado.");
+    if (!user || !userCompanyId) {
+      toast.error(
+        "Utilizador não autenticado ou empresa inválida."
+      );
       return;
     }
+
     setIsSaving(true);
-    try {
-      const payrollDataToSave: PayrollEntry = {
-        ...data,
-        company_id: userCompanyId, // Use userCompanyId here
-        id: data.id || uuidv4(),
-      };
 
-      const { error } = await supabase
-        .from('payroll_entries')
-        .upsert(payrollDataToSave);
+    const payrollDataToSave: PayrollEntry = {
+      ...data,
+      id: data.id || uuidv4(),
+      company_id: userCompanyId,
+    };
 
-      if (error) throw error;
+    const { error } = await supabase
+      .from("payroll_entries")
+      .upsert(payrollDataToSave);
 
-      toast.success(`Registo de folha de pagamento ${entryToEdit ? "atualizado" : "criado"} com sucesso!`);
-      onSave(payrollDataToSave);
-      onClose();
-    } catch (error: any) {
-      toast.error(`Erro ao guardar registo: ${error.message}`);
-      console.error("Erro ao guardar registo:", error);
-    } finally {
+    if (error) {
+      console.error(
+        "[CreateEditPayrollEntryDialog] upsert",
+        error
+      );
+      toast.error(
+        "Erro ao guardar registo de folha de pagamento."
+      );
       setIsSaving(false);
+      return;
     }
+
+    toast.success(
+      `Registo ${
+        entryToEdit ? "atualizado" : "criado"
+      } com sucesso!`
+    );
+
+    onSave(payrollDataToSave);
+    onClose();
+    setIsSaving(false);
   };
+
+  /* =========================
+     RENDER
+  ========================= */
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
-          <DialogTitle>{entryToEdit ? "Editar Registo de Folha de Pagamento" : "Criar Novo Registo de Folha de Pagamento"}</DialogTitle>
+          <DialogTitle>
+            {entryToEdit
+              ? "Editar Registo de Folha de Pagamento"
+              : "Criar Novo Registo de Folha de Pagamento"}
+          </DialogTitle>
           <DialogDescription>
-            Preencha os detalhes do registo de folha de pagamento.
+            Preencha os detalhes do registo.
           </DialogDescription>
         </DialogHeader>
+
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-4 py-4">
+          <form
+            onSubmit={form.handleSubmit(onSubmit)}
+            className="grid gap-4 py-4"
+          >
             <FormField
               control={form.control}
               name="entry_date"
               render={({ field }) => (
                 <FormItem className="flex flex-col">
-                  <FormLabel>Data do Registo *</FormLabel>
+                  <FormLabel>
+                    Data do Registo *
+                  </FormLabel>
                   <Popover>
                     <PopoverTrigger asChild>
                       <FormControl>
                         <Button
-                          variant={"outline"}
+                          variant="outline"
                           className={cn(
                             "w-full pl-3 text-left font-normal",
-                            !field.value && "text-muted-foreground"
+                            !field.value &&
+                              "text-muted-foreground"
                           )}
                         >
-                          {field.value ? (
-                            format(parseISO(field.value), "PPP", { locale: pt })
-                          ) : (
-                            <span>Selecione uma data</span>
-                          )}
+                          {field.value
+                            ? format(
+                                parseISO(
+                                  field.value
+                                ),
+                                "PPP",
+                                { locale: pt }
+                              )
+                            : "Selecione uma data"}
                           <CalendarDays className="ml-auto h-4 w-4 opacity-50" />
                         </Button>
                       </FormControl>
                     </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
+                    <PopoverContent
+                      className="w-auto p-0"
+                      align="start"
+                    >
                       <Calendar
                         mode="single"
-                        selected={field.value ? parseISO(field.value) : undefined}
-                        onSelect={(date) => field.onChange(date ? format(date, "yyyy-MM-dd") : "")}
-                        initialFocus
+                        selected={
+                          field.value
+                            ? parseISO(
+                                field.value
+                              )
+                            : undefined
+                        }
+                        onSelect={(date) =>
+                          field.onChange(
+                            date
+                              ? format(
+                                  date,
+                                  "yyyy-MM-dd"
+                                )
+                              : ""
+                          )
+                        }
                         locale={pt}
+                        initialFocus
                       />
                     </PopoverContent>
                   </Popover>
@@ -176,19 +254,26 @@ const CreateEditPayrollEntryDialog: React.FC<CreateEditPayrollEntryDialogProps> 
                 </FormItem>
               )}
             />
+
             <FormField
               control={form.control}
               name="description"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Descrição *</FormLabel>
+                  <FormLabel>
+                    Descrição *
+                  </FormLabel>
                   <FormControl>
-                    <Textarea {...field} placeholder="Ex: Salário mensal de João Silva" />
+                    <Textarea
+                      {...field}
+                      placeholder="Ex: Salário mensal"
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FormField
                 control={form.control}
@@ -197,31 +282,56 @@ const CreateEditPayrollEntryDialog: React.FC<CreateEditPayrollEntryDialogProps> 
                   <FormItem>
                     <FormLabel>Valor *</FormLabel>
                     <FormControl>
-                      <Input type="number" step="0.01" {...field} onChange={e => field.onChange(parseFloat(e.target.value))} />
+                      <Input
+                        type="number"
+                        step="0.01"
+                        {...field}
+                        onChange={(e) =>
+                          field.onChange(
+                            Number(e.target.value)
+                          )
+                        }
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
+
               <FormField
                 control={form.control}
                 name="type"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Tipo *</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select
+                      onValueChange={field.onChange}
+                      defaultValue={field.value}
+                    >
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Selecione o tipo" />
                         </SelectTrigger>
                       </FormControl>
-                    <SelectContent>
-                        <SelectItem value="salary">Salário</SelectItem>
-                        <SelectItem value="bonus">Bónus</SelectItem>
-                        <SelectItem value="overtime">Horas Extras</SelectItem>
-                        <SelectItem value="tax">Imposto</SelectItem>
-                        <SelectItem value="benefit">Benefício</SelectItem>
-                        <SelectItem value="other">Outro</SelectItem>
+                      <SelectContent>
+                        <SelectItem value="salary">
+                          Salário
+                        </SelectItem>
+                        <SelectItem value="bonus">
+                          Bónus
+                        </SelectItem>
+                        <SelectItem value="overtime">
+                          Horas Extras
+                        </SelectItem>
+                        <SelectItem value="tax">
+                          Imposto
+                        </SelectItem>
+                        <SelectItem value="benefit">
+                          Benefício
+                        </SelectItem>
+                        <SelectItem value="other">
+                          Outro
+                        </SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -229,51 +339,72 @@ const CreateEditPayrollEntryDialog: React.FC<CreateEditPayrollEntryDialogProps> 
                 )}
               />
             </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FormField
                 control={form.control}
                 name="user_id"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Colaborador (opcional)</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value || "placeholder"}>
+                    <FormLabel>
+                      Colaborador (opcional)
+                    </FormLabel>
+                    <Select
+                      onValueChange={field.onChange}
+                      value={field.value || ""}
+                    >
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Selecione um colaborador" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="placeholder" disabled>Selecione um colaborador</SelectItem>
-                        {companyMembers.filter(member => member.id).map((member) => (
-                          <SelectItem key={member.id} value={member.id!}>
-                            {member.first_name} {member.last_name}
-                          </SelectItem>
-                        ))}
+                        {companyMembers.map(
+                          (member) => (
+                            <SelectItem
+                              key={member.id}
+                              value={member.id!}
+                            >
+                              {member.first_name}{" "}
+                              {member.last_name}
+                            </SelectItem>
+                          )
+                        )}
                       </SelectContent>
                     </Select>
                     <FormMessage />
                   </FormItem>
                 )}
               />
+
               <FormField
                 control={form.control}
                 name="project_id"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Obra (opcional)</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value || "placeholder"}>
+                    <FormLabel>
+                      Obra (opcional)
+                    </FormLabel>
+                    <Select
+                      onValueChange={field.onChange}
+                      value={field.value || ""}
+                    >
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Selecione uma obra" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="placeholder" disabled>Selecione uma obra</SelectItem>
-                        {projects.map((project) => (
-                          <SelectItem key={project.id} value={project.id}>
-                            {project.nome}
-                          </SelectItem>
-                        ))}
+                        {projects.map(
+                          (project) => (
+                            <SelectItem
+                              key={project.id}
+                              value={project.id}
+                            >
+                              {project.nome}
+                            </SelectItem>
+                          )
+                        )}
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -281,52 +412,80 @@ const CreateEditPayrollEntryDialog: React.FC<CreateEditPayrollEntryDialogProps> 
                 )}
               />
             </div>
+
             <FormField
               control={form.control}
               name="status"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Estado *</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <Select
+                    onValueChange={field.onChange}
+                    defaultValue={field.value}
+                  >
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Selecione o estado" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="pending">Pendente</SelectItem>
-                      <SelectItem value="processed">Processado</SelectItem>
-                      <SelectItem value="paid">Pago</SelectItem>
+                      <SelectItem value="pending">
+                        Pendente
+                      </SelectItem>
+                      <SelectItem value="processed">
+                        Processado
+                      </SelectItem>
+                      <SelectItem value="paid">
+                        Pago
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />
                 </FormItem>
               )}
             />
+
             <FormField
               control={form.control}
               name="notes"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Notas (opcional)</FormLabel>
+                  <FormLabel>
+                    Notas (opcional)
+                  </FormLabel>
                   <FormControl>
-                    <Textarea {...field} placeholder="Notas adicionais sobre o registo" />
+                    <Textarea
+                      {...field}
+                      placeholder="Notas adicionais"
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
+
             <DialogFooter className="pt-4">
-              <Button variant="outline" onClick={onClose} type="button" disabled={isSaving}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={onClose}
+                disabled={isSaving}
+              >
                 Cancelar
               </Button>
-              <Button type="submit" disabled={isSaving}>
+              <Button
+                type="submit"
+                disabled={isSaving}
+              >
                 {isSaving ? (
                   <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" /> A Guardar...
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    A Guardar...
                   </>
+                ) : entryToEdit ? (
+                  "Guardar Alterações"
                 ) : (
-                  entryToEdit ? "Guardar Alterações" : "Criar Registo"
+                  "Criar Registo"
                 )}
               </Button>
             </DialogFooter>
