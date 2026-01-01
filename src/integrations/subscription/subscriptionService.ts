@@ -8,15 +8,31 @@ export type CompanySubscriptionStatus = {
   cancel_at_period_end: boolean;
 };
 
-export async function getCompanySubscriptionStatus(companyId: string) {
+export async function getCompanySubscriptionStatus(
+  companyId: string
+): Promise<CompanySubscriptionStatus | null> {
   const { data, error } = await supabase
     .from("company_subscription_status")
     .select("*")
     .eq("company_id", companyId)
-    .single();
+    .maybeSingle(); // ✅ CRÍTICO
+
+  // ⚠️ Nenhum registo = empresa sem subscrição ativa
+  if (!data) {
+    return {
+      company_id: companyId,
+      plan_key: "free",
+      status: "trialing",
+      current_period_end: null,
+      cancel_at_period_end: false,
+    };
+  }
 
   if (error) {
-    console.error("Erro ao buscar status da assinatura:", error);
+    console.error(
+      "Erro ao buscar status da assinatura:",
+      error
+    );
     throw error;
   }
 
