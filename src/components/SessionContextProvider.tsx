@@ -30,7 +30,7 @@ export const SessionContextProvider: React.FC<{
   const [isLoading, setIsLoading] = useState(true);
 
   /* -------------------------------------------------- */
-  /* 🔐 BOOTSTRAP ÚNICO                                 */
+  /* 🔐 BOOTSTRAP ÚNICO + PROFILE                        */
   /* -------------------------------------------------- */
   useEffect(() => {
     let mounted = true;
@@ -39,8 +39,24 @@ export const SessionContextProvider: React.FC<{
       const { data } = await supabase.auth.getSession();
       if (!mounted) return;
 
-      setSession(data.session);
-      setUser(data.session?.user ?? null);
+      const currentSession = data.session;
+
+      setSession(currentSession);
+      setUser(currentSession?.user ?? null);
+
+      if (currentSession?.user) {
+        const { data: profileData, error } =
+          await supabase
+            .from("profiles")
+            .select("*")
+            .eq("user_id", currentSession.user.id) // ✅ CORRETO
+            .single();
+
+        if (!error && mounted) {
+          setProfile(profileData as Profile);
+        }
+      }
+
       setIsLoading(false);
     };
 
@@ -65,24 +81,20 @@ export const SessionContextProvider: React.FC<{
           setSession(currentSession);
           setUser(currentSession?.user ?? null);
 
-          if (!currentSession) {
+          if (!currentSession?.user) {
             setProfile(null);
             setIsLoading(false);
             return;
           }
 
-          // 🔴 PERFIL É A ÚNICA VERDADE
           const { data: profileData, error } =
             await supabase
               .from("profiles")
               .select("*")
-              .eq("id", currentSession.user.id)
+              .eq("user_id", currentSession.user.id) // ✅ CORRETO
               .single();
 
-          if (error) {
-            console.error("Erro ao carregar profile:", error);
-            setProfile(null);
-          } else {
+          if (!error && mounted) {
             setProfile(profileData as Profile);
           }
 
