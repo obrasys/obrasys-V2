@@ -5,7 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Clock, CheckCircle, XCircle, Info } from "lucide-react";
 import { Link } from "react-router-dom";
-import { format, differenceInDays, parseISO } from "date-fns";
+import { format, parseISO } from "date-fns";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { CompanySubscriptionStatus } from "@/schemas/subscription-schema";
@@ -15,25 +15,39 @@ interface TrialBannerProps {
 }
 
 const TrialBanner: React.FC<TrialBannerProps> = ({ subscription }) => {
-  const now = new Date();
-
   const {
     subscription_plan,
-    subscription_status,
     trial_end,
     current_period_end,
     computed_status,
   } = subscription;
 
-  const trialEndDate = trial_end ? parseISO(trial_end) : null;
-  const trialDaysRemaining = trialEndDate
-    ? Math.max(0, differenceInDays(trialEndDate, now))
-    : null;
+  /**
+   * ======================================================
+   * FREE → não mostra banner
+   * ======================================================
+   */
+  if (computed_status === "free") {
+    return null;
+  }
 
-  const renewalDate = current_period_end ? parseISO(current_period_end) : null;
-  const renewDays = renewalDate ? Math.max(0, differenceInDays(renewalDate, now)) : null;
+  const now = new Date();
 
-  const prettyPlan = (subscription_plan || "trialing").replace("_", " ");
+  /**
+   * Cálculo correto de dias restantes
+   * (último dia mostra 1)
+   */
+  const daysRemaining = (endDate?: string | null) => {
+    if (!endDate) return null;
+    const end = parseISO(endDate);
+    const diff =
+      (end.getTime() - now.getTime()) /
+      (1000 * 60 * 60 * 24);
+    return Math.max(0, Math.ceil(diff));
+  };
+
+  const trialDaysRemaining = daysRemaining(trial_end);
+  const renewDays = daysRemaining(current_period_end);
 
   let bannerContent = "";
   let subText = "";
@@ -46,15 +60,9 @@ const TrialBanner: React.FC<TrialBannerProps> = ({ subscription }) => {
   let badgeText: string | null = null;
   let badgeClass = "";
 
-  // ✅ Correção: detetar TRIAL de forma robusta
-  const isTrial =
-    computed_status === "trialing" ||
-    subscription_status === "trialing" ||
-    subscription_plan === "trialing";
-
   /**
    * ======================================================
-   * ESTADO EXPIRADO (prioridade máxima)
+   * EXPIRADO
    * ======================================================
    */
   if (computed_status === "expired") {
@@ -72,14 +80,14 @@ const TrialBanner: React.FC<TrialBannerProps> = ({ subscription }) => {
    * TRIAL
    * ======================================================
    */
-  else if (isTrial) {
-    if (trialDaysRemaining !== null && trialDaysRemaining > 0) {
+  else if (computed_status === "trialing") {
+    if (trialDaysRemaining && trialDaysRemaining > 0) {
       icon = <Clock className="h-5 w-5" />;
       bgColorClass = "bg-blue-50 dark:bg-blue-950";
       textColorClass = "text-blue-800 dark:text-blue-200";
       bannerContent = "Trial gratuito ativo";
       subText = `Faltam ${trialDaysRemaining} dia(s) • ${
-        trialEndDate ? format(trialEndDate, "dd/MM/yyyy") : ""
+        trial_end ? format(parseISO(trial_end), "dd/MM/yyyy") : ""
       }`;
       buttonText = "Ativar Plano";
       badgeText = `${trialDaysRemaining}d`;
@@ -103,10 +111,15 @@ const TrialBanner: React.FC<TrialBannerProps> = ({ subscription }) => {
     icon = <CheckCircle className="h-5 w-5" />;
     bgColorClass = "bg-emerald-50 dark:bg-emerald-950";
     textColorClass = "text-emerald-800 dark:text-emerald-200";
-    bannerContent = `Plano ${prettyPlan} ativo.`;
+    bannerContent = subscription_plan
+      ? `Plano ${subscription_plan} ativo.`
+      : "Assinatura ativa.";
 
-    if (renewDays !== null && renewalDate) {
-      subText = `Renova em ${renewDays} dia(s) • ${format(renewalDate, "dd/MM/yyyy")}`;
+    if (renewDays && current_period_end) {
+      subText = `Renova em ${renewDays} dia(s) • ${format(
+        parseISO(current_period_end),
+        "dd/MM/yyyy"
+      )}`;
       badgeText = `${renewDays}d`;
       badgeClass = "bg-emerald-600 text-white";
     } else {
@@ -120,7 +133,7 @@ const TrialBanner: React.FC<TrialBannerProps> = ({ subscription }) => {
 
   /**
    * ======================================================
-   * ATENÇÃO (suspended / past_due)
+   * ATENÇÃO
    * ======================================================
    */
   else if (computed_status === "attention") {
@@ -147,8 +160,14 @@ const TrialBanner: React.FC<TrialBannerProps> = ({ subscription }) => {
       <div className="flex items-center gap-3">
         {icon}
         <div className="flex flex-col">
-          <p className="font-medium text-sm md:text-base">{bannerContent}</p>
-          {subText && <p className="text-xs md:text-sm opacity-80">{subText}</p>}
+          <p className="font-medium text-sm md:text-base">
+            {bannerContent}
+          </p>
+          {subText && (
+            <p className="text-xs md:text-sm opacity-80">
+              {subText}
+            </p>
+          )}
         </div>
       </div>
 
