@@ -4,6 +4,8 @@ import React from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { v4 as uuidv4 } from "uuid";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -26,16 +28,11 @@ import {
   AvatarFallback,
   AvatarImage,
 } from "@/components/ui/avatar";
-import {
-  Camera,
-  Trash2,
-  Loader2,
-} from "lucide-react";
+import { Camera, Trash2, Loader2 } from "lucide-react";
 import { useSession } from "@/components/SessionContextProvider";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { profileSchema } from "@/schemas/profile-schema";
-import { v4 as uuidv4 } from "uuid";
 
 /* =========================
    CONFIG
@@ -125,10 +122,14 @@ const EditProfileModal: React.FC<
         .select(
           "first_name, last_name, phone, avatar_url"
         )
-        .eq("user_id", user.id) // ✅ CORRETO
-        .single();
+        .eq("user_id", user.id)
+        .maybeSingle();
 
       if (error) {
+        console.error(
+          "[EditProfileModal] fetch profile",
+          error
+        );
         toast.error(
           "Erro ao carregar perfil."
         );
@@ -136,14 +137,19 @@ const EditProfileModal: React.FC<
         return;
       }
 
-      form.reset({
-        first_name: data.first_name || "",
-        last_name: data.last_name || "",
-        phone: data.phone || "",
-        avatar_url: data.avatar_url || null,
-      });
+      if (data) {
+        form.reset({
+          first_name: data.first_name || "",
+          last_name: data.last_name || "",
+          phone: data.phone || "",
+          avatar_url: data.avatar_url || null,
+        });
 
-      setAvatarPreview(data.avatar_url);
+        setAvatarPreview(
+          data.avatar_url || null
+        );
+      }
+
       setIsLoading(false);
     },
     [user, form]
@@ -232,63 +238,78 @@ const EditProfileModal: React.FC<
     let finalAvatarUrl =
       data.avatar_url;
 
-    try {
-      if (avatarFile) {
-        setIsUploading(true);
+    // Upload avatar (se existir)
+    if (avatarFile) {
+      setIsUploading(true);
 
-        const ext =
-          avatarFile.name.split(".").pop();
-        const path = `${user.id}/${uuidv4()}.${ext}`;
+      const ext =
+        avatarFile.name.split(".").pop();
+      const path = `${user.id}/${uuidv4()}.${ext}`;
 
-        const { error: uploadError } =
-          await supabase.storage
-            .from("avatars")
-            .upload(path, avatarFile, {
-              upsert: true,
-            });
+      const { error: uploadError } =
+        await supabase.storage
+          .from("avatars")
+          .upload(path, avatarFile, {
+            upsert: true,
+          });
 
-        if (uploadError) {
-          throw uploadError;
-        }
-
-        const { data: urlData } =
-          supabase.storage
-            .from("avatars")
-            .getPublicUrl(path);
-
-        finalAvatarUrl =
-          urlData.publicUrl;
+      if (uploadError) {
+        console.error(
+          "[EditProfileModal] upload avatar",
+          uploadError
+        );
+        toast.error(
+          "Erro ao carregar avatar."
+        );
+        setIsSaving(false);
+        setIsUploading(false);
+        return;
       }
 
-      const { error } = await supabase
-        .from("profiles")
-        .update({
-          first_name: data.first_name,
-          last_name: data.last_name,
-          phone: data.phone,
-          avatar_url: finalAvatarUrl,
-          updated_at:
-            new Date().toISOString(),
-        })
-        .eq("user_id", user.id);
+      const { data: urlData } =
+        supabase.storage
+          .from("avatars")
+          .getPublicUrl(path);
 
-      if (error) throw error;
+      finalAvatarUrl =
+        urlData.publicUrl;
+    }
 
-      toast.success(
-        "Perfil atualizado."
+    // Atualizar perfil
+    const { error } = await supabase
+      .from("profiles")
+      .update({
+        first_name: data.first_name,
+        last_name: data.last_name,
+        phone: data.phone,
+        avatar_url: finalAvatarUrl,
+        updated_at:
+          new Date().toISOString(),
+      })
+      .eq("user_id", user.id);
+
+    if (error) {
+      console.error(
+        "[EditProfileModal] update profile",
+        error
       );
-      onProfileUpdated();
-      onClose();
-    } catch (e: any) {
       toast.error(
-        e.message ||
-          "Erro ao atualizar perfil."
+        "Erro ao atualizar perfil."
       );
-    } finally {
       setIsSaving(false);
       setIsUploading(false);
-      setAvatarFile(null);
+      return;
     }
+
+    toast.success(
+      "Perfil atualizado com sucesso."
+    );
+    onProfileUpdated();
+    onClose();
+
+    setIsSaving(false);
+    setIsUploading(false);
+    setAvatarFile(null);
   };
 
   const initials =
