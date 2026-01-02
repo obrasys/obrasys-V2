@@ -2,7 +2,7 @@ import { z } from "zod";
 
 /**
  * ======================================================
- * SUBSCRIPTIONS (tabela)
+ * SUBSCRIPTIONS (tabela subscriptions)
  * ======================================================
  */
 export const subscriptionSchema = z.object({
@@ -12,13 +12,30 @@ export const subscriptionSchema = z.object({
   stripe_customer_id: z.string().nullable().optional(),
   stripe_subscription_id: z.string().nullable().optional(),
 
-  status: z
-    .enum(["trialing", "active", "expired", "suspended", "cancelled"])
-    .default("trialing"),
+  /**
+   * Status real da subscrição
+   * (Stripe + lógica interna)
+   */
+  status: z.enum([
+    "trialing",
+    "active",
+    "past_due",
+    "unpaid",
+    "incomplete",
+    "canceled",
+    "incomplete_expired",
+  ]),
 
-  plan_type: z
-    .enum(["trialing", "iniciante", "profissional", "empresa"])
-    .default("trialing"),
+  /**
+   * Plano contratado
+   * (não confundir com status)
+   */
+  plan_type: z.enum([
+    "free",
+    "iniciante",
+    "profissional",
+    "empresa",
+  ]),
 
   trial_start: z.string().datetime().optional(),
   trial_end: z.string().datetime().nullable().optional(),
@@ -39,10 +56,10 @@ export const paymentSchema = z.object({
   id: z.string().uuid().optional(),
   subscription_id: z.string().uuid(),
 
-  amount: z.coerce.number().min(0.01, "O valor deve ser positivo."),
+  amount: z.coerce.number().min(0.01),
   currency: z.string().default("eur"),
 
-  status: z.enum(["pending", "succeeded", "failed"]).default("pending"),
+  status: z.enum(["pending", "succeeded", "failed"]),
 
   stripe_invoice_id: z.string().nullable().optional(),
   paid_at: z.string().datetime().nullable().optional(),
@@ -60,28 +77,46 @@ export type Payment = z.infer<typeof paymentSchema>;
  */
 export const companySubscriptionStatusSchema = z.object({
   company_id: z.string().uuid(),
-  company_name: z.string(),
 
   stripe_customer_id: z.string().nullable(),
-
   subscription_id: z.string().uuid().nullable(),
 
-  subscription_plan: z
-    .enum(["trialing", "iniciante", "profissional", "empresa"])
-    .nullable(),
+  /**
+   * Plano atual da empresa
+   */
+  subscription_plan: z.enum([
+    "free",
+    "iniciante",
+    "profissional",
+    "empresa",
+  ]),
 
-  subscription_status: z
-    .enum(["trialing", "active", "expired", "suspended", "cancelled"])
-    .nullable(),
+  /**
+   * Status bruto da subscrição
+   */
+  subscription_status: z.enum([
+    "trialing",
+    "active",
+    "past_due",
+    "unpaid",
+    "incomplete",
+    "canceled",
+    "incomplete_expired",
+  ]),
 
-  current_period_end: z.string().datetime().nullable(),
   trial_end: z.string().datetime().nullable(),
+  current_period_end: z.string().datetime().nullable(),
 
-  profile_plan: z
-    .enum(["trialing", "iniciante", "profissional", "empresa"])
-    .nullable(),
-
-  computed_status: z.enum(["active", "attention", "expired", "unknown"]),
+  /**
+   * Estado COMPUTADO (usar no frontend)
+   */
+  computed_status: z.enum([
+    "trialing",
+    "active",
+    "attention",
+    "expired",
+    "free",
+  ]),
 });
 
 export type CompanySubscriptionStatus = z.infer<
