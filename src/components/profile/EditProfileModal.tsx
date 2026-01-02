@@ -47,7 +47,7 @@ const ACCEPTED_IMAGE_TYPES = [
 ];
 
 /* =========================
-   SCHEMA (SEM PLAN_TYPE)
+   SCHEMA
 ========================= */
 
 const personalProfileSchema = profileSchema.pick({
@@ -77,8 +77,6 @@ const EditProfileModal: React.FC<
   const { user, isLoading: isSessionLoading } =
     useSession();
 
-  const [isLoading, setIsLoading] =
-    React.useState(true);
   const [isSaving, setIsSaving] =
     React.useState(false);
   const [avatarFile, setAvatarFile] =
@@ -110,19 +108,14 @@ const EditProfileModal: React.FC<
 
   const fetchProfile = React.useCallback(
     async () => {
-      if (!user) {
-        setIsLoading(false);
-        return;
-      }
-
-      setIsLoading(true);
+      if (!user) return;
 
       const { data, error } = await supabase
         .from("profiles")
         .select(
           "first_name, last_name, phone, avatar_url"
         )
-        .eq("user_id", user.id)
+        .eq("id", user.id) // ✅ CORRETO
         .maybeSingle();
 
       if (error) {
@@ -133,7 +126,6 @@ const EditProfileModal: React.FC<
         toast.error(
           "Erro ao carregar perfil."
         );
-        setIsLoading(false);
         return;
       }
 
@@ -149,8 +141,6 @@ const EditProfileModal: React.FC<
           data.avatar_url || null
         );
       }
-
-      setIsLoading(false);
     },
     [user, form]
   );
@@ -169,16 +159,6 @@ const EditProfileModal: React.FC<
     isSessionLoading,
     fetchProfile,
   ]);
-
-  React.useEffect(() => {
-    return () => {
-      if (avatarPreview && avatarFile) {
-        URL.revokeObjectURL(
-          avatarPreview
-        );
-      }
-    };
-  }, [avatarPreview, avatarFile]);
 
   /* =========================
      FILE HANDLERS
@@ -238,7 +218,6 @@ const EditProfileModal: React.FC<
     let finalAvatarUrl =
       data.avatar_url;
 
-    // Upload avatar (se existir)
     if (avatarFile) {
       setIsUploading(true);
 
@@ -254,10 +233,6 @@ const EditProfileModal: React.FC<
           });
 
       if (uploadError) {
-        console.error(
-          "[EditProfileModal] upload avatar",
-          uploadError
-        );
         toast.error(
           "Erro ao carregar avatar."
         );
@@ -275,7 +250,6 @@ const EditProfileModal: React.FC<
         urlData.publicUrl;
     }
 
-    // Atualizar perfil
     const { error } = await supabase
       .from("profiles")
       .update({
@@ -286,13 +260,9 @@ const EditProfileModal: React.FC<
         updated_at:
           new Date().toISOString(),
       })
-      .eq("user_id", user.id);
+      .eq("id", user.id); // ✅ CORRETO
 
     if (error) {
-      console.error(
-        "[EditProfileModal] update profile",
-        error
-      );
       toast.error(
         "Erro ao atualizar perfil."
       );
@@ -372,10 +342,6 @@ const EditProfileModal: React.FC<
                     )}
                     onChange={handleFileChange}
                     className="sr-only"
-                    disabled={
-                      isSaving ||
-                      isUploading
-                    }
                   />
                 </label>
 
