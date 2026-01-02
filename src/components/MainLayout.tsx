@@ -77,20 +77,14 @@ const MainLayout = () => {
   const [isEditProfileModalOpen, setIsEditProfileModalOpen] =
     React.useState(false);
 
-  // ✅ Build marker (não no topo do módulo)
-  React.useEffect(() => {
-    console.log("BUILD_MARKER_MAINLAYOUT", "2026-01-01-A");
-  }, []);
-
   React.useEffect(() => {
     setIsSidebarCollapsed(isMobile);
   }, [isMobile]);
 
   /* -------------------------------------------------- */
-  /* 🔒 GUARD CORRETO (ordem importa)                    */
+  /* 🔒 AUTH / PROFILE GUARD                            */
   /* -------------------------------------------------- */
 
-  // 1) ainda a resolver auth
   if (isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
@@ -99,12 +93,10 @@ const MainLayout = () => {
     );
   }
 
-  // 2) não autenticado
   if (!user) {
     return <Navigate to="/login" replace />;
   }
 
-  // 3) autenticado mas profile ainda não veio (ou foi bloqueado)
   if (!profile) {
     return (
       <div className="flex min-h-screen items-center justify-center">
@@ -114,10 +106,11 @@ const MainLayout = () => {
   }
 
   /* -------------------------------------------------- */
-  /* 🏢 SUBSCRIÇÃO (só com profile válido)               */
+  /* 🏢 SUBSCRIPTION (CORREÇÃO DO BUG)                  */
   /* -------------------------------------------------- */
 
-  const companyId = profile.company_id ?? null;
+  // ⚠️ NUNCA usar null aqui
+  const companyId = profile.company_id ?? undefined;
 
   const {
     data: subscriptionStatus,
@@ -151,7 +144,7 @@ const MainLayout = () => {
   ]);
 
   /* -------------------------------------------------- */
-  /* 🔧 ACTIONS                                         */
+  /* 🔧 ACTIONS                                        */
   /* -------------------------------------------------- */
 
   const toggleSidebar = () => {
@@ -179,7 +172,7 @@ const MainLayout = () => {
       : user.email?.charAt(0).toUpperCase() ?? "U";
 
   /* -------------------------------------------------- */
-  /* 🖥️ RENDER                                         */
+  /* 🖥️ RENDER                                        */
   /* -------------------------------------------------- */
 
   return (
@@ -295,7 +288,7 @@ const MainLayout = () => {
 };
 
 /* -------------------------------------------------- */
-/* 🔔 Notification Bell                                */
+/* 🔔 Notification Bell                               */
 /* -------------------------------------------------- */
 
 const NotificationBell: React.FC = () => {
