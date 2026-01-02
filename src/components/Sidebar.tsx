@@ -35,7 +35,6 @@ interface SidebarProps {
   toggleSidebar: () => void;
   profile: Profile | null;
   subscriptionStatus: CompanySubscriptionStatus | null;
-  isSubscriptionBlocked: boolean; // mantém, mas não usamos
 }
 
 const Sidebar: React.FC<SidebarProps> = ({
@@ -47,10 +46,20 @@ const Sidebar: React.FC<SidebarProps> = ({
   const location = useLocation();
   const navigate = useNavigate();
 
-  const plan = subscriptionStatus?.subscription_plan ?? "trialing";
-  const computedStatus = subscriptionStatus?.computed_status ?? "trialing";
+  /**
+   * ======================================================
+   * REGRA FINAL:
+   * - Sem subscrição → FREE
+   * - Nunca inventar TRIAL no frontend
+   * ======================================================
+   */
+  const plan = subscriptionStatus?.subscription_plan ?? "free";
+  const computedStatus = subscriptionStatus?.computed_status ?? "free";
 
-  // ✅ REGRA FINAL: trial NÃO bloqueia
+  /**
+   * Apenas EXPIRADO bloqueia funcionalidades
+   * Trial continua funcional
+   */
   const isReallyBlocked = computedStatus === "expired";
 
   const navItems = [
@@ -153,9 +162,11 @@ const Sidebar: React.FC<SidebarProps> = ({
 
       {/* Footer */}
       <div className="p-4 space-y-4 border-t">
-        {!isCollapsed && subscriptionStatus && (
-          <TrialBanner subscription={subscriptionStatus} />
-        )}
+        {!isCollapsed &&
+          subscriptionStatus &&
+          computedStatus !== "free" && (
+            <TrialBanner subscription={subscriptionStatus} />
+          )}
 
         <Button
           variant="ghost"
