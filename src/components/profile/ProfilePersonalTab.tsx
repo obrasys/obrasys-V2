@@ -30,14 +30,14 @@ import { Profile, profileSchema } from "@/schemas/profile-schema";
 import { Skeleton } from "@/components/ui/skeleton";
 
 /* =========================
-   SCHEMA (SEM PLAN_TYPE)
+   SCHEMA
 ========================= */
 
 const personalProfileSchema = profileSchema.pick({
   first_name: true,
   last_name: true,
   phone: true,
-  avatar_url: true, // apenas para display
+  avatar_url: true,
 });
 
 type PersonalProfileFormValues = z.infer<
@@ -79,8 +79,8 @@ const ProfilePersonalTab: React.FC = () => {
   const fetchProfile =
     React.useCallback(async () => {
       if (!user) {
-        setIsLoading(false);
         setProfileData(null);
+        setIsLoading(false);
         return;
       }
 
@@ -92,12 +92,12 @@ const ProfilePersonalTab: React.FC = () => {
           .select(
             "first_name, last_name, phone, avatar_url, role, plan_type"
           )
-          .eq("user_id", user.id) // ✅ CORRETO
-          .single();
+          .eq("id", user.id) // ✅ CORRETO
+          .maybeSingle();
 
       if (error) {
         console.error(
-          "Erro ao carregar perfil:",
+          "[ProfilePersonalTab] fetch profile",
           error
         );
         toast.error(
@@ -108,14 +108,16 @@ const ProfilePersonalTab: React.FC = () => {
         return;
       }
 
-      setProfileData(data as Profile);
+      if (data) {
+        setProfileData(data as Profile);
 
-      form.reset({
-        first_name: data.first_name || "",
-        last_name: data.last_name || "",
-        phone: data.phone || "",
-        avatar_url: data.avatar_url || "",
-      });
+        form.reset({
+          first_name: data.first_name || "",
+          last_name: data.last_name || "",
+          phone: data.phone || "",
+          avatar_url: data.avatar_url || "",
+        });
+      }
 
       setIsLoading(false);
     }, [user, form]);
@@ -156,7 +158,7 @@ const ProfilePersonalTab: React.FC = () => {
           updated_at:
             new Date().toISOString(),
         })
-        .eq("user_id", user.id); // ✅ CORRETO
+        .eq("id", user.id); // ✅ CORRETO
 
       if (error) throw error;
 
@@ -173,22 +175,6 @@ const ProfilePersonalTab: React.FC = () => {
       setIsSaving(false);
     }
   };
-
-  /* =========================
-     HELPERS
-  ========================= */
-
-  const userInitials =
-    profileData?.first_name &&
-    profileData?.last_name
-      ? `${profileData.first_name.charAt(
-          0
-        )}${profileData.last_name.charAt(
-          0
-        )}`.toUpperCase()
-      : user?.email
-          ?.charAt(0)
-          .toUpperCase() || "U";
 
   /* =========================
      LOADING
@@ -215,6 +201,12 @@ const ProfilePersonalTab: React.FC = () => {
      RENDER
   ========================= */
 
+  const initials =
+    profileData?.first_name &&
+    profileData?.last_name
+      ? `${profileData.first_name[0]}${profileData.last_name[0]}`.toUpperCase()
+      : user?.email?.[0]?.toUpperCase() || "U";
+
   return (
     <Form {...form}>
       <form
@@ -225,18 +217,13 @@ const ProfilePersonalTab: React.FC = () => {
           <div className="relative">
             <Avatar className="h-24 w-24">
               <AvatarImage
-                src={
-                  profileData?.avatar_url ||
-                  undefined
-                }
-                alt="Avatar do Utilizador"
+                src={profileData?.avatar_url || undefined}
               />
               <AvatarFallback className="text-3xl">
-                {userInitials}
+                {initials}
               </AvatarFallback>
             </Avatar>
 
-            {/* Upload desativado aqui (feito no modal) */}
             <Button
               type="button"
               variant="outline"
@@ -261,10 +248,7 @@ const ProfilePersonalTab: React.FC = () => {
             </p>
             <p className="text-sm text-muted-foreground capitalize">
               Plano:{" "}
-              {profileData?.plan_type?.replace(
-                "_",
-                " "
-              ) || "Trial"}
+              {profileData?.plan_type?.replace("_", " ") || "Trial"}
             </p>
           </div>
         </div>
@@ -274,9 +258,7 @@ const ProfilePersonalTab: React.FC = () => {
           name="first_name"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>
-                Primeiro Nome
-              </FormLabel>
+              <FormLabel>Primeiro Nome</FormLabel>
               <FormControl>
                 <Input {...field} />
               </FormControl>
@@ -290,9 +272,7 @@ const ProfilePersonalTab: React.FC = () => {
           name="last_name"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>
-                Último Nome
-              </FormLabel>
+              <FormLabel>Último Nome</FormLabel>
               <FormControl>
                 <Input {...field} />
               </FormControl>
@@ -304,10 +284,7 @@ const ProfilePersonalTab: React.FC = () => {
         <FormItem>
           <FormLabel>Email</FormLabel>
           <FormControl>
-            <Input
-              value={user?.email || ""}
-              disabled
-            />
+            <Input value={user?.email || ""} disabled />
           </FormControl>
         </FormItem>
 
@@ -316,9 +293,7 @@ const ProfilePersonalTab: React.FC = () => {
           name="phone"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>
-                Telefone
-              </FormLabel>
+              <FormLabel>Telefone</FormLabel>
               <FormControl>
                 <Input {...field} />
               </FormControl>
@@ -327,47 +302,8 @@ const ProfilePersonalTab: React.FC = () => {
           )}
         />
 
-        <FormItem>
-          <FormLabel>
-            Cargo / Função
-          </FormLabel>
-          <FormControl>
-            <Input
-              value={
-                profileData?.role ||
-                "Cliente"
-              }
-              disabled
-              className="capitalize"
-            />
-          </FormControl>
-        </FormItem>
-
-        <FormItem>
-          <FormLabel>
-            Plano Atual
-          </FormLabel>
-          <FormControl>
-            <Input
-              value={
-                profileData?.plan_type?.replace(
-                  "_",
-                  " "
-                ) || "Trial"
-              }
-              disabled
-              className="capitalize"
-            />
-          </FormControl>
-        </FormItem>
-
-        <Button
-          type="submit"
-          disabled={isSaving}
-        >
-          {isSaving
-            ? "A Guardar..."
-            : "Guardar Alterações"}
+        <Button type="submit" disabled={isSaving}>
+          {isSaving ? "A Guardar..." : "Guardar Alterações"}
         </Button>
       </form>
     </Form>
