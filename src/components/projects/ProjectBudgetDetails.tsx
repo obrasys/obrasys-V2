@@ -102,38 +102,26 @@ const ProjectBudgetDetails: React.FC<
       }
 
       if (data) {
-        const formatted: BudgetWithRelations =
-          {
-            ...data,
-            clients: Array.isArray(data.clients) ? (data.clients?.[0] ?? null) : (data.clients ?? null),
-            budget_chapters: (
-              data.budget_chapters ?? []
-            ).map((chapter) => ({
-              ...chapter,
-              budget_items: (
-                chapter.budget_items ?? []
-              ).map((item) => {
-                const material =
-                  item.custo_real_material ??
-                  0;
-                const maoObra =
-                  item.custo_real_mao_obra ??
-                  0;
-
-                const custoReal =
-                  item.custo_executado ??
-                  material + maoObra;
-
-                return {
-                  ...item,
-                  desvio:
-                    custoReal -
-                    (item.custo_planeado ??
-                      0),
-                };
-              }),
-            })),
-          };
+        const formatted: BudgetWithRelations = {
+          ...data,
+          clients: Array.isArray(data.clients)
+            ? (data.clients as { nome: string }[])
+            : data.clients
+            ? [{ nome: (data.clients as any).nome }]
+            : [],
+          budget_chapters: (data.budget_chapters ?? []).map((chapter) => ({
+            ...chapter,
+            budget_items: (chapter.budget_items ?? []).map((item) => {
+              const material = item.custo_real_material ?? 0;
+              const maoObra = item.custo_real_mao_obra ?? 0;
+              const custoReal = item.custo_executado ?? material + maoObra;
+              return {
+                ...item,
+                desvio: custoReal - (item.custo_planeado ?? 0),
+              };
+            }),
+          })),
+        };
 
         setBudget(formatted);
       }
@@ -213,8 +201,7 @@ const ProjectBudgetDetails: React.FC<
           </div>
           <div>
             <strong>Cliente:</strong>{" "}
-            {budget.clients?.nome ??
-              "N/A"}
+            {budget.clients?.[0]?.nome ?? "N/A"}
           </div>
           <div>
             <strong>Localização:</strong>{" "}

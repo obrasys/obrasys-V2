@@ -58,7 +58,12 @@ const SelectCompany: React.FC = () => {
       }
 
       if (mounted) {
-        setCompanies((data as UserCompany[]) || []);
+        const raw = (data || []) as any[];
+        const safeCompanies = raw.map((uc) => ({
+          company_id: uc.company_id,
+          companies: Array.isArray(uc.companies) ? uc.companies[0] : uc.companies,
+        })) as UserCompany[];
+        setCompanies(safeCompanies);
         setIsLoading(false);
       }
     };

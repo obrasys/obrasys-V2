@@ -56,8 +56,10 @@ type ManualRdoEntryFormValues = z.infer<
 interface ManualRdoEntryDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  livroObraId: string;
-  onSaved?: () => void;
+  onSave?: (rdo: RdoEntry) => void;    // tornado opcional
+  onSaved?: (rdo: RdoEntry) => void;   // NOVO: alias compatível
+  projectId: string;
+  companyId: string;
 }
 
 /* =========================
@@ -69,8 +71,10 @@ const ManualRdoEntryDialog: React.FC<
 > = ({
   isOpen,
   onClose,
-  livroObraId,
+  onSave,
   onSaved,
+  projectId,
+  companyId,
 }) => {
   const [isSaving, setIsSaving] =
     React.useState(false);
@@ -135,7 +139,10 @@ const ManualRdoEntryDialog: React.FC<
       "Registo diário adicionado ao Livro de Obra."
     );
 
-    onSaved?.();
+    // Callbacks de persistência
+    onSave?.(newRdoEntry);
+    onSaved?.(newRdoEntry);
+
     onClose();
     setIsSaving(false);
   };

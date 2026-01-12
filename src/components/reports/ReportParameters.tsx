@@ -33,12 +33,10 @@ interface ReportProjectOption {
 }
 
 interface ReportParametersProps {
-  selectedMonth: Date | null;
-  setSelectedMonth: (date: Date | null) => void;
-
+  selectedMonth: string | Date | null;
+  setSelectedMonth: (date: string | Date | null) => void;
   selectedProjectId: string | null;
   setSelectedProjectId: (projectId: string | null) => void;
-
   projects: { id?: string; nome?: string }[];
   isLoadingProjects: boolean;
 }
@@ -72,14 +70,15 @@ const ReportParameters: React.FC<
                 variant="outline"
                 className={cn(
                   "w-full justify-start text-left font-normal",
-                  !selectedMonth &&
-                    "text-muted-foreground"
+                  !selectedMonth && "text-muted-foreground"
                 )}
               >
                 <CalendarDays className="mr-2 h-4 w-4" />
                 {selectedMonth
                   ? format(
-                      selectedMonth,
+                      typeof selectedMonth === "string"
+                        ? new Date(selectedMonth)
+                        : selectedMonth,
                       "MMMM yyyy",
                       { locale: pt }
                     )
@@ -90,15 +89,17 @@ const ReportParameters: React.FC<
             <PopoverContent className="w-auto p-0">
               <Calendar
                 mode="single"
-                selected={selectedMonth ?? undefined}
-                onSelect={(date) =>
-                  setSelectedMonth(date ?? null)
+                selected={
+                  selectedMonth
+                    ? (typeof selectedMonth === "string"
+                        ? new Date(selectedMonth)
+                        : selectedMonth)
+                    : undefined
                 }
+                onSelect={(date) => setSelectedMonth(date ?? null)}
                 captionLayout="dropdown"
                 fromYear={2000}
-                toYear={
-                  new Date().getFullYear() + 5
-                }
+                toYear={new Date().getFullYear() + 5}
                 locale={pt}
               />
             </PopoverContent>

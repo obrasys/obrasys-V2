@@ -96,7 +96,7 @@ const ReportsPage = () => {
           buttonText="Gerar Relatório"
           onClick={() =>
             handleGenerateReportClick(
-              ReportType.FINANCIAL_MONTHLY,
+              "financial_monthly",
               { month: selectedMonth },
               null
             )
@@ -111,7 +111,7 @@ const ReportsPage = () => {
           buttonText="Gerar Relatório"
           onClick={() =>
             handleGenerateReportClick(
-              ReportType.CASHFLOW,
+              "cashflow",
               { month: selectedMonth },
               null
             )
@@ -126,7 +126,7 @@ const ReportsPage = () => {
           buttonText="Gerar Relatório"
           onClick={() =>
             handleGenerateReportClick(
-              ReportType.INVOICES,
+              "invoices",
               { month: selectedMonth },
               null
             )
@@ -141,7 +141,7 @@ const ReportsPage = () => {
           buttonText="Gerar Relatório"
           onClick={() =>
             handleGenerateReportClick(
-              ReportType.EXPENSES,
+              "expenses",
               { month: selectedMonth },
               null
             )
@@ -156,7 +156,7 @@ const ReportsPage = () => {
           buttonText="Gerar Relatório"
           onClick={() =>
             handleGenerateReportClick(
-              ReportType.PAYROLL,
+              "payroll",
               { month: selectedMonth },
               null
             )
@@ -182,7 +182,7 @@ const ReportsPage = () => {
           buttonText="Gerar Relatório"
           onClick={() =>
             handleGenerateReportClick(
-              ReportType.PROJECT_FINANCIAL,
+              "project_financial",
               { month: selectedMonth },
               selectedProjectIdForReport
             )
@@ -203,7 +203,7 @@ const ReportsPage = () => {
           buttonText="Gerar Relatório"
           onClick={() =>
             handleGenerateReportClick(
-              ReportType.PROJECT_PROGRESS,
+              "project_progress",
               { month: selectedMonth },
               selectedProjectIdForReport
             )
@@ -224,7 +224,7 @@ const ReportsPage = () => {
           buttonText="Gerar Relatório"
           onClick={() =>
             handleGenerateReportClick(
-              ReportType.PROJECT_BUDGET,
+              "project_budget",
               { month: selectedMonth },
               selectedProjectIdForReport
             )
@@ -264,7 +264,7 @@ const ReportsPage = () => {
           buttonText="Gerar Relatório"
           onClick={() =>
             handleGenerateReportClick(
-              ReportType.ARTICLES_CATALOG,
+              "articles_catalog",
               { month: selectedMonth },
               null
             )
