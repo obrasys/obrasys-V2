@@ -185,7 +185,7 @@ const BudgetServiceRow: React.FC<
               cfg.className
             )}
           >
-            {cfg.icon}
+            {"icon" in cfg ? (cfg as any).icon : null}
             {cfg.label}
           </Badge>
         </TooltipTrigger>

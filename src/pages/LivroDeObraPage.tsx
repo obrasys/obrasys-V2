@@ -194,7 +194,7 @@ const LivroDeObraPage = () => {
         <ManualRdoEntryDialog
           isOpen={isManualRdoDialogOpen}
           onClose={() => setIsManualRdoDialogOpen(false)}
-          onSave={handleSaveManualRdoEntry}
+          onSave={(rdo) => { void handleSaveManualRdoEntry(rdo); }}
           projectId={selectedLivroObra.project_id}
           companyId={userCompanyId}
         />

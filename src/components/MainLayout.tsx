@@ -183,7 +183,6 @@ const MainLayout = () => {
           toggleSidebar={toggleSidebar}
           profile={profile}
           subscriptionStatus={subscriptionStatus ?? null}
-          isSubscriptionBlocked={isSubscriptionBlocked}
         />
       </div>
 
@@ -192,8 +191,6 @@ const MainLayout = () => {
           <div className="md:hidden">
             <MobileSidebar
               profile={profile}
-              subscriptionStatus={subscriptionStatus ?? null}
-              isSubscriptionBlocked={isSubscriptionBlocked}
             >
               <Button variant="ghost" size="icon">
                 <Menu className="h-5 w-5" />

@@ -5,18 +5,26 @@ import { Expense } from "@/schemas/invoicing-schema";
 
 export const generateExpensesReportContent = (reportData: any, companyName: string, currentDate: string) => {
   const { expenses, period } = reportData;
-  const totalExpenses = expenses.reduce((sum: number, exp: Expense) => sum + exp.amount, 0);
-  const totalPaidExpenses = expenses.filter((exp: Expense) => exp.status === "paid").reduce((sum: number, exp: Expense) => sum + exp.amount, 0);
-  const totalPendingExpenses = expenses.filter((exp: Expense) => exp.status === "pending" || exp.status === "overdue").reduce((sum: number, exp: Expense) => sum + exp.amount, 0);
+  const list: Expense[] = Array.isArray(expenses) ? expenses as Expense[] : [];
+
+  const safeNumber = (n: unknown) => {
+    const v = typeof n === "number" ? n : Number(n);
+    return Number.isFinite(v) ? v : 0;
+  };
+  const safeText = (t: unknown) => String(t ?? "");
+
+  const totalExpenses = list.reduce((sum: number, exp: Expense) => sum + safeNumber(exp.amount), 0);
+  const totalPaidExpenses = list.filter((exp: Expense) => exp.status === "paid").reduce((sum: number, exp: Expense) => sum + safeNumber(exp.amount), 0);
+  const totalPendingExpenses = list.filter((exp: Expense) => exp.status === "pending" || exp.status === "overdue").reduce((sum: number, exp: Expense) => sum + safeNumber(exp.amount), 0);
 
   return `
-    ${generateCoverPage("Relatório de Despesas", companyName, `Período: ${period}`)}
+    ${generateCoverPage("Relatório de Despesas", companyName, `Período: ${safeText(period)}`)}
 
     <h1>Relatório de Despesas</h1>
     <div class="header-info">
         <p><strong>Data de Geração:</strong> ${currentDate}</p>
         <p><strong>Empresa:</strong> ${companyName}</p>
-        <p><strong>Período:</strong> ${period}</p>
+        <p><strong>Período:</strong> ${safeText(period)}</p>
     </div>
     <h2>Análise Detalhada das Despesas</h2>
     <table>
@@ -30,12 +38,12 @@ export const generateExpensesReportContent = (reportData: any, companyName: stri
             </tr>
         </thead>
         <tbody>
-            ${expenses.map((exp: Expense) => `
+            ${list.map((exp: Expense) => `
               <tr>
-                <td>${exp.supplier_name}</td>
-                <td>${exp.description}</td>
-                <td style="text-align: right;">${formatCurrency(exp.amount)}</td>
-                <td>${exp.status.replace('_', ' ')}</td>
+                <td>${safeText(exp.supplier_name)}</td>
+                <td>${safeText(exp.description)}</td>
+                <td style="text-align: right;">${formatCurrency(safeNumber(exp.amount))}</td>
+                <td>${safeText(exp.status).replace('_', ' ')}</td>
                 <td>${format(parseISO(exp.due_date), "dd/MM/yyyy")}</td>
               </tr>
             `).join('')}

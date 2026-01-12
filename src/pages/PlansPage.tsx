@@ -47,7 +47,7 @@ const PlansPage: React.FC = () => {
   const { profile, isLoading } = useSession();
 
   const {
-    subscription,
+    data: subscription,
     plan,
     loading: loadingSub,
   } = useSubscriptionStatus(profile?.company_id);

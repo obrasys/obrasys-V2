@@ -269,26 +269,31 @@ const Dashboard = () => {
           title="Obras Ativas"
           value={isLoadingProjects ? <Loader2 className="animate-spin" /> : activeProjects.length}
           icon={HardHat}
+          description="Projetos ativos"
         />
         <KPICard
           title="Obras em Atraso"
           value={isLoadingProjects ? <Loader2 className="animate-spin" /> : delayedProjects.length}
           icon={AlertTriangle}
+          description="Projetos com atraso"
         />
         <KPICard
           title="Relatórios Pendentes"
           value={pendingReportsCount}
           icon={FileText}
+          description="Livros de Obra em preparação"
         />
         <KPICard
           title="Tarefas"
           value={scheduledTasksCount}
           icon={CalendarDays}
+          description="Tarefas Planeadas/Em execução"
         />
         <KPICard
           title="Aprovações"
           value={pendingApprovalsCount}
           icon={CheckSquare}
+          description="Pedidos por decidir"
         />
       </section>
 

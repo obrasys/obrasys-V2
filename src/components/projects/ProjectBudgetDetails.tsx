@@ -105,7 +105,7 @@ const ProjectBudgetDetails: React.FC<
         const formatted: BudgetWithRelations =
           {
             ...data,
-            clients: data.clients ?? null,
+            clients: Array.isArray(data.clients) ? (data.clients?.[0] ?? null) : (data.clients ?? null),
             budget_chapters: (
               data.budget_chapters ?? []
             ).map((chapter) => ({
@@ -260,7 +260,7 @@ const ProjectBudgetDetails: React.FC<
       />
 
       <BudgetDetailTable
-        allBudgetItems={allBudgetItems}
+        data={allBudgetItems}
         columns={columns}
       />
     </div>

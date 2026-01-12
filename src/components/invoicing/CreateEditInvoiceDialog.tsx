@@ -23,7 +23,7 @@ import { toast } from "sonner";
 
 import {
   Invoice,
-  invoiceSchema,
+  invoiceBaseSchema,
   invoiceItemSchema,
 } from "@/schemas/invoicing-schema";
 import { Project } from "@/schemas/project-schema";
@@ -41,7 +41,7 @@ import { calculateInvoiceFiscal } from "@/utils/invoice-calculations";
    SCHEMA COMPLETO
 ====================================================== */
 
-export const fullInvoiceSchema = invoiceSchema.extend({
+export const fullInvoiceSchema = invoiceBaseSchema.extend({
   items: z
     .array(invoiceItemSchema)
     .min(1, "A fatura deve ter pelo menos um item."),

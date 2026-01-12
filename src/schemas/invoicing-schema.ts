@@ -5,7 +5,7 @@ import { z } from "zod";
 ========================= */
 
 // aceita "12,50" e "12.50"
-const moneyNumber = z.preprocess((val) => {
+const normalizeNumberInput = (val: unknown) => {
   if (typeof val === "string") {
     const cleaned = val.replace(/\s/g, "").replace(",", ".");
     if (cleaned === "") return undefined;
@@ -13,17 +13,13 @@ const moneyNumber = z.preprocess((val) => {
     return Number.isFinite(n) ? n : val;
   }
   return val;
-}, z.number());
+};
 
-const percentNumber = z.preprocess((val) => {
-  if (typeof val === "string") {
-    const cleaned = val.replace(/\s/g, "").replace(",", ".");
-    if (cleaned === "") return undefined;
-    const n = Number(cleaned);
-    return Number.isFinite(n) ? n : val;
-  }
-  return val;
-}, z.number());
+const money = (min = 0) =>
+  z.preprocess(normalizeNumberInput, z.number().min(min));
+
+const percent = (min = 0, max = 100) =>
+  z.preprocess(normalizeNumberInput, z.number().min(min).max(max));
 
 const isoDate = z
   .string()
@@ -39,19 +35,14 @@ export const invoiceItemSchema = z.object({
 
   description: z.string().trim().min(1, "A descrição é obrigatória."),
 
-  quantity: moneyNumber
-    .min(0.01, "A quantidade deve ser positiva."),
+  quantity: money(0.01),
 
   unit: z.string().trim().min(1, "A unidade é obrigatória."),
 
-  unit_price: moneyNumber
-    .min(0, "O preço unitário não pode ser negativo."),
-
-  // se quiseres desconto por linha, mete já aqui (opcional)
-  // discount_rate: percentNumber.min(0).max(100).default(0),
+  unit_price: money(0),
 
   // calculado
-  line_total: moneyNumber.min(0).optional(),
+  line_total: money(0).optional(),
 
   budget_item_id: z.string().uuid().nullable().optional(),
   schedule_task_id: z.string().uuid().nullable().optional(),
@@ -59,11 +50,9 @@ export const invoiceItemSchema = z.object({
   created_at: z.string().optional(),
   updated_at: z.string().optional(),
 }).superRefine((item, ctx) => {
-  // coerência mínima do line_total se vier preenchido
   if (typeof item.line_total === "number") {
-    const expected = item.quantity * item.unit_price;
+    const expected = (item.quantity as number) * (item.unit_price as number);
     const diff = Math.abs(expected - item.line_total);
-    // tolerância 1 cêntimo
     if (diff > 0.01) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
@@ -80,44 +69,24 @@ export type InvoiceItem = z.infer<typeof invoiceItemSchema>;
    INVOICE (FATURA)
 ====================================================== */
 
-export const invoiceSchema = z.object({
+export const invoiceBaseSchema = z.object({
   id: z.string().uuid().optional(),
-
-  // no modelo de persistência eu recomendo obrigatório:
   company_id: z.string().uuid().optional(),
-
   project_id: z.string().uuid().nullable().optional(),
-
   client_id: z.string().uuid().min(1, "O cliente é obrigatório."),
-
   invoice_number: z.string().trim().min(1, "O número da fatura é obrigatório."),
-
   issue_date: isoDate,
   due_date: isoDate,
-
   currency: z.enum(["EUR"]).default("EUR"),
-
   notes: z.string().optional().nullable(),
-
-  // items deveriam ser parte do “FullInvoiceFormValues”
-  // mas podes validar aqui se estiverem presentes:
   items: z.array(invoiceItemSchema).min(1, "Adicione pelo menos 1 item.").optional(),
-
-  /* ===== BASE (subtotal sem IVA) ===== */
-  total_amount: moneyNumber.min(0).default(0),
-
-  /* ===== IVA ===== */
-  vat_rate: percentNumber.min(0).max(100).default(23),
-  vat_amount: moneyNumber.min(0).default(0),
-
-  /* ===== RETENÇÃO ===== */
-  withholding_rate: percentNumber.min(0).max(100).default(0),
-  withholding_amount: moneyNumber.min(0).default(0),
-
-  /* ===== TOTAIS ===== */
-  total_to_receive: moneyNumber.min(0).default(0),
-  paid_amount: moneyNumber.min(0).default(0),
-
+  total_amount: money(0).default(0),
+  vat_rate: percent(0, 100).default(23),
+  vat_amount: money(0).default(0),
+  withholding_rate: percent(0, 100).default(0),
+  withholding_amount: money(0).default(0),
+  total_to_receive: money(0).default(0),
+  paid_amount: money(0).default(0),
   status: z.enum([
     "draft",
     "sent",
@@ -127,11 +96,11 @@ export const invoiceSchema = z.object({
     "overdue",
     "cancelled",
   ]).default("draft"),
-
   created_at: z.string().optional(),
   updated_at: z.string().optional(),
-}).superRefine((inv, ctx) => {
-  // due_date >= issue_date (string YYYY-MM-DD permite comparar lexicograficamente)
+});
+
+export const invoiceSchema = invoiceBaseSchema.superRefine((inv, ctx) => {
   if (inv.due_date < inv.issue_date) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
@@ -140,9 +109,8 @@ export const invoiceSchema = z.object({
     });
   }
 
-  // coerência dos totais (se vierem preenchidos)
-  const expectedVat = (inv.total_amount * inv.vat_rate) / 100;
-  if (Math.abs(expectedVat - inv.vat_amount) > 0.02) {
+  const expectedVat = ((inv.total_amount as number) * (inv.vat_rate as number)) / 100;
+  if (Math.abs(expectedVat - (inv.vat_amount as number)) > 0.02) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       path: ["vat_amount"],
@@ -150,8 +118,8 @@ export const invoiceSchema = z.object({
     });
   }
 
-  const expectedWithholding = (inv.total_amount * inv.withholding_rate) / 100;
-  if (Math.abs(expectedWithholding - inv.withholding_amount) > 0.02) {
+  const expectedWithholding = ((inv.total_amount as number) * (inv.withholding_rate as number)) / 100;
+  if (Math.abs(expectedWithholding - (inv.withholding_amount as number)) > 0.02) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       path: ["withholding_amount"],
@@ -159,8 +127,9 @@ export const invoiceSchema = z.object({
     });
   }
 
-  const expectedTotalToReceive = inv.total_amount + inv.vat_amount - inv.withholding_amount;
-  if (Math.abs(expectedTotalToReceive - inv.total_to_receive) > 0.02) {
+  const expectedTotalToReceive =
+    (inv.total_amount as number) + (inv.vat_amount as number) - (inv.withholding_amount as number);
+  if (Math.abs(expectedTotalToReceive - (inv.total_to_receive as number)) > 0.02) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       path: ["total_to_receive"],
@@ -168,7 +137,7 @@ export const invoiceSchema = z.object({
     });
   }
 
-  if (inv.paid_amount - inv.total_to_receive > 0.02) {
+  if ((inv.paid_amount as number) - (inv.total_to_receive as number) > 0.02) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       path: ["paid_amount"],
@@ -185,20 +154,13 @@ export type Invoice = z.infer<typeof invoiceSchema>;
 
 export const paymentSchema = z.object({
   id: z.string().uuid().optional(),
-
   invoice_id: z.string().uuid().min(1, "O ID da fatura é obrigatório."),
   company_id: z.string().uuid().optional(),
-
   payment_date: isoDate,
-
-  amount: moneyNumber.min(0.01, "O valor do pagamento deve ser positivo."),
-
+  amount: money(0.01),
   payment_method: z.enum(["bank_transfer", "cash", "card", "other"]).default("bank_transfer"),
-
   status: z.enum(["posted", "pending", "cancelled"]).default("posted"),
-
   notes: z.string().optional().nullable(),
-
   created_at: z.string().optional(),
   updated_at: z.string().optional(),
 });
@@ -212,22 +174,24 @@ export type Payment = z.infer<typeof paymentSchema>;
 export const expenseSchema = z.object({
   id: z.string().uuid().optional(),
   company_id: z.string().uuid().optional(),
-
   supplier_name: z.string().trim().min(1, "O nome do fornecedor é obrigatório."),
   description: z.string().trim().min(1, "A descrição da despesa é obrigatória."),
-
-  amount: moneyNumber.min(0.01, "O valor da despesa deve ser positivo."),
-
+  amount: money(0.01),
   due_date: isoDate,
-
   currency: z.enum(["EUR"]).default("EUR"),
-
   status: z.enum(["pending", "paid", "overdue", "cancelled"]).default("pending"),
-
   notes: z.string().optional().nullable(),
-
   created_at: z.string().optional(),
   updated_at: z.string().optional(),
 });
 
 export type Expense = z.infer<typeof expenseSchema>;
+
+/* ======================================================
+   RELATIONS TYPE
+====================================================== */
+
+export type InvoiceWithRelations = Invoice & {
+  projects?: { nome?: string } | null;
+  clients?: { nome?: string } | null;
+};

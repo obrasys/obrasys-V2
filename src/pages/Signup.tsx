@@ -77,7 +77,7 @@ const Signup: React.FC = () => {
       nif: "",
       password: "",
       confirmPassword: "",
-      acceptTerms: false,
+      acceptTerms: true,
     },
   });
 

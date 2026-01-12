@@ -229,35 +229,41 @@ export default function AdminDashboard() {
   const [subPlanFilter, setSubPlanFilter] = useState<string>("all");
 
   useEffect(() => {
-    setLoadingProfiles(true);
-    supabase.from("profiles").select("*")
-      .then(({ data, error }) => {
+    (async () => {
+      setLoadingProfiles(true);
+      try {
+        const { data, error } = await supabase.from("profiles").select("*");
         if (error) {
           toast({
             title: "Erro ao carregar usuários",
             description: error.message,
             variant: "destructive",
           });
-          return;
+        } else {
+          setProfiles((data || []) as ProfileRow[]);
         }
-        setProfiles((data || []) as ProfileRow[]);
-      })
-      .finally(() => setLoadingProfiles(false));
+      } finally {
+        setLoadingProfiles(false);
+      }
+    })();
 
-    setLoadingSubs(true);
-    supabase.from("subscriptions").select("*")
-      .then(({ data, error }) => {
+    (async () => {
+      setLoadingSubs(true);
+      try {
+        const { data, error } = await supabase.from("subscriptions").select("*");
         if (error) {
           toast({
             title: "Erro ao carregar assinaturas",
             description: error.message,
             variant: "destructive",
           });
-          return;
+        } else {
+          setSubscriptions((data || []) as SubscriptionRow[]);
         }
-        setSubscriptions((data || []) as SubscriptionRow[]);
-      })
-      .finally(() => setLoadingSubs(false));
+      } finally {
+        setLoadingSubs(false);
+      }
+    })();
   }, []);
 
   const filteredProfiles = useMemo(() => {

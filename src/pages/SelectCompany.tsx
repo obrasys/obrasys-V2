@@ -17,9 +17,10 @@ type UserCompany = {
 };
 
 const SelectCompany: React.FC = () => {
-  const { user, companyId, setActiveCompany } = useSession();
+  const { user } = useSession();
   const [companies, setCompanies] = React.useState<UserCompany[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
+  const [activeCompanyId, setActiveCompanyId] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     let mounted = true;
@@ -29,6 +30,14 @@ const SelectCompany: React.FC = () => {
         setIsLoading(false);
         return;
       }
+
+      // buscar empresa ativa
+      const { data: profileData } = await supabase
+        .from("profiles")
+        .select("active_company_id")
+        .eq("id", user.id)
+        .maybeSingle();
+      setActiveCompanyId(profileData?.active_company_id ?? null);
 
       const { data, error } = await supabase
         .from("user_companies")
@@ -62,10 +71,13 @@ const SelectCompany: React.FC = () => {
 
   const handleSetActive = async (id: string) => {
     try {
-      await setActiveCompany(id);
+      const { error } = await supabase
+        .from("profiles")
+        .update({ active_company_id: id, updated_at: new Date().toISOString() })
+        .eq("id", user?.id ?? "");
+      if (error) throw error;
+      setActiveCompanyId(id);
       toast.success("Empresa ativa definida com sucesso!");
-      // ❗ NÃO navegar aqui
-      // ProtectedRoute fará o redirect automaticamente
     } catch (err: any) {
       toast.error(
         `Falha ao definir empresa ativa: ${err?.message || "Erro"}`
@@ -102,7 +114,7 @@ const SelectCompany: React.FC = () => {
 
         <div className="space-y-2">
           {companies.map((uc) => {
-            const isActive = uc.company_id === companyId;
+            const isActive = uc.company_id === activeCompanyId;
 
             return (
               <Button

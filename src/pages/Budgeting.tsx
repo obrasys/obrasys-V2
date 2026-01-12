@@ -399,7 +399,7 @@ const Budgeting = () => {
       />
 
       <BudgetDetailTable
-        allBudgetItems={allBudgetItems}
+        data={allBudgetItems}
         columns={columns}
       />
 

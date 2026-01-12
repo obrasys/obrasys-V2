@@ -54,12 +54,11 @@ const CashFlowChart: React.FC<CashFlowChartProps> = ({
     invoices
       .filter(
         (inv) =>
-          inv.status === "paid" &&
-          inv.payment_date
+          inv.status === "paid"
       )
       .forEach((inv) => {
         const key = format(
-          parseISO(inv.payment_date),
+          parseISO(inv.issue_date),
           "yyyy-MM"
         );
 
@@ -67,7 +66,7 @@ const CashFlowChart: React.FC<CashFlowChartProps> = ({
           map.set(key, {
             monthKey: key,
             label: format(
-              parseISO(inv.payment_date),
+              parseISO(inv.issue_date),
               "MMM yy",
               { locale: pt }
             ),
@@ -77,19 +76,18 @@ const CashFlowChart: React.FC<CashFlowChartProps> = ({
         }
 
         map.get(key)!.entradas +=
-          inv.total_amount;
+          inv.total_amount as number;
       });
 
     /* SAÍDAS — apenas despesas pagas */
     expenses
       .filter(
         (exp) =>
-          exp.status === "paid" &&
-          exp.payment_date
+          exp.status === "paid"
       )
       .forEach((exp) => {
         const key = format(
-          parseISO(exp.payment_date),
+          parseISO(exp.due_date),
           "yyyy-MM"
         );
 
@@ -97,7 +95,7 @@ const CashFlowChart: React.FC<CashFlowChartProps> = ({
           map.set(key, {
             monthKey: key,
             label: format(
-              parseISO(exp.payment_date),
+              parseISO(exp.due_date),
               "MMM yy",
               { locale: pt }
             ),
@@ -106,7 +104,7 @@ const CashFlowChart: React.FC<CashFlowChartProps> = ({
           });
         }
 
-        map.get(key)!.saidas += exp.amount;
+        map.get(key)!.saidas += (exp.amount as number);
       });
 
     return Array.from(map.values()).sort(

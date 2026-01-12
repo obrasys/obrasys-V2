@@ -33,17 +33,13 @@ interface ReportProjectOption {
 }
 
 interface ReportParametersProps {
-  /** Mês selecionado (normalizado) */
   selectedMonth: Date | null;
   setSelectedMonth: (date: Date | null) => void;
 
-  /** Projeto selecionado */
   selectedProjectId: string | null;
-  setSelectedProjectId: (
-    projectId: string | null
-  ) => void;
+  setSelectedProjectId: (projectId: string | null) => void;
 
-  projects: ReportProjectOption[];
+  projects: { id?: string; nome?: string }[];
   isLoadingProjects: boolean;
 }
 

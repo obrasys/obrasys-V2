@@ -74,11 +74,14 @@ async function ensureProfileExists(user: User): Promise<Profile | null> {
   // 2) criar / upsert (sem duplicar)
   const payload: Partial<Profile> = {
     id: userId,
-    email: user.email ?? null,
-    full_name:
-      (user.user_metadata as any)?.full_name ??
-      (user.user_metadata as any)?.name ??
-      null,
+    first_name:
+      (user.user_metadata as any)?.full_name
+        ? String((user.user_metadata as any)?.full_name).split(" ")[0] || null
+        : ((user.user_metadata as any)?.first_name ?? null),
+    last_name:
+      (user.user_metadata as any)?.full_name
+        ? String((user.user_metadata as any)?.full_name).split(" ").slice(1).join(" ") || null
+        : ((user.user_metadata as any)?.last_name ?? null),
     avatar_url: (user.user_metadata as any)?.avatar_url ?? null,
     updated_at: new Date().toISOString(),
   };
@@ -105,7 +108,7 @@ export const SessionContextProvider: React.FC<{ children: React.ReactNode }> = (
   const [profile, setProfile] = useState<Profile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // evita corridas: uma “trava” por userId durante bootstrap/refresh
+  // evita corridas: uma "trava" por userId durante bootstrap/refresh
   const inFlightByUserIdRef = useRef<Record<string, Promise<Profile | null> | null>>(
     {}
   );

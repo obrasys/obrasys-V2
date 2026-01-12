@@ -7,10 +7,11 @@ import { cn } from "@/lib/utils";
 
 interface KPICardProps {
   title: string;
-  value: React.ReactNode; // Alterado de 'string' para 'React.ReactNode'
+  value: React.ReactNode;
   description: string;
   icon: LucideIcon;
   iconColorClass?: string;
+  extra?: React.ReactNode;
 }
 
 const KPICard: React.FC<KPICardProps> = ({
@@ -19,6 +20,7 @@ const KPICard: React.FC<KPICardProps> = ({
   description,
   icon: Icon,
   iconColorClass = "text-blue-500",
+  extra,
 }) => {
   return (
     <Card className="hover:shadow-md transition-shadow duration-200 ease-in-out">
@@ -31,6 +33,7 @@ const KPICard: React.FC<KPICardProps> = ({
       <CardContent>
         <div className="text-2xl font-bold">{value}</div>
         <p className="text-xs text-muted-foreground">{description}</p>
+        {extra ? <div className="mt-2">{extra}</div> : null}
       </CardContent>
     </Card>
   );
