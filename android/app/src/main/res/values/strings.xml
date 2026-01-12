@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">clever-salamander-blink</string>
+    <string name="title_activity_main">clever-salamander-blink</string>
+    <string name="package_name">com.example.cleversalamanderblink</string>
+    <string name="custom_url_scheme">com.example.cleversalamanderblink</string>
+</resources>
