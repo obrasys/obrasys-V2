@@ -72,22 +72,21 @@ const MainLayout = () => {
 
   const { user, profile, isLoading } = useSession();
 
-  const [isSidebarCollapsed, setIsSidebarCollapsed] =
-    React.useState(isMobile);
-  const [isEditProfileModalOpen, setIsEditProfileModalOpen] =
-    React.useState(false);
-
-  React.useEffect(() => {
-    setIsSidebarCollapsed(isMobile);
-  }, [isMobile]);
-
-  // MOVIDO: calcular companyId e chamar useSubscriptionStatus antes de qualquer return
+  // Chamar hooks e calcular dependências SEMPRE antes de qualquer return
   const companyId = profile?.company_id ?? undefined;
   const {
     data: subscriptionStatus,
     loading: isLoadingSubscription,
   } = useSubscriptionStatus(companyId);
 
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = React.useState(isMobile);
+  const [isEditProfileModalOpen, setIsEditProfileModalOpen] = React.useState(false);
+
+  React.useEffect(() => {
+    setIsSidebarCollapsed(isMobile);
+  }, [isMobile]);
+
+  // Bloqueios visuais (sem alterar ordem dos hooks)
   if (isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
@@ -96,42 +95,17 @@ const MainLayout = () => {
     );
   }
 
-  // REMOVIDO: bloqueios adicionais por !user e !profile
-  // O ProtectedRoute nas páginas internas continuará a tratar o acesso.
-
   const isSubscriptionBlocked =
     subscriptionStatus?.computed_status === "expired";
 
   React.useEffect(() => {
     if (
       isSubscriptionBlocked &&
-      PAID_ROUTES.some((route) =>
-        location.pathname.startsWith(route)
-      )
+      PAID_ROUTES.some((route) => location.pathname.startsWith(route))
     ) {
       navigate("/plans", { replace: true });
     }
-  }, [
-    isSubscriptionBlocked,
-    location.pathname,
-    navigate,
-  ]);
-
-  /* -------------------------------------------------- */
-  /* 🏢 SUBSCRIPTION (CORREÇÃO DO BUG)                  */
-  /* -------------------------------------------------- */
-
-  if (isLoadingSubscription) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        A verificar subscrição…
-      </div>
-    );
-  }
-
-  /* -------------------------------------------------- */
-  /* 🔧 ACTIONS                                        */
-  /* -------------------------------------------------- */
+  }, [isSubscriptionBlocked, location.pathname, navigate]);
 
   const toggleSidebar = () => {
     setIsSidebarCollapsed((prev) => !prev);
@@ -140,9 +114,7 @@ const MainLayout = () => {
   const handleLogout = async () => {
     const { error } = await supabase.auth.signOut();
     if (error) {
-      toast.error(
-        `Erro ao terminar sessão: ${error.message}`
-      );
+      toast.error(`Erro ao terminar sessão: ${error.message}`);
     } else {
       toast.success("Sessão terminada com sucesso!");
       navigate("/login");
@@ -151,15 +123,10 @@ const MainLayout = () => {
 
   const firstName = profile?.first_name || "";
   const lastName = profile?.last_name || "";
-
   const userInitials =
     firstName && lastName
       ? `${firstName[0]}${lastName[0]}`.toUpperCase()
-      : user.email?.charAt(0).toUpperCase() ?? "U";
-
-  /* -------------------------------------------------- */
-  /* 🖥️ RENDER                                        */
-  /* -------------------------------------------------- */
+      : user?.email?.charAt(0).toUpperCase() ?? "U";
 
   return (
     <div className="flex min-h-screen bg-background text-foreground">
@@ -175,9 +142,7 @@ const MainLayout = () => {
       <main className="flex-1 p-4 md:p-6">
         <header className="flex items-center justify-between pb-4 border-b mb-4">
           <div className="md:hidden">
-            <MobileSidebar
-              profile={profile}
-            >
+            <MobileSidebar profile={profile}>
               <Button variant="ghost" size="icon">
                 <Menu className="h-5 w-5" />
               </Button>
@@ -195,52 +160,34 @@ const MainLayout = () => {
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  className="h-8 w-8 rounded-full"
-                >
+                <Button variant="ghost" className="h-8 w-8 rounded-full">
                   <Avatar className="h-8 w-8">
-                    <AvatarImage
-                      src={profile?.avatar_url ?? undefined}
-                    />
-                    <AvatarFallback>
-                      {userInitials}
-                    </AvatarFallback>
+                    <AvatarImage src={profile?.avatar_url ?? undefined} />
+                    <AvatarFallback>{userInitials}</AvatarFallback>
                   </Avatar>
                 </Button>
               </DropdownMenuTrigger>
 
-              <DropdownMenuContent
-                align="end"
-                className="w-56"
-              >
+              <DropdownMenuContent align="end" className="w-56">
                 <DropdownMenuLabel>
                   <div className="flex flex-col space-y-1">
                     <span className="text-sm font-medium">
                       {firstName} {lastName}
                     </span>
                     <span className="text-xs text-muted-foreground">
-                      {user.email}
+                      {user?.email}
                     </span>
                   </div>
                 </DropdownMenuLabel>
 
                 <DropdownMenuSeparator />
 
-                <DropdownMenuItem
-                  onClick={() =>
-                    setIsEditProfileModalOpen(true)
-                  }
-                >
+                <DropdownMenuItem onClick={() => setIsEditProfileModalOpen(true)}>
                   <User className="mr-2 h-4 w-4" />
                   Perfil
                 </DropdownMenuItem>
 
-                <DropdownMenuItem
-                  onClick={() =>
-                    navigate("/profile?tab=company")
-                  }
-                >
+                <DropdownMenuItem onClick={() => navigate("/profile?tab=company")}>
                   <Building2 className="mr-2 h-4 w-4" />
                   Gestão da Empresa
                 </DropdownMenuItem>
@@ -261,9 +208,7 @@ const MainLayout = () => {
 
       <EditProfileModal
         isOpen={isEditProfileModalOpen}
-        onClose={() =>
-          setIsEditProfileModalOpen(false)
-        }
+        onClose={() => setIsEditProfileModalOpen(false)}
         onProfileUpdated={() => {}}
       />
     </div>
