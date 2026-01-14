@@ -78,12 +78,11 @@ const ReportsPage = () => {
           } else if (dateOrString) {
             setSelectedMonth(format(dateOrString, "yyyy-MM"));
           } else {
-            // manter mês atual se null
             setSelectedMonth(format(new Date(), "yyyy-MM"));
           }
         }}
-        selectedProjectIdForReport={selectedProjectIdForReport}
-        setSelectedProjectIdForReport={setSelectedProjectIdForReport}
+        selectedProjectId={selectedProjectIdForReport}
+        setSelectedProjectId={setSelectedProjectIdForReport}
         projects={projects}
         isLoadingProjects={isLoadingInitialData}
       />
