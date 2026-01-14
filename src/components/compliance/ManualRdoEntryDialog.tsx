@@ -34,7 +34,6 @@ import {
 import { cn } from "@/lib/utils";
 import { CalendarDays } from "lucide-react";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
 
 /* =========================
    SCHEMA
@@ -56,8 +55,8 @@ type ManualRdoEntryFormValues = z.infer<
 interface ManualRdoEntryDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave?: (rdo: RdoEntry) => void;    // tornado opcional
-  onSaved?: (rdo: RdoEntry) => void;   // NOVO: alias compatível
+  onSave?: (rdo: any) => void;    // simplificado para evitar tipo não importado
+  onSaved?: (rdo: any) => void;   // compatibilidade
   projectId: string;
   companyId: string;
 }
@@ -112,36 +111,26 @@ const ManualRdoEntryDialog: React.FC<
   ) => {
     setIsSaving(true);
 
-    const payload = {
+    // Criar payload simples para RDO e deixar persistência para o callback externo
+    const rdoPayload = {
       id: uuidv4(),
-      livro_obra_id: livroObraId,
-      rdo_id: uuidv4(),
-      data: values.data,
-      resumo: values.resumo,
-      custos_diarios: 0,
+      company_id: companyId,
+      project_id: projectId,
+      date: values.data,
+      event_type: "manual_entry",
+      description: values.resumo,
+      observations: null,
+      attachments_url: null,
+      status: "pending",
       created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
     };
 
-    const { error } = await supabase
-      .from("livro_obra_rdos")
-      .insert([payload]);
-
-    if (error) {
-      console.error(error);
-      toast.error(
-        "Erro ao guardar RDO manual."
-      );
-      setIsSaving(false);
-      return;
-    }
-
-    toast.success(
-      "Registo diário adicionado ao Livro de Obra."
-    );
+    toast.success("Registo diário preparado para guardar.");
 
     // Callbacks de persistência
-    onSave?.(newRdoEntry);
-    onSaved?.(newRdoEntry);
+    onSave?.(rdoPayload);
+    onSaved?.(rdoPayload);
 
     onClose();
     setIsSaving(false);

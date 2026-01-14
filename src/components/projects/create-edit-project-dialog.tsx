@@ -44,6 +44,7 @@ import { Project, projectSchema } from "@/schemas/project-schema";
 import { toast } from "sonner";
 import { Client } from "@/schemas/client-schema";
 import { supabase } from "@/integrations/supabase/client";
+import { z } from "zod"; // ADICIONADO
 
 type ProjectFormValues = z.infer<typeof projectSchema>;
 

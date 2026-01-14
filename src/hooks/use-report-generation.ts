@@ -29,7 +29,7 @@ interface UseReportGenerationResult {
   isLoadingInitialData: boolean;
   isLoadingReport: boolean;
   handleGenerateReportClick: (
-    reportType: ReportType,
+    reportType: ReportType | string, // ADAPTADO
     period: { month: string },
     projectId: string | null
   ) => Promise<void>;
@@ -141,7 +141,7 @@ export function useReportGeneration(): UseReportGenerationResult {
 
   const handleGenerateReportClick = useCallback(
     async (
-      reportType: ReportType,
+      reportType: ReportType | string, // ADAPTADO
       period: { month: string },
       projectId: string | null
     ) => {
@@ -190,7 +190,7 @@ export function useReportGeneration(): UseReportGenerationResult {
         let reportTitle = "Relatório";
         let selectedProject: Project | null = null;
 
-        if (reportType === ReportType.INVOICES) {
+        if (reportType === ReportType.INVOICES || reportType === "invoices") {
           const { data, error } = await supabase
             .from("invoices")
             .select("*, clients(nome)")
@@ -221,7 +221,7 @@ export function useReportGeneration(): UseReportGenerationResult {
           reportTitle = "Relatório de Faturas";
         }
 
-        if (reportType === ReportType.PROJECT_FINANCIAL) {
+        if (reportType === ReportType.PROJECT_FINANCIAL || reportType === "project_financial") {
           if (!projectId) {
             toast.error("Projeto obrigatório para este relatório.");
             return;

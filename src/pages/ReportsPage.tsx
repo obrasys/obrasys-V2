@@ -72,7 +72,16 @@ const ReportsPage = () => {
 
       <ReportParameters
         selectedMonth={selectedMonth}
-        setSelectedMonth={setSelectedMonth}
+        setSelectedMonth={(dateOrString) => {
+          if (typeof dateOrString === "string") {
+            setSelectedMonth(dateOrString);
+          } else if (dateOrString) {
+            setSelectedMonth(format(dateOrString, "yyyy-MM"));
+          } else {
+            // manter mês atual se null
+            setSelectedMonth(format(new Date(), "yyyy-MM"));
+          }
+        }}
         selectedProjectIdForReport={selectedProjectIdForReport}
         setSelectedProjectIdForReport={setSelectedProjectIdForReport}
         projects={projects}
