@@ -72,8 +72,7 @@ const MainLayout = () => {
 
   const { user, profile, isLoading } = useSession();
 
-  // Chamar sempre os hooks e cálculos que dependem de hooks no topo,
-  // para que NUNCA fiquem abaixo de returns condicionais.
+  // Chamar sempre os hooks e cálculos que dependem de hooks no topo
   const companyId = profile?.company_id ?? undefined;
   const {
     data: subscriptionStatus,
@@ -87,14 +86,7 @@ const MainLayout = () => {
     setIsSidebarCollapsed(isMobile);
   }, [isMobile]);
 
-  if (isLoading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        A carregar sessão…
-      </div>
-    );
-  }
-
+  // MOVIDO: calcular bloqueio e declarar useEffect ANTES de qualquer return
   const isSubscriptionBlocked =
     subscriptionStatus?.computed_status === "expired";
 
@@ -108,6 +100,14 @@ const MainLayout = () => {
       navigate("/plans", { replace: true });
     }
   }, [isSubscriptionBlocked, location.pathname, navigate]);
+
+  if (isLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        A carregar sessão…
+      </div>
+    );
+  }
 
   const toggleSidebar = () => {
     setIsSidebarCollapsed((prev) => !prev);
