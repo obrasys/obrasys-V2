@@ -101,7 +101,7 @@ const MainLayout = () => {
   /* -------------------------------------------------- */
 
   // ⚠️ NUNCA usar null aqui
-  const companyId = profile.company_id ?? undefined;
+  const companyId = profile?.company_id ?? undefined;
 
   const {
     data: subscriptionStatus,
@@ -154,8 +154,8 @@ const MainLayout = () => {
     }
   };
 
-  const firstName = profile.first_name || "";
-  const lastName = profile.last_name || "";
+  const firstName = profile?.first_name || "";
+  const lastName = profile?.last_name || "";
 
   const userInitials =
     firstName && lastName
@@ -206,7 +206,7 @@ const MainLayout = () => {
                 >
                   <Avatar className="h-8 w-8">
                     <AvatarImage
-                      src={profile.avatar_url ?? undefined}
+                      src={profile?.avatar_url ?? undefined}
                     />
                     <AvatarFallback>
                       {userInitials}
