@@ -72,7 +72,8 @@ const MainLayout = () => {
 
   const { user, profile, isLoading } = useSession();
 
-  // Chamar hooks e calcular dependências SEMPRE antes de qualquer return
+  // Chamar sempre os hooks e cálculos que dependem de hooks no topo,
+  // para que NUNCA fiquem abaixo de returns condicionais.
   const companyId = profile?.company_id ?? undefined;
   const {
     data: subscriptionStatus,
@@ -86,7 +87,6 @@ const MainLayout = () => {
     setIsSidebarCollapsed(isMobile);
   }, [isMobile]);
 
-  // Bloqueios visuais (sem alterar ordem dos hooks)
   if (isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
@@ -101,7 +101,9 @@ const MainLayout = () => {
   React.useEffect(() => {
     if (
       isSubscriptionBlocked &&
-      PAID_ROUTES.some((route) => location.pathname.startsWith(route))
+      PAID_ROUTES.some((route) =>
+        location.pathname.startsWith(route)
+      )
     ) {
       navigate("/plans", { replace: true });
     }
