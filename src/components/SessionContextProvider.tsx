@@ -121,17 +121,19 @@ export const SessionContextProvider: React.FC<{ children: React.ReactNode }> = (
       }
 
       const userId = u.id;
+
+      // Se já estamos em voo para esse user, reutiliza
       const existingInFlight = inFlightByUserIdRef.current[userId];
       if (existingInFlight) return existingInFlight;
 
+      // Inicia tentativa única para esse userId
       const p = (async () => {
         const ensured = await ensureProfileExists(u);
         if (!ensured) {
-          // feedback sem crash
           console.warn("[Session] Perfil não disponível (RLS/DB/Network).");
         }
-        setProfile(ensured);
-        return ensured;
+        setProfile(ensured ?? null);
+        return ensured ?? null;
       })();
 
       inFlightByUserIdRef.current[userId] = p;
@@ -139,7 +141,6 @@ export const SessionContextProvider: React.FC<{ children: React.ReactNode }> = (
       try {
         return await p;
       } finally {
-        // libera a trava depois
         inFlightByUserIdRef.current[userId] = null;
       }
     },
@@ -210,6 +211,7 @@ export const SessionContextProvider: React.FC<{ children: React.ReactNode }> = (
         setSession(s ?? null);
         setUser(s?.user ?? null);
 
+        // Garante tentativa imediata de carregar perfil quando há user
         await safeLoadProfile(s?.user ?? null);
       } catch (e) {
         console.error("[Session bootstrap] erro inesperado:", e);
@@ -226,9 +228,9 @@ export const SessionContextProvider: React.FC<{ children: React.ReactNode }> = (
 
     const { data: sub } = supabase.auth.onAuthStateChange(
       async (_event, newSession) => {
-        // NÃO usar throw aqui. Apenas atualizar estado com segurança.
         setSession(newSession ?? null);
         setUser(newSession?.user ?? null);
+        // Nova tentativa sempre que a sessão muda
         await safeLoadProfile(newSession?.user ?? null);
       }
     );

@@ -72,12 +72,12 @@ const MainLayout = () => {
 
   const { user, profile, isLoading } = useSession();
 
-  // Chamar sempre os hooks e cálculos que dependem de hooks no topo
-  const companyId = profile?.company_id ?? undefined;
-  const {
-    data: subscriptionStatus,
-    loading: isLoadingSubscription,
-  } = useSubscriptionStatus(companyId);
+  // Só resolve companyId quando profile existir
+  const companyId = profile?.company_id ?? null;
+
+  // Evita chamar o hook com undefined (ordem estável e sem loops)
+  const { data: subscriptionStatus, loading: isLoadingSubscription } =
+    useSubscriptionStatus(companyId);
 
   const [isSidebarCollapsed, setIsSidebarCollapsed] = React.useState(isMobile);
   const [isEditProfileModalOpen, setIsEditProfileModalOpen] = React.useState(false);
@@ -101,7 +101,8 @@ const MainLayout = () => {
     }
   }, [isSubscriptionBlocked, location.pathname, navigate]);
 
-  if (isLoading) {
+  // Se ainda está carregando sessão/perfil, não prossegue (sem criar loops)
+  if (isLoading || !profile) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         A carregar sessão…
