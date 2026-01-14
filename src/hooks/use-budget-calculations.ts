@@ -26,7 +26,7 @@ export function useBudgetCalculations({ form }: UseBudgetCalculationsProps): Use
         const executedCostItem = (item.custo_real_material || 0) + (item.custo_real_mao_obra || 0);
         const deviation = executedCostItem - plannedCost;
 
-        // Update form values if there's a change
+        // Atualizar campos derivados
         if (form.getValues(`chapters.${chapterIndex}.items.${itemIndex}.custo_planeado`) !== plannedCost) {
           form.setValue(`chapters.${chapterIndex}.items.${itemIndex}.custo_planeado`, plannedCost);
         }
@@ -36,22 +36,53 @@ export function useBudgetCalculations({ form }: UseBudgetCalculationsProps): Use
         if (form.getValues(`chapters.${chapterIndex}.items.${itemIndex}.desvio`) !== deviation) {
           form.setValue(`chapters.${chapterIndex}.items.${itemIndex}.desvio`, deviation);
         }
-        
+
         totalPlanned += plannedCost;
         totalExecuted += executedCostItem;
       });
     });
+
     return totalPlanned;
   }, [form]);
 
-  const currentBudgetTotal = calculateCosts();
-  const totalExecuted = form.watch("chapters").reduce((acc, chapter) => 
-    acc + chapter.items.reduce((itemAcc, item) => itemAcc + ((item.custo_real_material || 0) + (item.custo_real_mao_obra || 0)), 0)
-  , 0);
+  // Observar capítulos e calcular totais sem efeitos colaterais
+  const chapters = form.watch("chapters");
+
+  const currentBudgetTotal = React.useMemo(() => {
+    if (!Array.isArray(chapters)) return 0;
+    let totalPlanned = 0;
+    chapters.forEach((chapter) => {
+      chapter.items.forEach((item) => {
+        totalPlanned += item.quantidade * item.preco_unitario;
+      });
+    });
+    return totalPlanned;
+  }, [chapters]);
+
+  const totalExecuted = React.useMemo(() => {
+    if (!Array.isArray(chapters)) return 0;
+    return chapters.reduce(
+      (acc, chapter) =>
+        acc +
+        chapter.items.reduce(
+          (itemAcc, item) =>
+            itemAcc +
+            ((item.custo_real_material || 0) + (item.custo_real_mao_obra || 0)),
+          0
+        ),
+      0
+    );
+  }, [chapters]);
 
   React.useEffect(() => {
-    const subscription = form.watch((value, { name, type }) => {
-      if (name?.includes("quantidade") || name?.includes("preco_unitario") || name?.includes("custo_real_material") || name?.includes("custo_real_mao_obra")) {
+    const subscription = form.watch((_, { name }) => {
+      // Só recalcular campos derivados quando inputs relevantes mudarem
+      if (
+        name?.includes("quantidade") ||
+        name?.includes("preco_unitario") ||
+        name?.includes("custo_real_material") ||
+        name?.includes("custo_real_mao_obra")
+      ) {
         calculateCosts();
       }
     });
