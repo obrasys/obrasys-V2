@@ -81,9 +81,12 @@ const MainLayout = () => {
     setIsSidebarCollapsed(isMobile);
   }, [isMobile]);
 
-  /* -------------------------------------------------- */
-  /* 🔒 AUTH / PROFILE GUARD                            */
-  /* -------------------------------------------------- */
+  // MOVIDO: calcular companyId e chamar useSubscriptionStatus antes de qualquer return
+  const companyId = profile?.company_id ?? undefined;
+  const {
+    data: subscriptionStatus,
+    loading: isLoadingSubscription,
+  } = useSubscriptionStatus(companyId);
 
   if (isLoading) {
     return (
@@ -95,26 +98,6 @@ const MainLayout = () => {
 
   // REMOVIDO: bloqueios adicionais por !user e !profile
   // O ProtectedRoute nas páginas internas continuará a tratar o acesso.
-
-  /* -------------------------------------------------- */
-  /* 🏢 SUBSCRIPTION (CORREÇÃO DO BUG)                  */
-  /* -------------------------------------------------- */
-
-  // ⚠️ NUNCA usar null aqui
-  const companyId = profile?.company_id ?? undefined;
-
-  const {
-    data: subscriptionStatus,
-    loading: isLoadingSubscription,
-  } = useSubscriptionStatus(companyId);
-
-  if (isLoadingSubscription) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        A verificar subscrição…
-      </div>
-    );
-  }
 
   const isSubscriptionBlocked =
     subscriptionStatus?.computed_status === "expired";
@@ -133,6 +116,18 @@ const MainLayout = () => {
     location.pathname,
     navigate,
   ]);
+
+  /* -------------------------------------------------- */
+  /* 🏢 SUBSCRIPTION (CORREÇÃO DO BUG)                  */
+  /* -------------------------------------------------- */
+
+  if (isLoadingSubscription) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        A verificar subscrição…
+      </div>
+    );
+  }
 
   /* -------------------------------------------------- */
   /* 🔧 ACTIONS                                        */
