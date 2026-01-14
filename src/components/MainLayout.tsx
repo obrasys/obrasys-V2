@@ -93,23 +93,8 @@ const MainLayout = () => {
     );
   }
 
-  // Em vez de redirecionar aqui (pode ocorrer antes do provider concluir getSession),
-  // aguardamos o ProtectedRoute nas páginas internas cuidar da proteção.
-  if (!user) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        A carregar sessão…
-      </div>
-    );
-  }
-
-  if (!profile) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        A carregar perfil…
-      </div>
-    );
-  }
+  // REMOVIDO: bloqueios adicionais por !user e !profile
+  // O ProtectedRoute nas páginas internas continuará a tratar o acesso.
 
   /* -------------------------------------------------- */
   /* 🏢 SUBSCRIPTION (CORREÇÃO DO BUG)                  */
