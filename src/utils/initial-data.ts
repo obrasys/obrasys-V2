@@ -95,6 +95,7 @@ const mapPortugueseTypeToEnum = (type: string): Article["tipo"] => {
 ========================= */
 
 export async function seedDefaultArticles(companyId: string) {
+  // Guard: nunca rodar sem companyId válido
   if (!companyId) return;
 
   try {
@@ -102,14 +103,15 @@ export async function seedDefaultArticles(companyId: string) {
       .from("companies")
       .select("default_articles_seeded")
       .eq("id", companyId)
-      .single();
+      .maybeSingle(); // usar maybeSingle para evitar erro 406 quando 0 linhas
 
     if (error) {
       console.warn("[seedDefaultArticles] não foi possível verificar estado:", error);
       return;
     }
 
-    if (company?.default_articles_seeded) return;
+    // Se já seeded ou empresa não encontrada, sair SEM toast
+    if (!company || company.default_articles_seeded) return;
 
     const parsed = Papa.parse(DEFAULT_ARTICLES_CSV, {
       header: true,
@@ -153,7 +155,14 @@ export async function seedDefaultArticles(companyId: string) {
       });
     }
 
-    if (!articles.length) return;
+    if (!articles.length) {
+      // Marcar como seeded para não tentar novamente, mas sem toast
+      await supabase
+        .from("companies")
+        .update({ default_articles_seeded: true })
+        .eq("id", companyId);
+      return;
+    }
 
     const { error: insertError } = await supabase
       .from("articles")
@@ -169,6 +178,7 @@ export async function seedDefaultArticles(companyId: string) {
       .update({ default_articles_seeded: true })
       .eq("id", companyId);
 
+    // Toast apenas quando realmente inseriu
     toast.success(`${articles.length} artigos padrão carregados`);
   } catch (err) {
     console.error("[seedDefaultArticles] erro inesperado:", err);
