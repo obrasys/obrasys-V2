@@ -93,6 +93,7 @@ const MainLayout = () => {
   }, [isMobile]);
 
   // MOVIDO: calcular bloqueio e declarar useEffect ANTES de qualquer return
+  // MOVIDO: calcular bloqueio e declarar useEffect ANTES de qualquer return
   const isSubscriptionBlocked =
     subscriptionStatus?.computed_status === "expired";
 
@@ -106,6 +107,25 @@ const MainLayout = () => {
       navigate("/plans", { replace: true });
     }
   }, [isSubscriptionBlocked, location.pathname, navigate]);
+
+  // Seeding check (Rebuilt Logic)
+  // We run this once when profile is loaded to ensure data exists.
+  // We capture errors to avoid breaking the UI.
+  React.useEffect(() => {
+    if (user && profile?.company_id) {
+      import("@/utils/initial-data").then(async ({ seedDefaultArticles, ensureDefaultCategories }) => {
+        try {
+          // Run silently in background
+          await Promise.all([
+            ensureDefaultCategories(profile.company_id),
+            seedDefaultArticles(profile.company_id)
+          ]);
+        } catch (err) {
+          console.warn("[MainLayout] Seeding check failed (non-critical):", err);
+        }
+      }).catch(err => console.error("Failed to load seeding utils", err));
+    }
+  }, [user, profile?.company_id]);
 
   // Se ainda está carregando sessão/perfil, não prossegue (sem criar loops)
   if (isLoading || !profile) {
