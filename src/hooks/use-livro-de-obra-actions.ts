@@ -253,8 +253,8 @@ export function useLivroDeObraActions({
           const costImpact =
             Number(
               rdo.details?.new_executed_cost ??
-                rdo.details?.total_planeado ??
-                0
+              rdo.details?.total_planeado ??
+              0
             ) || 0;
 
           return `
@@ -264,8 +264,8 @@ export function useLivroDeObraActions({
               <td>${escapeHTML(rdo.description || "")}</td>
               <td>${escapeHTML(userName)}</td>
               <td style="text-align:right;">${escapeHTML(
-                formatCurrency(costImpact)
-              )}</td>
+            formatCurrency(costImpact)
+          )}</td>
             </tr>
           `;
         })
@@ -299,9 +299,8 @@ ${safeLogo ? `<img src="${escapeHTML(safeLogo)}" style="max-height:60px;" />` : 
 
 <h2>Registos Diários</h2>
 
-${
-  rdos.length > 0
-    ? `<table>
+${rdos.length > 0
+          ? `<table>
 <thead>
 <tr>
 <th>Data</th>
@@ -315,13 +314,13 @@ ${
 ${rdoRows}
 </tbody>
 </table>`
-    : `<p>Nenhum RDO disponível.</p>`
-}
+          : `<p>Nenhum RDO disponível.</p>`
+        }
 
 <p><strong>Total de registos:</strong> ${escapeHTML(String(totalDias))}</p>
 <p><strong>Custo total:</strong> ${escapeHTML(
-        formatCurrency(custoTotal)
-      )}</p>
+          formatCurrency(custoTotal)
+        )}</p>
 
 <p style="margin-top:40px; font-size:12px; text-align:center;">
 Documento gerado automaticamente pelo Obra Sys.
@@ -362,7 +361,6 @@ Documento gerado automaticamente pelo Obra Sys.
 
     try {
       // defesa extra
-      // @ts-ignore
       printWindow.opener = null;
     } catch {
       /* ignore */

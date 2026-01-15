@@ -130,7 +130,7 @@ const AccountsPage: React.FC = () => {
       fetchUserCompanyId();
     }
     console.log("[AccountsPage] isSessionLoading:", isSessionLoading, "userCompanyId:", userCompanyId);
-  }, [isSessionLoading, fetchUserCompanyId]); // Removido userCompanyId das dependências
+  }, [isSessionLoading, fetchUserCompanyId, userCompanyId]);
 
   React.useEffect(() => {
     if (userCompanyId) {

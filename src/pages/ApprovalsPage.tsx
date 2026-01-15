@@ -95,7 +95,7 @@ const ApprovalsPage: React.FC = () => {
       if (approval.decision_by_user_id) allUserIds.add(approval.decision_by_user_id);
     });
 
-    let usersMap = new Map<string, { first_name: string; last_name: string; avatar_url: string | null }>();
+    const usersMap = new Map<string, { first_name: string; last_name: string; avatar_url: string | null }>();
     if (allUserIds.size > 0) {
       const { data: usersData, error: usersError } = await supabase
         .from('profiles')

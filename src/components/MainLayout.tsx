@@ -72,6 +72,12 @@ const MainLayout = () => {
 
   const { user, profile, isLoading } = useSession();
 
+  console.log("[DEBUG AGENT] MainLayout render state:", {
+    hasUser: !!user,
+    hasProfile: !!profile,
+    isLoading
+  });
+
   // Só resolve companyId quando profile existir
   const companyId = profile?.company_id ?? null;
 
@@ -212,7 +218,7 @@ const MainLayout = () => {
       <EditProfileModal
         isOpen={isEditProfileModalOpen}
         onClose={() => setIsEditProfileModalOpen(false)}
-        onProfileUpdated={() => {}}
+        onProfileUpdated={() => { }}
       />
     </div>
   );

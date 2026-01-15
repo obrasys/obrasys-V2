@@ -43,7 +43,7 @@ export function useSession(): SessionContextType {
       profile: null,
       isLoading: false,
       refreshProfile: async () => null,
-      signOut: async () => {},
+      signOut: async () => { },
     };
   }
   return ctx;
@@ -187,57 +187,70 @@ export const SessionContextProvider: React.FC<{ children: React.ReactNode }> = (
   useEffect(() => {
     let mounted = true;
 
-    const bootstrap = async () => {
-      setIsLoading(true);
-
+    async function initializeSession() {
       try {
-        const {
-          data: { session: s },
-          error,
-        } = await supabase.auth.getSession();
+        // 1. Get the current session from the server (validate token)
+        const { data: { user: authUser }, error } = await supabase.auth.getUser();
 
-        if (error) {
-          console.error("[auth.getSession] erro:", error);
-          if (!mounted) return;
-          setSession(null);
-          setUser(null);
-          setProfile(null);
-          setIsLoading(false);
+        if (error || !authUser) {
+          // If no user on server, we are likely signed out or token expired
+          if (mounted) {
+            setSession(null);
+            setUser(null);
+            setProfile(null);
+            setIsLoading(false);
+          }
           return;
         }
+
+        // 2. Hydrate session if user exists
+        const { data: { session: s } } = await supabase.auth.getSession();
 
         if (!mounted) return;
 
         setSession(s ?? null);
-        setUser(s?.user ?? null);
+        setUser(authUser);
 
-        // Garante tentativa imediata de carregar perfil quando há user
-        await safeLoadProfile(s?.user ?? null);
-      } catch (e) {
-        console.error("[Session bootstrap] erro inesperado:", e);
-        if (!mounted) return;
-        setSession(null);
-        setUser(null);
-        setProfile(null);
+        // 3. Load profile (CRITICAL: Wait for this before setting isLoading=false)
+        if (authUser) {
+          await safeLoadProfile(authUser);
+        }
+
+      } catch (err) {
+        console.error("Error initializing session:", err);
       } finally {
-        if (mounted) setIsLoading(false);
+        if (mounted) {
+          setIsLoading(false);
+        }
       }
-    };
+    }
 
-    bootstrap();
+    initializeSession();
 
-    const { data: sub } = supabase.auth.onAuthStateChange(
-      async (_event, newSession) => {
-        setSession(newSession ?? null);
-        setUser(newSession?.user ?? null);
-        // Nova tentativa sempre que a sessão muda
-        await safeLoadProfile(newSession?.user ?? null);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, newSession) => {
+      // NOTE: onAuthStateChange fires 'INITIAL_SESSION' immediately if configured, 
+      // but we are doing manual bootstrapping to ensure getUser() validation.
+      // We should trust the event for SIGN_IN, SIGN_OUT, TOKEN_REFRESHED.
+
+      if (!mounted) return;
+
+      // Update basic state
+      setSession(newSession);
+      setUser(newSession?.user ?? null);
+
+      if (event === 'SIGNED_OUT') {
+        setProfile(null);
+        setIsLoading(false);
+      } else if (newSession?.user) {
+        // For token refresh or sign in, reload profile
+        // This *might* be redundant with bootstrap but handles updates
+        await safeLoadProfile(newSession.user);
       }
-    );
+    });
 
     return () => {
       mounted = false;
-      sub.subscription.unsubscribe();
+      subscription.unsubscribe();
     };
   }, [safeLoadProfile]);
 

@@ -146,7 +146,7 @@ export function useLivroDeObraData(): UseLivroDeObraDataResult {
       }
     }
     setIsLoading(false);
-  }, [userCompanyId, preselectedProjectId, selectedLivroObra, form]);
+  }, [userCompanyId, preselectedProjectId, selectedLivroObra]);
 
   const fetchRdoEntries = useCallback(async () => {
     if (!selectedLivroObra?.project_id || !userCompanyId) {
