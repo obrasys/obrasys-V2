@@ -227,6 +227,20 @@ export const SessionContextProvider: React.FC<{ children: React.ReactNode }> = (
 
     initializeSession();
 
+    // Safety timeout: force loading to false after 10 seconds
+    const timeoutTimer = setTimeout(() => {
+      if (mounted) {
+        // Check if we are still loading, if so, force it off
+        setIsLoading((prev) => {
+          if (prev) {
+            console.warn("[SessionContext] Session load timeout forced.");
+            return false;
+          }
+          return prev;
+        });
+      }
+    }, 10000);
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, newSession) => {
       // NOTE: onAuthStateChange fires 'INITIAL_SESSION' immediately if configured, 
       // but we are doing manual bootstrapping to ensure getUser() validation.
@@ -250,6 +264,7 @@ export const SessionContextProvider: React.FC<{ children: React.ReactNode }> = (
 
     return () => {
       mounted = false;
+      clearTimeout(timeoutTimer);
       subscription.unsubscribe();
     };
   }, [safeLoadProfile]);

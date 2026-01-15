@@ -103,15 +103,17 @@ export async function seedDefaultArticles(companyId: string) {
       .from("companies")
       .select("default_articles_seeded")
       .eq("id", companyId)
-      .limit(1);
+      .maybeSingle();
 
     if (error) {
       // Ignore errors, just log warning
-      console.warn("[seedDefaultArticles] não foi possível verificar estado (query fail):", error);
+      if (error.code !== "PGRST116") {
+        console.warn("[seedDefaultArticles] não foi possível verificar estado (query fail):", error);
+      }
       return;
     }
 
-    const company = companies?.[0];
+    const company = companies;
 
     // Se já seeded ou empresa não encontrada, sair SEM toast
     if (!company || company.default_articles_seeded) return;

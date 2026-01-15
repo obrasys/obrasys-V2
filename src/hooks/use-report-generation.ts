@@ -37,12 +37,12 @@ interface UseReportGenerationResult {
 
 type PdfApiResponse =
   | {
-      ok: true;
-      signedUrl?: string;
-      path?: string;
-      reportId?: string;
-      size?: number;
-    }
+    ok: true;
+    signedUrl?: string;
+    path?: string;
+    reportId?: string;
+    size?: number;
+  }
   | { ok?: false; error: string };
 
 function getErrorMessage(err: unknown): string {
@@ -76,7 +76,7 @@ export function useReportGeneration(): UseReportGenerationResult {
       .from("profiles")
       .select("company_id")
       .eq("id", user.id)
-      .single();
+      .maybeSingle();
 
     if (error) {
       console.error(
@@ -159,7 +159,7 @@ export function useReportGeneration(): UseReportGenerationResult {
           .from("companies")
           .select("name")
           .eq("id", userCompanyId)
-          .single();
+          .maybeSingle();
 
         if (companyError) {
           console.error(
@@ -243,7 +243,7 @@ export function useReportGeneration(): UseReportGenerationResult {
               .from("budgets")
               .select("*, budget_chapters(budget_items(*))")
               .eq("id", project.budget_id)
-              .single();
+              .maybeSingle();
 
             if (error) {
               console.error(

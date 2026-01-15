@@ -15,14 +15,17 @@ export async function getCompanySubscriptionStatus(
     .from("company_subscription_status")
     .select("*")
     .eq("company_id", companyId)
-    .limit(1);
+    .maybeSingle();
 
   if (error) {
-    console.error("Erro ao buscar status da assinatura:", error);
-    throw error;
+    // Log defensivo: ignora PGRST116 se ocorrer (embora maybeSingle deva tratar isso)
+    if (error.code !== "PGRST116") {
+      console.error("Erro ao buscar status da assinatura:", error);
+    }
+    // Não lança erro, permite tratar como sem assinatura
   }
 
-  const status = data?.[0];
+  const status = data;
 
   if (!status) {
     return {

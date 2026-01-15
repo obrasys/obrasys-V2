@@ -69,9 +69,9 @@ const ProfileCompanyTab: React.FC = () => {
           .from("companies")
           .select("name")
           .eq("id", companyId)
-          .limit(1);
+          .maybeSingle();
 
-      const company = data?.[0];
+      const company = data;
 
       if (error || !company) {
         toast.error(
