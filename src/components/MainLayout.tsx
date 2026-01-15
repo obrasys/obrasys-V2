@@ -127,11 +127,14 @@ const MainLayout = () => {
     }
   }, [user, profile?.company_id]);
 
-  // Se ainda está carregando sessão/perfil, não prossegue (sem criar loops)
-  if (isLoading || !profile) {
+  // 1. CARREGANDO: Mostra loader simples
+  if (isLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
-        A carregar sessão…
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-4">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+          <p className="text-muted-foreground animate-pulse">A carregar sua sessão...</p>
+        </div>
       </div>
     );
   }
@@ -149,6 +152,51 @@ const MainLayout = () => {
       navigate("/login");
     }
   };
+
+  // 2. ERRO: Não está carregando, mas não tem perfil (e deveria ter, pois ProtectedRoute já validou session)
+  // Isso acontece quando a sessão existe mas o fetch do profile falhou.
+  if (!profile) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background p-4">
+        <div className="max-w-md w-full space-y-6 text-center">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-red-100">
+            <User className="h-8 w-8 text-red-600" />
+          </div>
+
+          <div className="space-y-2">
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">
+              Não foi possível carregar seu perfil
+            </h1>
+            <p className="text-muted-foreground">
+              Sua sessão está ativa, mas houve um erro ao recuperar seus dados de perfil.
+              Isso pode ocorrer devido a uma falha momentânea de conexão.
+            </p>
+          </div>
+
+          <div className="flex flex-col gap-2 sm:flex-row sm:justify-center">
+            <Button
+              variant="outline"
+              onClick={() => window.location.reload()}
+              className="w-full sm:w-auto"
+            >
+              Tentar Novamente
+            </Button>
+
+            <Button
+              variant="destructive"
+              onClick={handleLogout}
+              className="w-full sm:w-auto"
+            >
+              <LogOut className="mr-2 h-4 w-4" />
+              Sair e Entrar
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+
 
   const firstName = profile?.first_name || "";
   const lastName = profile?.last_name || "";

@@ -49,19 +49,37 @@ export function useSession(): SessionContextType {
   return ctx;
 }
 
-async function fetchProfileByUserId(userId: string): Promise<Profile | null> {
-  const { data, error } = await supabase
-    .from("profiles")
-    .select("*")
-    .eq("id", userId)
-    .maybeSingle();
+// Helper para retry simples
+async function retry<T>(fn: () => Promise<T>, retries = 2, delay = 500): Promise<T> {
+  try {
+    return await fn();
+  } catch (error) {
+    if (retries === 0) throw error;
+    await new Promise((resolve) => setTimeout(resolve, delay));
+    return retry(fn, retries - 1, delay * 2);
+  }
+}
 
-  if (error) {
-    console.error("[profiles.select] erro:", error);
+async function fetchProfileByUserId(userId: string): Promise<Profile | null> {
+  const fetcher = async () => {
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("id", userId)
+      .maybeSingle();
+
+    if (error) throw error; // Lança para o retry pegar
+    return data;
+  };
+
+  try {
+    const data = await retry(fetcher);
+    return (data as Profile) ?? null;
+  } catch (error) {
+    // Só loga após esgotar retries
+    console.error("[profiles.select] erro após retries:", error);
     return null;
   }
-
-  return (data as Profile) ?? null;
 }
 
 async function ensureProfileExists(user: User): Promise<Profile | null> {
