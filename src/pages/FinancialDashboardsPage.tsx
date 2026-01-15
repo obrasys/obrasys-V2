@@ -44,11 +44,13 @@ const FinancialDashboardsPage = () => {
       setUserCompanyId(null);
       return;
     }
-    const { data: profileData, error: profileError } = await supabase
+    const { data: profileDataResult, error: profileError } = await supabase
       .from('profiles')
       .select('company_id')
       .eq('id', user.id)
-      .single();
+      .limit(1);
+
+    const profileData = profileDataResult?.[0];
 
     if (profileError) {
       console.error("[FinancialDashboardsPage] Erro ao carregar company_id do perfil:", profileError);
@@ -102,12 +104,13 @@ const FinancialDashboardsPage = () => {
     console.log("[FinancialDashboardsPage] fetchFinancialData: Fetching for projectId:", selectedProjectId, "companyId:", userCompanyId);
 
     // Fetch Budget
-    const { data: budgetData, error: budgetError } = await supabase
+    const { data: budgetDataResult, error: budgetError } = await supabase
       .from('budgets')
       .select('*')
-      .eq('project_id', selectedProjectId)
       .eq('company_id', userCompanyId)
-      .single();
+      .limit(1);
+
+    const budgetData = budgetDataResult?.[0];
 
     if (budgetError && budgetError.code !== 'PGRST116') {
       console.error("[FinancialDashboardsPage] Erro ao carregar orçamento do projeto:", budgetError);

@@ -126,7 +126,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const periodStart = body.period?.from ? new Date(body.period.from).toISOString() : null;
     const periodEnd = body.period?.to ? new Date(body.period.to).toISOString() : null;
 
-    const { error: histErr, data: histRow } = await supabaseAdmin
+    const { error: histErr, data: histRows } = await supabaseAdmin
       .from("reports_history")
       .insert({
         company_id: body.companyId,
@@ -139,7 +139,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         file_size: pdfBuffer.byteLength,
       })
       .select("id")
-      .single();
+      .limit(1);
+
+    const histRow = histRows?.[0];
 
     if (histErr) throw histErr;
 

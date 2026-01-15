@@ -69,9 +69,11 @@ const ProfileCompanyTab: React.FC = () => {
           .from("companies")
           .select("name")
           .eq("id", companyId)
-          .single();
+          .limit(1);
 
-      if (error || !data) {
+      const company = data?.[0];
+
+      if (error || !company) {
         toast.error(
           "Erro ao carregar empresa."
         );
@@ -80,7 +82,7 @@ const ProfileCompanyTab: React.FC = () => {
       }
 
       form.reset({
-        name: data.name ?? "",
+        name: company.name ?? "",
       });
 
       setIsLoading(false);
@@ -152,7 +154,7 @@ const ProfileCompanyTab: React.FC = () => {
       if (error) {
         toast.error(
           error.message ||
-            "Erro ao criar empresa."
+          "Erro ao criar empresa."
         );
         setIsSaving(false);
         return;
@@ -188,7 +190,7 @@ const ProfileCompanyTab: React.FC = () => {
     if (error) {
       toast.error(
         error.message ||
-          "Erro ao atualizar empresa."
+        "Erro ao atualizar empresa."
       );
     } else {
       toast.success(

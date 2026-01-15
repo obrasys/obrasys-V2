@@ -41,7 +41,7 @@ const Budgeting = () => {
   const [budgets, setBudgets] = React.useState<BudgetWithRelations[]>([]); // Use BudgetWithRelations
   const [selectedBudgetId, setSelectedBudgetId] = React.useState<string | null>(null); // Armazena apenas o ID
   const selectedBudget = React.useMemo(() => budgets.find(b => b.id === selectedBudgetId), [budgets, selectedBudgetId]); // Deriva o objeto
-  
+
   const [isClientDialogOpen, setIsClientDialogOpen] = React.useState(false);
   const [isProjectDialogOpen, setIsProjectDialogOpen] = React.useState(false);
   const [clients, setClients] = React.useState<Client[]>([]);
@@ -60,11 +60,13 @@ const Budgeting = () => {
       setUserCompanyId(null);
       return;
     }
-    const { data: profileData, error: profileError } = await supabase
+    const { data: profileDataResult, error: profileError } = await supabase
       .from('profiles')
       .select('company_id')
       .eq('id', user.id)
-      .single();
+      .limit(1);
+
+    const profileData = profileDataResult?.[0];
 
     if (profileError) {
       console.error("Erro ao carregar company_id do perfil:", profileError);
@@ -204,12 +206,15 @@ const Budgeting = () => {
         .from('clients')
         .upsert(clientDataToSave)
         .select()
-        .single();
+        .limit(1);
+
+      const savedClient = data?.[0];
 
       if (error) throw error;
+      if (!savedClient) throw new Error("Erro ao salvar cliente: nenhum dado retornado");
 
       await fetchClients();
-      toast.success(`Cliente ${data.nome} registado com sucesso!`);
+      toast.success(`Cliente ${savedClient.nome} registado com sucesso!`);
       setIsClientDialogOpen(false);
     } catch (error: any) {
       toast.error(`Erro ao registar cliente: ${error.message}`);
@@ -239,13 +244,16 @@ const Budgeting = () => {
           company_id: userCompanyId,
         })
         .select()
-        .single();
+        .limit(1);
+
+      const savedProject = data?.[0];
 
       if (error) throw error;
+      if (!savedProject) throw new Error("Erro ao salvar projeto");
 
       const { error: updateBudgetError } = await supabase
         .from('budgets')
-        .update({ project_id: data.id })
+        .update({ project_id: savedProject.id })
         .eq('id', selectedBudget.id);
 
       if (updateBudgetError) throw updateBudgetError;
@@ -268,16 +276,16 @@ const Budgeting = () => {
         toast.error("Orçamento não encontrado para aprovação.");
         return;
       }
-      const totalExecutedForBudget = budgetToApprove.budget_chapters.reduce((acc, chapter) => 
+      const totalExecutedForBudget = budgetToApprove.budget_chapters.reduce((acc, chapter) =>
         acc + chapter.budget_items.reduce((itemAcc, item) => itemAcc + ((item.custo_real_material || 0) + (item.custo_real_mao_obra || 0)), 0) // Ensure null/undefined handling
-      , 0);
+        , 0);
 
       const { error } = await supabase
         .from('budgets')
-        .update({ 
-          estado: "Aprovado", 
+        .update({
+          estado: "Aprovado",
           total_executado: totalExecutedForBudget, // NOVO: Atualizar total_executado ao aprovar
-          updated_at: new Date().toISOString() 
+          updated_at: new Date().toISOString()
         })
         .eq('id', budgetId);
 

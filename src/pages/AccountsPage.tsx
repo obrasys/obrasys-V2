@@ -53,11 +53,13 @@ const AccountsPage: React.FC = () => {
       setUserCompanyId(null);
       return;
     }
-    const { data: profileData, error: profileError } = await supabase
+    const { data: profileDataResult, error: profileError } = await supabase
       .from('profiles')
       .select('company_id')
       .eq('id', user.id)
-      .single();
+      .limit(1);
+
+    const profileData = profileDataResult?.[0];
 
     if (profileError) {
       console.error("[AccountsPage] Erro ao carregar company_id do perfil:", profileError);

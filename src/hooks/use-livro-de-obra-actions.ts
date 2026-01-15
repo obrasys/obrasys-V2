@@ -68,14 +68,16 @@ export function useLivroDeObraActions({
       }
 
       try {
-        const { data: newLivro, error } = await supabase
+        const { data: newLivroData, error } = await supabase
           .from("livros_obra")
           .insert({
             ...data,
             company_id: userCompanyId,
           })
           .select()
-          .single();
+          .limit(1);
+
+        const newLivro = newLivroData?.[0];
 
         if (error) {
           console.error(

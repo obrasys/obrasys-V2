@@ -51,11 +51,13 @@ const ProjectsPage = () => {
       setUserCompanyId(null);
       return;
     }
-    const { data: profileData, error: profileError } = await supabase
+    const { data: profileDataResult, error: profileError } = await supabase
       .from('profiles')
       .select('company_id')
       .eq('id', user.id)
-      .single();
+      .limit(1);
+
+    const profileData = profileDataResult?.[0];
 
     if (profileError) {
       console.error("Erro ao carregar company_id do perfil:", profileError);
@@ -136,17 +138,19 @@ const ProjectsPage = () => {
       return;
     }
     setIsLoadingBudgetStatus(true);
-    const { data, error } = await supabase
+    const { data: budgetData, error: budgetError } = await supabase
       .from('budgets')
       .select('estado')
       .eq('id', selectedProject.budget_id)
-      .single();
+      .limit(1);
 
-    if (error) {
-      console.error("Error fetching selected budget status:", error);
+    const budget = budgetData?.[0];
+
+    if (budgetError) {
+      console.error("Error fetching selected budget status:", budgetError);
       setSelectedBudgetStatus(null);
-    } else if (data) {
-      setSelectedBudgetStatus(data.estado);
+    } else if (budget) {
+      setSelectedBudgetStatus(budget.estado);
     }
     setIsLoadingBudgetStatus(false);
   }, [selectedProject?.budget_id]);
@@ -221,13 +225,16 @@ const ProjectsPage = () => {
           // client_id já está em newProject do formulário
         })
         .select('*, clients(nome)') // Seleciona com join para obter client_name de volta
-        .single();
+        .limit(1);
+
+      const savedData = data?.[0];
 
       if (error) throw error;
+      if (!savedData) throw new Error("Erro ao salvar projeto: nenhum dado retornado");
 
       const savedProject: Project = {
-        ...data,
-        client_name: (data as any).clients?.nome || "Cliente Desconhecido",
+        ...savedData,
+        client_name: (savedData as any).clients?.nome || "Cliente Desconhecido",
       };
 
       toast.success(`Obra "${savedProject.nome}" ${savedProject.id ? "atualizada" : "criada"} com sucesso!`);

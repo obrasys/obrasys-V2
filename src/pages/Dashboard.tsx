@@ -43,10 +43,10 @@ import { useSubscriptionStatus } from "@/hooks/useSubscriptionStatus";
 interface DashboardNotification {
   id: string;
   type:
-    | "project_delay"
-    | "financial_alert"
-    | "overdue_invoice"
-    | "overdue_expense";
+  | "project_delay"
+  | "financial_alert"
+  | "overdue_invoice"
+  | "overdue_expense";
   title: string;
   message: string;
   date: string;
@@ -105,11 +105,13 @@ const Dashboard = () => {
       .from("profiles")
       .select("company_id, first_name, last_name, role")
       .eq("id", user.id)
-      .single();
+      .limit(1);
 
-    if (!error && data) {
-      setUserCompanyId(data.company_id);
-      setProfileData(data);
+    const profile = data?.[0];
+
+    if (!error && profile) {
+      setUserCompanyId(profile.company_id);
+      setProfileData(profile);
     }
   }, [user]);
 
