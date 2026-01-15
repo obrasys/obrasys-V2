@@ -99,16 +99,19 @@ export async function seedDefaultArticles(companyId: string) {
   if (!companyId) return;
 
   try {
-    const { data: company, error } = await supabase
+    const { data: companies, error } = await supabase
       .from("companies")
       .select("default_articles_seeded")
       .eq("id", companyId)
-      .maybeSingle(); // usar maybeSingle para evitar erro 406 quando 0 linhas
+      .limit(1);
 
     if (error) {
-      console.warn("[seedDefaultArticles] não foi possível verificar estado:", error);
+      // Ignore errors, just log warning
+      console.warn("[seedDefaultArticles] não foi possível verificar estado (query fail):", error);
       return;
     }
+
+    const company = companies?.[0];
 
     // Se já seeded ou empresa não encontrada, sair SEM toast
     if (!company || company.default_articles_seeded) return;

@@ -15,24 +15,16 @@ export async function getCompanySubscriptionStatus(
     .from("company_subscription_status")
     .select("*")
     .eq("company_id", companyId)
-    .maybeSingle();
+    .limit(1);
 
   if (error) {
-    console.error(
-      "Erro ao buscar status da assinatura:",
-      error
-    );
+    console.error("Erro ao buscar status da assinatura:", error);
     throw error;
   }
 
-  /**
-   * ======================================================
-   * REGRA CORRETA:
-   * - Sem registo = empresa FREE
-   * - NUNCA inventar TRIAL no frontend
-   * ======================================================
-   */
-  if (!data) {
+  const status = data?.[0];
+
+  if (!status) {
     return {
       company_id: companyId,
       plan_key: "free",
@@ -42,5 +34,5 @@ export async function getCompanySubscriptionStatus(
     };
   }
 
-  return data as CompanySubscriptionStatus;
+  return status as CompanySubscriptionStatus;
 }
